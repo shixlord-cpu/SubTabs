@@ -78,7 +78,30 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
 
     @Override
     public void navigate(boolean requestFocus) {
-        fileNodes.get(0).navigate(requestFocus);
+        Project project = getProject();
+        if (project == null) {
+            fileNodes.get(0).navigate(requestFocus);
+            return;
+        }
+
+        List<VirtualFile> groupFiles = groupFiles();
+        SubtabGroupNavigation.navigateGroup(
+                project,
+                groupFiles,
+                requestFocus,
+                () -> fileNodes.get(0).navigate(requestFocus)
+        );
+    }
+
+    private @NotNull List<VirtualFile> groupFiles() {
+        List<VirtualFile> files = new ArrayList<>(fileNodes.size());
+        for (PsiFileNode fileNode : fileNodes) {
+            VirtualFile file = fileNode.getVirtualFile();
+            if (file != null) {
+                files.add(file);
+            }
+        }
+        return files;
     }
 
     @Override
