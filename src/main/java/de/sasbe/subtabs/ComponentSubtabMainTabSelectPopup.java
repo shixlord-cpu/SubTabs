@@ -154,7 +154,6 @@ final class ComponentSubtabMainTabSelectPopup {
         SubtabGroupFilePopupPanel panel = new SubtabGroupFilePopupPanel(
                 project,
                 files,
-                tabFile,
                 fixedWidth,
                 file -> {
                     openFromPopup(project, tabFile, file);
@@ -230,9 +229,7 @@ final class ComponentSubtabMainTabSelectPopup {
                 if (panel == null || !panel.isShowing()) {
                     continue;
                 }
-                Object tabObject = tabInfo.getObject();
-                VirtualFile highlighted = tabObject instanceof VirtualFile file ? file : null;
-                panel.refreshPresentation(project, highlighted);
+                panel.refreshPresentation(project);
             }
         }
     }

@@ -1,7 +1,5 @@
 package de.sasbe.subtabs;
 
-import com.intellij.openapi.application.Application;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
@@ -28,11 +26,6 @@ final class ComponentSubtabModifiedUi {
     static boolean isModified(@NotNull Project project, @NotNull VirtualFile file) {
         if (project.isDisposed() || file.isDirectory()) {
             return false;
-        }
-
-        Application application = ApplicationManager.getApplication();
-        if (application.isReadAccessAllowed()) {
-            return isModifiedInReadAction(file);
         }
         return ReadAction.compute(() -> isModifiedInReadAction(file));
     }
@@ -61,15 +54,12 @@ final class ComponentSubtabModifiedUi {
     }
 
     static void applyToLabel(
-            @NotNull JBLabel label,
+            @NotNull ComponentSubtabModifiedLabel label,
             @NotNull String plainLabel,
             boolean modified,
             boolean grayed
     ) {
-        label.putClientProperty(PLAIN_LABEL_KEY, plainLabel);
-        Color color = foreground(modified, grayed);
-        label.setText(modified ? htmlColoredText(plainLabel, color) : plainLabel);
-        label.setForeground(color);
+        label.applyPresentation(plainLabel, modified, grayed);
     }
 
     static @NotNull String plainLabel(@NotNull JToggleButton button) {
@@ -96,11 +86,10 @@ final class ComponentSubtabModifiedUi {
 
     private static boolean isModifiedInReadAction(@NotNull VirtualFile file) {
         FileDocumentManager manager = FileDocumentManager.getInstance();
-        if (manager.isFileModified(file)) {
-            return true;
-        }
-
         Document document = manager.getDocument(file);
-        return document != null && manager.isDocumentUnsaved(document);
+        if (document == null) {
+            return false;
+        }
+        return manager.isDocumentUnsaved(document);
     }
 }

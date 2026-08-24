@@ -4,12 +4,9 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.PopupHandler;
-import com.intellij.ui.components.JBLabel;
-import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
@@ -27,15 +24,10 @@ import java.util.function.Consumer;
 
 final class SubtabGroupFilePopupPanel extends JPanel {
     private static final String FILE_KEY = "componentSubtabs.popupFile";
-    private static final Color HIGHLIGHTED_BACKGROUND = new JBColor(
-            new Color(0xDEEAF6),
-            new Color(0x2D4A5E)
-    );
 
     SubtabGroupFilePopupPanel(
             @NotNull Project project,
             @NotNull List<VirtualFile> files,
-            @Nullable VirtualFile highlightedFile,
             int fixedWidth,
             @NotNull Consumer<VirtualFile> onSelect,
             @NotNull Runnable onMouseLeave
@@ -46,7 +38,7 @@ final class SubtabGroupFilePopupPanel extends JPanel {
         setBackground(UIUtil.getPanelBackground());
 
         for (VirtualFile file : files) {
-            add(createItem(project, file, highlightedFile, fixedWidth, onSelect));
+            add(createItem(project, file, fixedWidth, onSelect));
         }
 
         if (fixedWidth > 0) {
@@ -71,14 +63,14 @@ final class SubtabGroupFilePopupPanel extends JPanel {
         });
     }
 
-    void refreshPresentation(@NotNull Project project, @Nullable VirtualFile highlightedFile) {
+    void refreshPresentation(@NotNull Project project) {
         for (Component component : getComponents()) {
-            if (!(component instanceof JBLabel label)) {
+            if (!(component instanceof ComponentSubtabModifiedLabel label)) {
                 continue;
             }
             Object value = label.getClientProperty(FILE_KEY);
             if (value instanceof VirtualFile file) {
-                applyPresentationState(project, label, file, highlightedFile);
+                applyPresentationState(project, label, file);
             }
         }
     }
@@ -86,21 +78,19 @@ final class SubtabGroupFilePopupPanel extends JPanel {
     private static @NotNull JComponent createItem(
             @NotNull Project project,
             @NotNull VirtualFile file,
-            @Nullable VirtualFile highlightedFile,
             int fixedWidth,
             @NotNull Consumer<VirtualFile> onSelect
     ) {
         String plainLabel = labelFor(file);
-        JBLabel label = new JBLabel(plainLabel);
+        ComponentSubtabModifiedLabel label = new ComponentSubtabModifiedLabel();
         label.putClientProperty(FILE_KEY, file);
-        label.putClientProperty(ComponentSubtabModifiedUi.PLAIN_LABEL_KEY, plainLabel);
         label.setBorder(JBUI.Borders.empty(4, 8));
         label.setOpaque(true);
         label.setAlignmentX(LEFT_ALIGNMENT);
         label.setToolTipText(file.getPath());
         label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        label.getAccessibleContext().setAccessibleName(label.getText() + " öffnen: " + file.getName());
-        applyPresentationState(project, label, file, highlightedFile);
+        label.getAccessibleContext().setAccessibleName(plainLabel + " öffnen: " + file.getName());
+        applyPresentationState(project, label, file);
         applyItemWidth(label, fixedWidth);
 
         Color hoverBackground = JBUI.CurrentTheme.TabbedPane.HOVER_COLOR;
@@ -117,7 +107,7 @@ final class SubtabGroupFilePopupPanel extends JPanel {
 
             @Override
             public void mouseExited(MouseEvent event) {
-                applyPresentationState(project, label, file, highlightedFile);
+                applyPresentationState(project, label, file);
                 ComponentSubtabBarHover.onExit(label);
                 ComponentSubtabMainTabHover.onExit(label);
             }
@@ -142,7 +132,7 @@ final class SubtabGroupFilePopupPanel extends JPanel {
         return label;
     }
 
-    private static void applyItemWidth(@NotNull JBLabel label, int fixedWidth) {
+    private static void applyItemWidth(@NotNull ComponentSubtabModifiedLabel label, int fixedWidth) {
         if (fixedWidth <= 0) {
             return;
         }
@@ -159,23 +149,19 @@ final class SubtabGroupFilePopupPanel extends JPanel {
 
     private static void applyPresentationState(
             @NotNull Project project,
-            @NotNull JBLabel label,
-            @NotNull VirtualFile file,
-            @Nullable VirtualFile highlightedFile
+            @NotNull ComponentSubtabModifiedLabel label,
+            @NotNull VirtualFile file
     ) {
         boolean open = isOpen(project, file);
         boolean modified = ComponentSubtabModifiedUi.isModified(project, file);
+        String plainLabel = labelFor(file);
         ComponentSubtabModifiedUi.applyToLabel(
                 label,
-                ComponentSubtabModifiedUi.plainLabel(label),
+                plainLabel,
                 modified,
                 open
         );
-        if (highlightedFile != null && highlightedFile.equals(file)) {
-            label.setBackground(HIGHLIGHTED_BACKGROUND);
-        } else {
-            label.setBackground(UIUtil.getPanelBackground());
-        }
+        label.setBackground(UIUtil.getPanelBackground());
     }
 
     private static @NotNull String labelFor(@NotNull VirtualFile file) {

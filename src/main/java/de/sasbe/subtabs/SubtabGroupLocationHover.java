@@ -1,6 +1,5 @@
 package de.sasbe.subtabs;
 
-import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
@@ -190,9 +189,6 @@ final class SubtabGroupLocationHover {
         List<VirtualFile> files = groupNode.memberVirtualFiles().stream()
                 .sorted(Comparator.comparing(VirtualFile::getName))
                 .toList();
-        VirtualFile highlightedFile = mode == PopupMode.GROUP_ROW
-                ? displayedGroupFile(project, groupNode)
-                : null;
         Rectangle rowBounds = tree.getRowBounds(row);
         if (rowBounds == null) {
             return;
@@ -202,7 +198,6 @@ final class SubtabGroupLocationHover {
         SubtabGroupFilePopupPanel panel = new SubtabGroupFilePopupPanel(
                 project,
                 files,
-                highlightedFile,
                 fixedWidth,
                 file -> {
                     ComponentSubtabProjectViewNavigation.openFromGroupFilePopup(project, file);
@@ -270,18 +265,6 @@ final class SubtabGroupLocationHover {
         return showPoint;
     }
 
-    private static @Nullable VirtualFile displayedGroupFile(
-            @NotNull Project project,
-            @NotNull SubtabGroupProjectViewNode groupNode
-    ) {
-        FileEditorManager manager = FileEditorManager.getInstance(project);
-        return SubtabGroupNavigation.preferredOpenFile(
-                manager.getSelectedFiles(),
-                groupNode.memberVirtualFiles(),
-                manager::isFileOpen
-        );
-    }
-
     static void hidePopup(@NotNull JTree tree) {
         JBPopup popup = getPopup(tree);
         if (popup != null && popup.isVisible()) {
@@ -314,16 +297,7 @@ final class SubtabGroupLocationHover {
         if (panel == null || !panel.isShowing()) {
             return;
         }
-        Integer row = getPopupRow(tree);
-        PopupMode mode = getPopupMode(tree);
-        VirtualFile highlightedFile = null;
-        if (row != null && mode == PopupMode.GROUP_ROW) {
-            SubtabGroupProjectViewNode groupNode = groupNodeAt(tree, row);
-            if (groupNode != null) {
-                highlightedFile = displayedGroupFile(project, groupNode);
-            }
-        }
-        panel.refreshPresentation(project, highlightedFile);
+        panel.refreshPresentation(project);
     }
 
     private static boolean isMouseOverAnyPopupTrigger(@NotNull JTree tree, @NotNull Point screenPoint) {
