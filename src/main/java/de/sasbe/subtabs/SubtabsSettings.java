@@ -94,6 +94,14 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         state.groupTreeControlStyle = style.name();
     }
 
+    public boolean isInvertGroupTreeControlFill() {
+        return state.invertGroupTreeControlFill;
+    }
+
+    public void setInvertGroupTreeControlFill(boolean invert) {
+        state.invertGroupTreeControlFill = invert;
+    }
+
     public @NotNull List<CustomSubtabRule> getRules() {
         return state.rules;
     }
@@ -174,6 +182,7 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         public boolean fitTabsToEditorWidth = true;
         public String overflowMode = "SCROLLBAR";
         public String groupTreeControlStyle = "DEFAULT";
+        public boolean invertGroupTreeControlFill = false;
         public int barHeightPercent = 75;
         public int textSizePercent = 75;
         public int rulesVersion = 0;

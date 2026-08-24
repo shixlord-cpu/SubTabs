@@ -28,6 +28,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
     private JCheckBox fitTabsToEditorWidthCheckbox;
     private ComboBox<SubtabOverflowMode> overflowModeCombo;
     private ComboBox<SubtabGroupTreeControlStyle> groupTreeControlStyleCombo;
+    private JCheckBox invertGroupTreeControlFillCheckbox;
     private JSlider barHeightSlider;
     private JSlider textSizeSlider;
     private JLabel barHeightValueLabel;
@@ -96,6 +97,8 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
             }
         });
 
+        invertGroupTreeControlFillCheckbox = new JCheckBox("Füllung invertieren (gefüllt wenn geöffnet)");
+
         barHeightSlider = createSlider(25, 100, 75);
         barHeightValueLabel = new JBLabel(formatPercent(barHeightSlider.getValue()));
         barHeightSlider.addChangeListener(event ->
@@ -118,6 +121,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 .addComponent(fitTabsToEditorWidthCheckbox)
                 .addLabeledComponent("Überlauf", overflowModeCombo)
                 .addLabeledComponent("Gruppierung im Projektbaum", groupTreeControlStyleCombo)
+                .addComponent(invertGroupTreeControlFillCheckbox)
                 .addLabeledComponent("Tab-Höhe", sliderRow(barHeightSlider, barHeightValueLabel))
                 .addLabeledComponent("Schriftgröße", sliderRow(textSizeSlider, textSizeValueLabel))
                 .getPanel();
@@ -143,6 +147,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 || fitTabsToEditorWidthCheckbox.isSelected() != settings.isFitTabsToEditorWidth()
                 || overflowModeCombo.getItem() != settings.getOverflowMode()
                 || groupTreeControlStyleCombo.getItem() != settings.getGroupTreeControlStyle()
+                || invertGroupTreeControlFillCheckbox.isSelected() != settings.isInvertGroupTreeControlFill()
                 || barHeightSlider.getValue() != settings.getBarHeightPercent()
                 || textSizeSlider.getValue() != settings.getTextSizePercent()
                 || !rulesPanel.isSameAs(settings.getRules());
@@ -162,6 +167,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         settings.setFitTabsToEditorWidth(fitTabsToEditorWidthCheckbox.isSelected());
         settings.setOverflowMode(overflowModeCombo.getItem());
         settings.setGroupTreeControlStyle(groupTreeControlStyleCombo.getItem());
+        settings.setInvertGroupTreeControlFill(invertGroupTreeControlFillCheckbox.isSelected());
         settings.setBarHeightPercent(barHeightSlider.getValue());
         settings.setTextSizePercent(textSizeSlider.getValue());
         settings.setRules(rulesPanel.getRules());
@@ -182,6 +188,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         fitTabsToEditorWidthCheckbox.setSelected(settings.isFitTabsToEditorWidth());
         overflowModeCombo.setItem(settings.getOverflowMode());
         groupTreeControlStyleCombo.setItem(settings.getGroupTreeControlStyle());
+        invertGroupTreeControlFillCheckbox.setSelected(settings.isInvertGroupTreeControlFill());
         barHeightSlider.setValue(settings.getBarHeightPercent());
         textSizeSlider.setValue(settings.getTextSizePercent());
         barHeightValueLabel.setText(formatPercent(barHeightSlider.getValue()));
@@ -198,6 +205,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         fitTabsToEditorWidthCheckbox = null;
         overflowModeCombo = null;
         groupTreeControlStyleCombo = null;
+        invertGroupTreeControlFillCheckbox = null;
         barHeightSlider = null;
         textSizeSlider = null;
         barHeightValueLabel = null;

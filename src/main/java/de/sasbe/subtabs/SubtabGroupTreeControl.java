@@ -88,6 +88,14 @@ final class SubtabGroupTreeControl {
         return controlFor(SubtabsSettings.getInstance().getGroupTreeControlStyle());
     }
 
+    static boolean shapeFilled(boolean expanded, boolean invertFill) {
+        return invertFill ? expanded : !expanded;
+    }
+
+    static boolean shapeFilled(boolean expanded) {
+        return shapeFilled(expanded, SubtabsSettings.getInstance().isInvertGroupTreeControlFill());
+    }
+
     static void paintShape(
             @NotNull Graphics2D graphics,
             @NotNull SubtabGroupTreeControlStyle style,
@@ -176,7 +184,7 @@ final class SubtabGroupTreeControl {
         ) {
             Graphics2D g2 = (Graphics2D) graphics.create();
             try {
-                paintShape(g2, style, x, y, width, height, !expanded);
+                paintShape(g2, style, x, y, width, height, shapeFilled(expanded));
             } finally {
                 g2.dispose();
             }
@@ -188,7 +196,7 @@ final class SubtabGroupTreeControl {
         public void paintIcon(Component component, Graphics graphics, int x, int y) {
             Graphics2D g2 = (Graphics2D) graphics.create();
             try {
-                paintShape(g2, style, x, y, getIconWidth(), getIconHeight(), !expanded);
+                paintShape(g2, style, x, y, getIconWidth(), getIconHeight(), shapeFilled(expanded));
             } finally {
                 g2.dispose();
             }
