@@ -9,6 +9,8 @@ import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.ClientProperty;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.tree.ui.Control;
+import com.intellij.ui.tree.ui.DefaultControl;
+import com.intellij.util.IconUtil;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import com.intellij.util.ui.tree.TreeUtil;
@@ -16,7 +18,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.Icon;
-import javax.swing.JPanel;
 import javax.swing.JTree;
 import javax.swing.tree.TreePath;
 import java.awt.BasicStroke;
@@ -26,11 +27,13 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Stroke;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.RoundRectangle2D;
 import java.util.function.Function;
 
-final class SubtabGroupTreeControl implements Control {
-    static final SubtabGroupTreeControl INSTANCE = new SubtabGroupTreeControl();
+final class SubtabGroupTreeControl {
     static final Color FILL = new Color(0x3B82F6);
+    static final Color BORDER = new JBColor(new Color(0x8A8A8A), new Color(0x6B7280));
     private static final String INSTALLED = "subtabs.groupTreeControl";
 
     private SubtabGroupTreeControl() {
@@ -42,101 +45,85 @@ final class SubtabGroupTreeControl implements Control {
         }
         AbstractProjectViewPane pane = ProjectView.getInstance(project).getCurrentProjectViewPane();
         if (pane != null && pane.getTree() != null) {
-            attach(pane.getTree());
+            refresh(pane.getTree());
         }
         ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow(ToolWindowId.PROJECT_VIEW);
         if (toolWindow != null) {
             for (JTree tree : UIUtil.findComponentsOfType(toolWindow.getComponent(), JTree.class)) {
-                attach(tree);
+                refresh(tree);
             }
         }
     }
 
-    static void attach(@NotNull JTree tree) {
-        if (Boolean.TRUE.equals(tree.getClientProperty(INSTALLED))) {
-            return;
-        }
-        Function<TreePath, Control> previous = ClientProperty.get(tree, Control.CUSTOM_CONTROL);
-        ClientProperty.put(tree, Control.CUSTOM_CONTROL, new Resolver(previous));
-        tree.putClientProperty(INSTALLED, Boolean.TRUE);
+    static void refresh(@NotNull JTree tree) {
+        attach(tree);
         tree.repaint();
+    }
+
+    static void attach(@NotNull JTree tree) {
+        Function<TreePath, Control> current = ClientProperty.get(tree, Control.CUSTOM_CONTROL);
+        if (!(current instanceof Resolver)) {
+            ClientProperty.put(tree, Control.CUSTOM_CONTROL, new Resolver(current));
+            tree.putClientProperty(INSTALLED, Boolean.TRUE);
+        }
     }
 
     static boolean isSubtabGroupPath(@Nullable TreePath path) {
         return path != null && TreeUtil.getLastUserObject(path) instanceof SubtabGroupProjectViewNode;
     }
 
-    static @Nullable Control forPath(@NotNull TreePath path) {
-        return isSubtabGroupPath(path) ? INSTANCE : null;
+    static @Nullable Control controlFor(@NotNull SubtabGroupTreeControlStyle style) {
+        return switch (style) {
+            case DEFAULT -> null;
+            case CUBES -> ShapeControl.CUBES;
+            case CIRCLES -> ShapeControl.CIRCLES;
+            case BLUE_ARROWS -> BlueArrowControl.INSTANCE;
+        };
     }
 
-    static void paintSquare(
+    static @Nullable Control forPath(@NotNull TreePath path) {
+        if (!isSubtabGroupPath(path)) {
+            return null;
+        }
+        return controlFor(SubtabsSettings.getInstance().getGroupTreeControlStyle());
+    }
+
+    static void paintShape(
             @NotNull Graphics2D graphics,
+            @NotNull SubtabGroupTreeControlStyle style,
             int x,
             int y,
             int width,
             int height,
-            boolean filled,
-            @NotNull Color color
+            boolean filled
     ) {
         int size = Math.max(JBUI.scale(8), Math.min(width, height) - JBUI.scale(4));
         int left = x + (width - size) / 2;
         int top = y + (height - size) / 2;
-        graphics.setColor(color);
-        if (filled) {
-            graphics.fillRect(left, top, size, size);
-            return;
+        float strokeWidth = Math.max(1.25f, size / 8f);
+        Stroke previousStroke = graphics.getStroke();
+        graphics.setStroke(new BasicStroke(strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        if (style == SubtabGroupTreeControlStyle.CIRCLES) {
+            Ellipse2D.Float shape = new Ellipse2D.Float(left, top, size, size);
+            if (filled) {
+                graphics.setColor(FILL);
+                graphics.fill(shape);
+            }
+            graphics.setColor(BORDER);
+            graphics.draw(shape);
+        } else {
+            float arc = JBUI.scale(2.5f);
+            RoundRectangle2D.Float shape = new RoundRectangle2D.Float(left, top, size, size, arc, arc);
+            if (filled) {
+                graphics.setColor(FILL);
+                graphics.fill(shape);
+            }
+            graphics.setColor(BORDER);
+            graphics.draw(shape);
         }
-        float strokeWidth = Math.max(1.5f, size / 7f);
-        Stroke previous = graphics.getStroke();
-        graphics.setStroke(new BasicStroke(strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER));
-        int inset = Math.round(strokeWidth / 2f);
-        graphics.drawRect(left + inset, top + inset, size - 2 * inset - 1, size - 2 * inset - 1);
-        graphics.setStroke(previous);
-    }
-
-    @Override
-    public @NotNull Icon getIcon(boolean expanded, boolean selected) {
-        return new SquareIcon(expanded, selected);
-    }
-
-    @Override
-    public int getWidth() {
-        return JBUI.scale(16);
-    }
-
-    @Override
-    public int getHeight() {
-        return JBUI.scale(16);
-    }
-
-    @Override
-    public void paint(
-            @NotNull Component component,
-            @NotNull Graphics graphics,
-            int x,
-            int y,
-            int width,
-            int height,
-            boolean expanded,
-            boolean selected
-    ) {
-        Graphics2D g2 = (Graphics2D) graphics.create();
-        try {
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-            g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-            paintSquare(g2, x, y, width, height, !expanded, color(selected));
-        } finally {
-            g2.dispose();
-        }
-    }
-
-    private static @NotNull Color color(boolean selected) {
-        if (!selected) {
-            return FILL;
-        }
-        Color foreground = UIUtil.getTreeForeground(true, true);
-        return foreground == null ? JBColor.WHITE : foreground;
+        graphics.setStroke(previousStroke);
     }
 
     private record Resolver(@Nullable Function<TreePath, Control> previous)
@@ -151,29 +138,117 @@ final class SubtabGroupTreeControl implements Control {
         }
     }
 
-    private record SquareIcon(boolean expanded, boolean selected) implements Icon {
+    private static final class ShapeControl implements Control {
+        private static final ShapeControl CUBES = new ShapeControl(SubtabGroupTreeControlStyle.CUBES);
+        private static final ShapeControl CIRCLES = new ShapeControl(SubtabGroupTreeControlStyle.CIRCLES);
+
+        private final SubtabGroupTreeControlStyle style;
+
+        private ShapeControl(@NotNull SubtabGroupTreeControlStyle style) {
+            this.style = style;
+        }
+
+        @Override
+        public @NotNull Icon getIcon(boolean expanded, boolean selected) {
+            return new ShapeIcon(style, expanded);
+        }
+
+        @Override
+        public int getWidth() {
+            return JBUI.scale(16);
+        }
+
+        @Override
+        public int getHeight() {
+            return JBUI.scale(16);
+        }
+
+        @Override
+        public void paint(
+                @NotNull Component component,
+                @NotNull Graphics graphics,
+                int x,
+                int y,
+                int width,
+                int height,
+                boolean expanded,
+                boolean selected
+        ) {
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            try {
+                paintShape(g2, style, x, y, width, height, !expanded);
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
+    private record ShapeIcon(@NotNull SubtabGroupTreeControlStyle style, boolean expanded) implements Icon {
         @Override
         public void paintIcon(Component component, Graphics graphics, int x, int y) {
-            INSTANCE.paint(
-                    component == null ? new JPanel() : component,
-                    graphics,
-                    x,
-                    y,
-                    getIconWidth(),
-                    getIconHeight(),
-                    expanded,
-                    selected
-            );
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            try {
+                paintShape(g2, style, x, y, getIconWidth(), getIconHeight(), !expanded);
+            } finally {
+                g2.dispose();
+            }
         }
 
         @Override
         public int getIconWidth() {
-            return INSTANCE.getWidth();
+            return JBUI.scale(16);
         }
 
         @Override
         public int getIconHeight() {
-            return INSTANCE.getHeight();
+            return JBUI.scale(16);
+        }
+    }
+
+    private static final class BlueArrowControl implements Control {
+        private static final BlueArrowControl INSTANCE = new BlueArrowControl();
+        private final DefaultControl delegate;
+
+        private BlueArrowControl() {
+            delegate = new DefaultControl(
+                    tint(UIUtil.getTreeExpandedIcon()),
+                    tint(UIUtil.getTreeCollapsedIcon()),
+                    tint(UIUtil.getTreeSelectedExpandedIcon()),
+                    tint(UIUtil.getTreeSelectedCollapsedIcon())
+            );
+        }
+
+        private static @NotNull Icon tint(@NotNull Icon icon) {
+            return IconUtil.colorize(icon, FILL);
+        }
+
+        @Override
+        public @NotNull Icon getIcon(boolean expanded, boolean selected) {
+            return delegate.getIcon(expanded, selected);
+        }
+
+        @Override
+        public int getWidth() {
+            return delegate.getWidth();
+        }
+
+        @Override
+        public int getHeight() {
+            return delegate.getHeight();
+        }
+
+        @Override
+        public void paint(
+                @NotNull Component component,
+                @NotNull Graphics graphics,
+                int x,
+                int y,
+                int width,
+                int height,
+                boolean expanded,
+                boolean selected
+        ) {
+            delegate.paint(component, graphics, x, y, width, height, expanded, selected);
         }
     }
 }

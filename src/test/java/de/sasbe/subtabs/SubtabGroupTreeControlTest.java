@@ -7,20 +7,38 @@ import java.awt.image.BufferedImage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SubtabGroupTreeControlTest {
     @Test
-    void collapsedSquareFillsTheCenter() {
-        BufferedImage image = render(true);
+    void collapsedCubeFillsBlueWithGrayBorder() {
+        BufferedImage image = render(SubtabGroupTreeControlStyle.CUBES, true);
         assertTrue(isFilledBlue(image.getRGB(8, 8)));
+        assertTrue(hasGrayOutline(image));
     }
 
     @Test
-    void expandedSquareLeavesTheCenterEmpty() {
-        BufferedImage image = render(false);
+    void expandedCubeUsesGrayBorderOnly() {
+        BufferedImage image = render(SubtabGroupTreeControlStyle.CUBES, false);
         assertEquals(0, alpha(image.getRGB(8, 8)));
-        assertTrue(hasBlueOutline(image));
+        assertTrue(hasGrayOutline(image));
+    }
+
+    @Test
+    void collapsedCircleFillsBlueWithGrayBorder() {
+        BufferedImage image = render(SubtabGroupTreeControlStyle.CIRCLES, true);
+        assertTrue(isFilledBlue(image.getRGB(8, 8)));
+        assertTrue(hasGrayOutline(image));
+    }
+
+    @Test
+    void defaultStyleUsesPlatformArrows() {
+        assertNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.DEFAULT));
+        assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.CUBES));
+        assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.CIRCLES));
+        assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.BLUE_ARROWS));
     }
 
     @Test
@@ -28,11 +46,11 @@ class SubtabGroupTreeControlTest {
         assertFalse(SubtabGroupTreeControl.isSubtabGroupPath(null));
     }
 
-    private static BufferedImage render(boolean filled) {
+    private static BufferedImage render(SubtabGroupTreeControlStyle style, boolean filled) {
         BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         try {
-            SubtabGroupTreeControl.paintSquare(graphics, 0, 0, 16, 16, filled, SubtabGroupTreeControl.FILL);
+            SubtabGroupTreeControl.paintShape(graphics, style, 0, 0, 16, 16, filled);
         } finally {
             graphics.dispose();
         }
@@ -46,15 +64,25 @@ class SubtabGroupTreeControlTest {
                 && blue(argb) > 180;
     }
 
-    private static boolean hasBlueOutline(BufferedImage image) {
+    private static boolean hasGrayOutline(BufferedImage image) {
         for (int x = 0; x < image.getWidth(); x++) {
             for (int y = 0; y < image.getHeight(); y++) {
-                if (isFilledBlue(image.getRGB(x, y))) {
+                if (isGray(image.getRGB(x, y))) {
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    private static boolean isGray(int argb) {
+        if (alpha(argb) < 128) {
+            return false;
+        }
+        int r = red(argb);
+        int g = green(argb);
+        int b = blue(argb);
+        return Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && r > 80 && r < 180;
     }
 
     private static int alpha(int argb) {
