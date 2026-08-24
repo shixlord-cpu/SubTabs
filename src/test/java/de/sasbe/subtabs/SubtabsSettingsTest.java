@@ -61,6 +61,13 @@ class SubtabsSettingsTest {
     }
 
     @Test
+    void disablesGroupColorsByDefault() {
+        assertFalse(new SubtabsSettings.State().groupColorsEnabled);
+        assertTrue(new SubtabsSettings.State().groupColorHexes.isEmpty());
+        assertEquals(0, new SubtabsSettings.State().nextGroupColorIndex);
+    }
+
+    @Test
     void namesArrowOverflowRandpfeile() {
         assertEquals("Randpfeile", SubtabOverflowMode.ARROWS.label());
         assertEquals("Randpfeile", SubtabOverflowMode.ARROWS.toString());

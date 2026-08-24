@@ -53,6 +53,7 @@ final class ComponentSubtabProjectViewEditorHover {
         }
         tree.putClientProperty(INSTALLED, Boolean.TRUE);
         SubtabGroupLocationHover.installRenderer(tree);
+        SubtabGroupProjectViewPopup.installOn(project, tree);
 
         tree.addMouseMotionListener(new MouseMotionAdapter() {
             @Override

@@ -9,6 +9,8 @@ import com.intellij.util.ui.tree.TreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
 import javax.swing.JTree;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
@@ -17,6 +19,7 @@ import java.awt.Component;
 
 final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
     private final TreeCellRenderer delegate;
+    private final JPanel colorWrapper = new JPanel(new java.awt.BorderLayout());
 
     SubtabGroupTreeCellRenderer(@NotNull TreeCellRenderer delegate) {
         this.delegate = delegate;
@@ -66,6 +69,14 @@ final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
         if (userObject instanceof SubtabGroupProjectViewNode groupNode) {
             if (groupNode.hasModifiedMember()) {
                 applyModifiedMainText(colored, ComponentSubtabModifiedUi.foreground(true, false));
+            }
+            Color groupColor = SubtabGroupColors.colorForGroupNode(groupNode);
+            if (groupColor != null) {
+                colorWrapper.removeAll();
+                colorWrapper.setOpaque(false);
+                colorWrapper.setBorder(BorderFactory.createMatteBorder(1, 2, 1, 2, groupColor));
+                colorWrapper.add(component, java.awt.BorderLayout.CENTER);
+                return colorWrapper;
             }
             return component;
         }

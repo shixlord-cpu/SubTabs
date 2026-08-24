@@ -42,6 +42,7 @@ final class ComponentSubtabGroupRegistry {
 
         ComponentSubtabGroup group = new ComponentSubtabGroup(match.relatedFiles());
         groupsByKey.put(match.key(), group);
+        SubtabGroupColors.onGroupDiscovered(match.key());
         return group;
     }
 
