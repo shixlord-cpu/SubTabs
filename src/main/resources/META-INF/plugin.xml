@@ -58,6 +58,8 @@
                   topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
         <listener class="de.sasbe.subtabs.ComponentSubtabsFileEditorListener"
                   topic="com.intellij.openapi.fileEditor.FileEditorManagerListener$Before"/>
+        <listener class="de.sasbe.subtabs.SubtabGroupTreeControlListener"
+                  topic="com.intellij.openapi.wm.ex.ToolWindowManagerListener"/>
     </projectListeners>
 
 </idea-plugin>
