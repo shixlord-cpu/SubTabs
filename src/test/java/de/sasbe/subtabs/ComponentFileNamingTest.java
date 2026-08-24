@@ -116,7 +116,7 @@ class ComponentFileNamingTest {
         assertEquals("rule:3:cart", ComponentFileNaming.componentBaseName("cart.actions.ts"));
         assertEquals("rule:3:cart", ComponentFileNaming.componentBaseName("cart.reducer.ts"));
         assertEquals("rule:3:products", ComponentFileNaming.componentBaseName("products.selectors.ts"));
-        assertEquals("cart", ComponentFileNaming.displayName(STATE_GROUP));
+        assertEquals("cart-state", ComponentFileNaming.displayName(STATE_GROUP));
         assertTrue(ComponentFileNaming.searchNeighbors("rule:3:cart"));
         assertFalse(ComponentFileNaming.searchNeighbors(MODEL_GROUP));
     }
@@ -151,8 +151,8 @@ class ComponentFileNamingTest {
 
     @Test
     void usesShortComponentNameForTabTitle() {
-        assertEquals("user-card", ComponentFileNaming.displayName(COMPONENT_GROUP));
-        assertEquals("app", ComponentFileNaming.displayName("rule:5:app.component"));
-        assertEquals("header", ComponentFileNaming.displayName("rule:5:header"));
+        assertEquals("user-card-components", ComponentFileNaming.displayName(COMPONENT_GROUP));
+        assertEquals("app-components", ComponentFileNaming.displayName("rule:5:app.component"));
+        assertEquals("header-components", ComponentFileNaming.displayName("rule:5:header"));
     }
 }

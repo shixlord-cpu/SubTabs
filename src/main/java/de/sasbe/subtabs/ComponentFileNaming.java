@@ -19,12 +19,7 @@ final class ComponentFileNaming {
         return match != null && match.searchNeighbors();
     }
 
-    static @NotNull String displayName(@NotNull String baseName) {
-        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(baseName, rules());
-        return match == null ? baseName : match.displayName();
-    }
-
-    static @NotNull String projectViewDisplayName(@NotNull String groupKey) {
+    static @NotNull String displayName(@NotNull String groupKey) {
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(groupKey, rules());
         if (match == null) {
             return groupKey;
@@ -33,7 +28,7 @@ final class ComponentFileNaming {
         if (parsed == null || parsed.ruleIndex() < 0 || parsed.ruleIndex() >= rules().size()) {
             return match.displayName();
         }
-        return CustomSubtabRuleMatcher.projectViewDisplayName(
+        return CustomSubtabRuleMatcher.displayNameWithSuffix(
                 match.displayName(),
                 rules().get(parsed.ruleIndex())
         );

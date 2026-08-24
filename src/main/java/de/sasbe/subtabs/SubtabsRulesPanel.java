@@ -254,7 +254,7 @@ final class SubtabsRulesPanel {
         public String getColumnName(int column) {
             return switch (column) {
                 case 0 -> "Name";
-                case 1 -> "Baum-Zusatz";
+                case 1 -> "Zusatz";
                 case 2 -> "Dateien";
                 case 3 -> "Art";
                 case 4 -> "Suche";

@@ -100,12 +100,12 @@ class CustomSubtabRuleMatcherTest {
         assertEquals("products", match.displayName());
         assertEquals(
                 "products-state",
-                CustomSubtabRuleMatcher.projectViewDisplayName(match.displayName(), rule)
+                CustomSubtabRuleMatcher.displayNameWithSuffix(match.displayName(), rule)
         );
     }
 
     @Test
-    void appendsProjectViewSuffixForComponentGroups() {
+    void appendsSuffixForComponentGroups() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.type = CustomSubtabRule.Type.STEM;
         rule.patterns = ".ts, .html";
@@ -121,7 +121,7 @@ class CustomSubtabRuleMatcherTest {
         assertEquals("products", match.displayName());
         assertEquals(
                 "products-components",
-                CustomSubtabRuleMatcher.projectViewDisplayName(match.displayName(), rule)
+                CustomSubtabRuleMatcher.displayNameWithSuffix(match.displayName(), rule)
         );
     }
 
