@@ -29,7 +29,7 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
         super(
                 project,
                 new GroupValue(
-                        ComponentFileNaming.projectViewDisplayName(groupKey),
+                        ComponentFileNaming.displayName(groupKey),
                         primaryFile(fileNodes)
                 ),
                 settings

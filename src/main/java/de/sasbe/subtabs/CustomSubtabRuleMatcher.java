@@ -265,7 +265,7 @@ final class CustomSubtabRuleMatcher {
         return stem;
     }
 
-    static @NotNull String projectViewDisplayName(@NotNull String base, @NotNull CustomSubtabRule rule) {
+    static @NotNull String displayNameWithSuffix(@NotNull String base, @NotNull CustomSubtabRule rule) {
         String suffix = rule.groupSuffix == null ? "" : rule.groupSuffix.trim();
         if (suffix.isEmpty()) {
             return base;

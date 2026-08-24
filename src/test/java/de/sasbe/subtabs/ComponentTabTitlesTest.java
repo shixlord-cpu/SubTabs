@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class ComponentTabTitlesTest {
     @Test
     void usesComponentNameWhileSubtabsAreVisible() {
-        assertEquals("header", ComponentTabTitles.mainTabTitle(false, "header.component.scss"));
-        assertEquals("user-card", ComponentTabTitles.mainTabTitle(false, "user-card.component.ts"));
+        assertEquals("header-components", ComponentTabTitles.mainTabTitle(false, "header.component.scss"));
+        assertEquals("user-card-components", ComponentTabTitles.mainTabTitle(false, "user-card.component.ts"));
     }
 
     @Test
@@ -34,7 +34,7 @@ class ComponentTabTitlesTest {
     void usesGroupTitlesForConfigsStateAndModels() {
         assertEquals("tsconfig", ComponentTabTitles.mainTabTitle(false, "tsconfig.app.json"));
         assertEquals("env", ComponentTabTitles.mainTabTitle(false, ".env.local"));
-        assertEquals("cart", ComponentTabTitles.mainTabTitle(false, "cart.reducer.ts"));
+        assertEquals("cart-state", ComponentTabTitles.mainTabTitle(false, "cart.reducer.ts"));
         assertEquals("user", ComponentTabTitles.mainTabTitle(false, "user.dto.ts"));
     }
 }
