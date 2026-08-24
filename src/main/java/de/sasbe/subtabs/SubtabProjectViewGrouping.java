@@ -71,4 +71,24 @@ final class SubtabProjectViewGrouping {
         }
         return counts;
     }
+
+    static @NotNull String mergeKey(@NotNull String groupKey) {
+        if (!CustomSubtabRuleMatcher.isRuleGroupKey(groupKey)) {
+            return groupKey;
+        }
+
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
+                groupKey,
+                ComponentFileNaming.rules()
+        );
+        if (match == null || !match.searchNeighbors()) {
+            return groupKey;
+        }
+
+        CustomSubtabRuleMatcher.ParsedGroupKey parsed = CustomSubtabRuleMatcher.parseGroupKey(groupKey);
+        if (parsed == null) {
+            return groupKey;
+        }
+        return "merge:rule:" + parsed.ruleIndex() + ":" + parsed.stem();
+    }
 }

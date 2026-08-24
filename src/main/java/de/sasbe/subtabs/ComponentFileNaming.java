@@ -24,6 +24,21 @@ final class ComponentFileNaming {
         return match == null ? baseName : match.displayName();
     }
 
+    static @NotNull String projectViewDisplayName(@NotNull String groupKey) {
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(groupKey, rules());
+        if (match == null) {
+            return groupKey;
+        }
+        CustomSubtabRuleMatcher.ParsedGroupKey parsed = CustomSubtabRuleMatcher.parseGroupKey(groupKey);
+        if (parsed == null || parsed.ruleIndex() < 0 || parsed.ruleIndex() >= rules().size()) {
+            return match.displayName();
+        }
+        return CustomSubtabRuleMatcher.projectViewDisplayName(
+                match.displayName(),
+                rules().get(parsed.ruleIndex())
+        );
+    }
+
     static @NotNull List<SubtabCandidate> candidates(@NotNull String baseName) {
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(baseName, rules());
         return match == null ? List.of() : match.candidates();

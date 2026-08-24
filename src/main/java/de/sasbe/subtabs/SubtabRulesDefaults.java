@@ -63,6 +63,7 @@ public final class SubtabRulesDefaults {
         rule.slotKeys = """
                 .actions.ts, .reducer.ts, .reducer.ts, .effects.ts, .selectors.ts, .state.ts, .store.ts, .facade.ts""".replace('\n', ' ').trim();
         rule.searchNeighbors = true;
+        rule.groupSuffix = "state";
         return rule;
     }
 
@@ -84,6 +85,7 @@ public final class SubtabRulesDefaults {
         rule.labels = "Test, Test, TS, HTML, Style, Style, Style, Style";
         rule.slotKeys = ".spec.ts, .test.ts, .ts, .html, style, style, style, style";
         rule.stripComponentSuffix = true;
+        rule.groupSuffix = "components";
         return rule;
     }
 }

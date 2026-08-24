@@ -265,6 +265,17 @@ final class CustomSubtabRuleMatcher {
         return stem;
     }
 
+    static @NotNull String projectViewDisplayName(@NotNull String base, @NotNull CustomSubtabRule rule) {
+        String suffix = rule.groupSuffix == null ? "" : rule.groupSuffix.trim();
+        if (suffix.isEmpty()) {
+            return base;
+        }
+        if (suffix.startsWith("-") || suffix.startsWith("_")) {
+            return base + suffix;
+        }
+        return base + "-" + suffix;
+    }
+
     private static @NotNull List<String> parseCsv(@NotNull String raw) {
         if (raw.isBlank()) {
             return List.of();

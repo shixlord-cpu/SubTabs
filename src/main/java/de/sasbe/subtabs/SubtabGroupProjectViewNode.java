@@ -18,6 +18,7 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
     }
 
     private final List<PsiFileNode> fileNodes;
+    private final String groupKey;
 
     SubtabGroupProjectViewNode(
             @NotNull Project project,
@@ -28,12 +29,21 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
         super(
                 project,
                 new GroupValue(
-                        ComponentFileNaming.displayName(groupKey),
+                        ComponentFileNaming.projectViewDisplayName(groupKey),
                         primaryFile(fileNodes)
                 ),
                 settings
         );
+        this.groupKey = groupKey;
         this.fileNodes = List.copyOf(fileNodes);
+    }
+
+    @NotNull String groupKey() {
+        return groupKey;
+    }
+
+    @NotNull List<PsiFileNode> members() {
+        return fileNodes;
     }
 
     @Override

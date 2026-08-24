@@ -14,7 +14,7 @@ import java.util.List;
 @Service(Service.Level.APP)
 @State(name = "ComponentSubtabsSettings", storages = @Storage("componentSubtabs.xml"))
 public final class SubtabsSettings implements PersistentStateComponent<SubtabsSettings.State> {
-    private static final int CURRENT_RULES_VERSION = 1;
+    private static final int CURRENT_RULES_VERSION = 2;
 
     private State state = new State();
 
@@ -117,8 +117,12 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
     }
 
     private void migrateRulesIfNeeded() {
-        if (state.rulesVersion < CURRENT_RULES_VERSION || state.rules.isEmpty()) {
+        if (state.rules.isEmpty()) {
             state.rules = SubtabRulesDefaults.createDefaults();
+            state.rulesVersion = CURRENT_RULES_VERSION;
+        } else if (state.rulesVersion < CURRENT_RULES_VERSION) {
+            normalizeRuleFields(state.rules);
+            applyDefaultGroupSuffixes(state.rules);
             state.rulesVersion = CURRENT_RULES_VERSION;
         }
         if (state.barHeightPercent < 25) {
@@ -134,6 +138,27 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         }
         if (state.groupTreeControlStyle == null || state.groupTreeControlStyle.isBlank()) {
             state.groupTreeControlStyle = SubtabGroupTreeControlStyle.DEFAULT.name();
+        }
+    }
+
+    private static void normalizeRuleFields(@NotNull List<CustomSubtabRule> rules) {
+        for (CustomSubtabRule rule : rules) {
+            if (rule.groupSuffix == null) {
+                rule.groupSuffix = "";
+            }
+        }
+    }
+
+    private static void applyDefaultGroupSuffixes(@NotNull List<CustomSubtabRule> rules) {
+        for (CustomSubtabRule rule : rules) {
+            if (rule.groupSuffix != null && !rule.groupSuffix.isBlank()) {
+                continue;
+            }
+            if ("State".equalsIgnoreCase(rule.name)) {
+                rule.groupSuffix = "state";
+            } else if ("Komponente".equalsIgnoreCase(rule.name)) {
+                rule.groupSuffix = "components";
+            }
         }
     }
 

@@ -75,4 +75,20 @@ class SubtabProjectViewGroupingTest {
                 ).size()
         );
     }
+
+    @Test
+    void mergesNeighborStateGroupsAcrossFolders() {
+        assertEquals(
+                "merge:rule:3:products",
+                SubtabProjectViewGrouping.mergeKey("rule:3:products")
+        );
+    }
+
+    @Test
+    void keepsLocalGroupsSeparateWithoutNeighborSearch() {
+        assertEquals(
+                "rule:5:products.component",
+                SubtabProjectViewGrouping.mergeKey("rule:5:products.component")
+        );
+    }
 }
