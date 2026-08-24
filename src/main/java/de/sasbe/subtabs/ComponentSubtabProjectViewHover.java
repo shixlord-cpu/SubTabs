@@ -104,25 +104,25 @@ final class ComponentSubtabProjectViewHover {
     }
 
     private static @Nullable TreePath findVisiblePath(@NotNull JTree tree, @NotNull VirtualFile file) {
+        TreePath groupPath = null;
         for (int row = 0; row < tree.getRowCount(); row++) {
             TreePath path = tree.getPathForRow(row);
-            if (path != null && treePathContainsFile(path, file)) {
+            if (path == null) {
+                continue;
+            }
+            if (file.equals(virtualFileOf(path))) {
                 return path;
             }
+            if (groupPath == null && isSubtabGroupContaining(path, file)) {
+                groupPath = path;
+            }
         }
-        return null;
+        return groupPath;
     }
 
-    private static boolean treePathContainsFile(@NotNull TreePath path, @NotNull VirtualFile file) {
-        if (file.equals(virtualFileOf(path))) {
-            return true;
-        }
-
+    private static boolean isSubtabGroupContaining(@NotNull TreePath path, @NotNull VirtualFile file) {
         Object userObject = TreeUtil.getUserObject(path.getLastPathComponent());
-        if (userObject instanceof SubtabGroupProjectViewNode groupNode) {
-            return groupNode.contains(file);
-        }
-        return false;
+        return userObject instanceof SubtabGroupProjectViewNode groupNode && groupNode.contains(file);
     }
 
     static @Nullable VirtualFile virtualFileOf(@NotNull TreePath path) {
