@@ -50,6 +50,7 @@ class SubtabsSettingsTest {
     @Test
     void usesDefaultGroupTreeControlsByDefault() {
         assertEquals("DEFAULT", new SubtabsSettings.State().groupTreeControlStyle);
+        assertFalse(new SubtabsSettings.State().invertGroupTreeControlFill);
         assertEquals("Default", SubtabGroupTreeControlStyle.DEFAULT.label());
         assertEquals("Cubes", SubtabGroupTreeControlStyle.CUBES.label());
         assertEquals("Circles", SubtabGroupTreeControlStyle.CIRCLES.label());

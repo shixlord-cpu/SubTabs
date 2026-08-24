@@ -46,6 +46,18 @@ class SubtabGroupTreeControlTest {
         assertFalse(SubtabGroupTreeControl.isSubtabGroupPath(null));
     }
 
+    @Test
+    void fillsCollapsedGroupsByDefault() {
+        assertTrue(SubtabGroupTreeControl.shapeFilled(false, false));
+        assertFalse(SubtabGroupTreeControl.shapeFilled(true, false));
+    }
+
+    @Test
+    void fillsExpandedGroupsWhenInverted() {
+        assertTrue(SubtabGroupTreeControl.shapeFilled(true, true));
+        assertFalse(SubtabGroupTreeControl.shapeFilled(false, true));
+    }
+
     private static BufferedImage render(SubtabGroupTreeControlStyle style, boolean filled) {
         BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
