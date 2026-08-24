@@ -16,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,7 +55,82 @@ public final class SubtabGroupTreeStructureProvider implements TreeStructureProv
         }
 
         result.addAll(nestRelatedFiles(parent.getProject(), fileNodes, settings));
-        return result;
+        return mergeSiblingGroupNodes(parent.getProject(), result, settings);
+    }
+
+    private static @NotNull List<AbstractTreeNode<?>> mergeSiblingGroupNodes(
+            @Nullable Project project,
+            @NotNull List<AbstractTreeNode<?>> nodes,
+            @NotNull ViewSettings settings
+    ) {
+        if (project == null || nodes.size() < 2) {
+            return nodes;
+        }
+
+        Map<String, List<PsiFileNode>> filesByMergeKey = new LinkedHashMap<>();
+        Map<String, String> groupKeyByMergeKey = new LinkedHashMap<>();
+        Map<String, Integer> groupNodesByMergeKey = new LinkedHashMap<>();
+        for (AbstractTreeNode<?> node : nodes) {
+            if (!(node instanceof SubtabGroupProjectViewNode groupNode)) {
+                continue;
+            }
+            String mergeKey = SubtabProjectViewGrouping.mergeKey(groupNode.groupKey());
+            groupKeyByMergeKey.putIfAbsent(mergeKey, groupNode.groupKey());
+            groupNodesByMergeKey.merge(mergeKey, 1, Integer::sum);
+            List<PsiFileNode> combined = filesByMergeKey.computeIfAbsent(mergeKey, key -> new ArrayList<>());
+            appendUniqueFiles(combined, groupNode.members());
+        }
+
+        boolean needsMerge = groupNodesByMergeKey.values().stream().anyMatch(count -> count > 1);
+        if (!needsMerge) {
+            return nodes;
+        }
+
+        Set<String> emitted = new LinkedHashSet<>();
+        List<AbstractTreeNode<?>> merged = new ArrayList<>(nodes.size());
+        for (AbstractTreeNode<?> node : nodes) {
+            if (!(node instanceof SubtabGroupProjectViewNode groupNode)) {
+                merged.add(node);
+                continue;
+            }
+
+            String mergeKey = SubtabProjectViewGrouping.mergeKey(groupNode.groupKey());
+            if (!emitted.add(mergeKey)) {
+                continue;
+            }
+
+            List<PsiFileNode> files = filesByMergeKey.get(mergeKey);
+            if (files == null || files.size() < 2) {
+                merged.addAll(files == null ? List.of() : files);
+                continue;
+            }
+            merged.add(new SubtabGroupProjectViewNode(
+                    project,
+                    groupKeyByMergeKey.getOrDefault(mergeKey, groupNode.groupKey()),
+                    files,
+                    settings
+            ));
+        }
+        return merged;
+    }
+
+    private static void appendUniqueFiles(
+            @NotNull List<PsiFileNode> target,
+            @NotNull List<PsiFileNode> source
+    ) {
+        Set<String> seen = new LinkedHashSet<>();
+        for (PsiFileNode fileNode : target) {
+            VirtualFile file = fileNode.getVirtualFile();
+            if (file != null) {
+                seen.add(file.getPath());
+            }
+        }
+        for (PsiFileNode fileNode : source) {
+            VirtualFile file = fileNode.getVirtualFile();
+            if (file == null || seen.add(file.getPath())) {
+                target.add(fileNode);
+            }
+        }
     }
 
     private static @NotNull Collection<AbstractTreeNode<?>> nestRelatedFiles(

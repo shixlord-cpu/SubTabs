@@ -85,6 +85,47 @@ class CustomSubtabRuleMatcherTest {
     }
 
     @Test
+    void appendsProjectViewSuffixForStemGroups() {
+        CustomSubtabRule rule = new CustomSubtabRule();
+        rule.type = CustomSubtabRule.Type.STEM;
+        rule.patterns = ".actions.ts, .reducer.ts";
+        rule.groupSuffix = "state";
+
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
+                "rule:0:products",
+                List.of(rule)
+        );
+
+        assertNotNull(match);
+        assertEquals("products", match.displayName());
+        assertEquals(
+                "products-state",
+                CustomSubtabRuleMatcher.projectViewDisplayName(match.displayName(), rule)
+        );
+    }
+
+    @Test
+    void appendsProjectViewSuffixForComponentGroups() {
+        CustomSubtabRule rule = new CustomSubtabRule();
+        rule.type = CustomSubtabRule.Type.STEM;
+        rule.patterns = ".ts, .html";
+        rule.stripComponentSuffix = true;
+        rule.groupSuffix = "components";
+
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
+                "rule:0:products.component",
+                List.of(rule)
+        );
+
+        assertNotNull(match);
+        assertEquals("products", match.displayName());
+        assertEquals(
+                "products-components",
+                CustomSubtabRuleMatcher.projectViewDisplayName(match.displayName(), rule)
+        );
+    }
+
+    @Test
     void ignoresEmptyPatterns() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.patterns = "  ,  ";

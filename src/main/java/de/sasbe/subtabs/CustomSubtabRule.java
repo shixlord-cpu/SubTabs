@@ -13,6 +13,7 @@ public final class CustomSubtabRule {
     public String patterns = "";
     public String labels = "";
     public String slotKeys = "";
+    public String groupSuffix = "";
     public boolean searchNeighbors = false;
     public boolean stripComponentSuffix = false;
 
@@ -23,6 +24,7 @@ public final class CustomSubtabRule {
         copy.patterns = patterns;
         copy.labels = labels;
         copy.slotKeys = slotKeys;
+        copy.groupSuffix = groupSuffix;
         copy.searchNeighbors = searchNeighbors;
         copy.stripComponentSuffix = stripComponentSuffix;
         return copy;
