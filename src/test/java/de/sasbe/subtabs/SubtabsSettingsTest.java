@@ -48,6 +48,15 @@ class SubtabsSettingsTest {
     }
 
     @Test
+    void usesDefaultGroupTreeControlsByDefault() {
+        assertEquals("DEFAULT", new SubtabsSettings.State().groupTreeControlStyle);
+        assertEquals("Default", SubtabGroupTreeControlStyle.DEFAULT.label());
+        assertEquals("Cubes", SubtabGroupTreeControlStyle.CUBES.label());
+        assertEquals("Circles", SubtabGroupTreeControlStyle.CIRCLES.label());
+        assertEquals("Blue-Arrows", SubtabGroupTreeControlStyle.BLUE_ARROWS.label());
+    }
+
+    @Test
     void namesArrowOverflowRandpfeile() {
         assertEquals("Randpfeile", SubtabOverflowMode.ARROWS.label());
         assertEquals("Randpfeile", SubtabOverflowMode.ARROWS.toString());

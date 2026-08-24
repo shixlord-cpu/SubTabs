@@ -27,6 +27,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
     private JCheckBox groupInProjectViewCheckbox;
     private JCheckBox fitTabsToEditorWidthCheckbox;
     private ComboBox<SubtabOverflowMode> overflowModeCombo;
+    private ComboBox<SubtabGroupTreeControlStyle> groupTreeControlStyleCombo;
     private JSlider barHeightSlider;
     private JSlider textSizeSlider;
     private JLabel barHeightValueLabel;
@@ -75,6 +76,25 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 return component;
             }
         });
+        groupTreeControlStyleCombo = new ComboBox<>(SubtabGroupTreeControlStyle.values());
+        groupTreeControlStyleCombo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(
+                    JList<?> list,
+                    Object value,
+                    int index,
+                    boolean isSelected,
+                    boolean cellHasFocus
+            ) {
+                Component component = super.getListCellRendererComponent(
+                        list, value, index, isSelected, cellHasFocus
+                );
+                if (value instanceof SubtabGroupTreeControlStyle style) {
+                    setText(style.label());
+                }
+                return component;
+            }
+        });
 
         barHeightSlider = createSlider(25, 100, 75);
         barHeightValueLabel = new JBLabel(formatPercent(barHeightSlider.getValue()));
@@ -97,6 +117,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 .addComponent(groupInProjectViewCheckbox)
                 .addComponent(fitTabsToEditorWidthCheckbox)
                 .addLabeledComponent("Überlauf", overflowModeCombo)
+                .addLabeledComponent("Gruppierung im Projektbaum", groupTreeControlStyleCombo)
                 .addLabeledComponent("Tab-Höhe", sliderRow(barHeightSlider, barHeightValueLabel))
                 .addLabeledComponent("Schriftgröße", sliderRow(textSizeSlider, textSizeValueLabel))
                 .getPanel();
@@ -121,6 +142,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 || groupInProjectViewCheckbox.isSelected() != settings.isGroupRelatedFilesInProjectView()
                 || fitTabsToEditorWidthCheckbox.isSelected() != settings.isFitTabsToEditorWidth()
                 || overflowModeCombo.getItem() != settings.getOverflowMode()
+                || groupTreeControlStyleCombo.getItem() != settings.getGroupTreeControlStyle()
                 || barHeightSlider.getValue() != settings.getBarHeightPercent()
                 || textSizeSlider.getValue() != settings.getTextSizePercent()
                 || !rulesPanel.isSameAs(settings.getRules());
@@ -139,6 +161,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         settings.setGroupRelatedFilesInProjectView(groupInProjectViewCheckbox.isSelected());
         settings.setFitTabsToEditorWidth(fitTabsToEditorWidthCheckbox.isSelected());
         settings.setOverflowMode(overflowModeCombo.getItem());
+        settings.setGroupTreeControlStyle(groupTreeControlStyleCombo.getItem());
         settings.setBarHeightPercent(barHeightSlider.getValue());
         settings.setTextSizePercent(textSizeSlider.getValue());
         settings.setRules(rulesPanel.getRules());
@@ -158,6 +181,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         groupInProjectViewCheckbox.setSelected(settings.isGroupRelatedFilesInProjectView());
         fitTabsToEditorWidthCheckbox.setSelected(settings.isFitTabsToEditorWidth());
         overflowModeCombo.setItem(settings.getOverflowMode());
+        groupTreeControlStyleCombo.setItem(settings.getGroupTreeControlStyle());
         barHeightSlider.setValue(settings.getBarHeightPercent());
         textSizeSlider.setValue(settings.getTextSizePercent());
         barHeightValueLabel.setText(formatPercent(barHeightSlider.getValue()));
@@ -173,6 +197,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         groupInProjectViewCheckbox = null;
         fitTabsToEditorWidthCheckbox = null;
         overflowModeCombo = null;
+        groupTreeControlStyleCombo = null;
         barHeightSlider = null;
         textSizeSlider = null;
         barHeightValueLabel = null;

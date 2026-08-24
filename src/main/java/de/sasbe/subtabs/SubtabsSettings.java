@@ -86,6 +86,14 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         state.overflowMode = mode.name();
     }
 
+    public @NotNull SubtabGroupTreeControlStyle getGroupTreeControlStyle() {
+        return SubtabGroupTreeControlStyle.fromPersisted(state.groupTreeControlStyle);
+    }
+
+    public void setGroupTreeControlStyle(@NotNull SubtabGroupTreeControlStyle style) {
+        state.groupTreeControlStyle = style.name();
+    }
+
     public @NotNull List<CustomSubtabRule> getRules() {
         return state.rules;
     }
@@ -124,6 +132,9 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         if (state.overflowMode == null || state.overflowMode.isBlank()) {
             state.overflowMode = SubtabOverflowMode.SCROLLBAR.name();
         }
+        if (state.groupTreeControlStyle == null || state.groupTreeControlStyle.isBlank()) {
+            state.groupTreeControlStyle = SubtabGroupTreeControlStyle.DEFAULT.name();
+        }
     }
 
     private static int clamp(int value, int min, int max) {
@@ -137,6 +148,7 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         public boolean groupRelatedFilesInProjectView = true;
         public boolean fitTabsToEditorWidth = true;
         public String overflowMode = "SCROLLBAR";
+        public String groupTreeControlStyle = "DEFAULT";
         public int barHeightPercent = 75;
         public int textSizePercent = 75;
         public int rulesVersion = 0;
