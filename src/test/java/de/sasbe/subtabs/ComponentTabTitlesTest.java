@@ -8,33 +8,26 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class ComponentTabTitlesTest {
     @Test
     void usesComponentNameWhileSubtabsAreVisible() {
-        assertEquals("header-components", ComponentTabTitles.mainTabTitle(false, "header.component.scss"));
-        assertEquals("user-card-components", ComponentTabTitles.mainTabTitle(false, "user-card.component.ts"));
+        assertEquals("header-components", ComponentTabTitles.displayGroupedTitle("header.component.scss"));
+        assertEquals("user-card-components", ComponentTabTitles.displayGroupedTitle("user-card.component.ts"));
     }
 
     @Test
-    void usesDefaultFileNameWhenSubtabsAreCollapsed() {
-        assertNull(ComponentTabTitles.mainTabTitle(true, "header.component.scss"));
-        assertNull(ComponentTabTitles.mainTabTitle(true, "user-card.component.html"));
-    }
-
-    @Test
-    void ignoresUnrelatedFiles() {
-        assertNull(ComponentTabTitles.mainTabTitle(false, "misc.xml"));
+    void usesFolderRuleTitleForUnmatchedFiles() {
+        assertEquals("Ordner", ComponentTabTitles.displayGroupedTitle("misc.xml"));
     }
 
     @Test
     void usesNpmTitleForPackageConfigs() {
-        assertEquals("npm", ComponentTabTitles.mainTabTitle(false, "package.json"));
-        assertEquals("npm", ComponentTabTitles.mainTabTitle(false, ".npmrc"));
-        assertNull(ComponentTabTitles.mainTabTitle(true, "package-lock.json"));
+        assertEquals("npm", ComponentTabTitles.displayGroupedTitle("package.json"));
+        assertEquals("npm", ComponentTabTitles.displayGroupedTitle(".npmrc"));
     }
 
     @Test
     void usesGroupTitlesForConfigsStateAndModels() {
-        assertEquals("tsconfig", ComponentTabTitles.mainTabTitle(false, "tsconfig.app.json"));
-        assertEquals("env", ComponentTabTitles.mainTabTitle(false, ".env.local"));
-        assertEquals("cart-state", ComponentTabTitles.mainTabTitle(false, "cart.reducer.ts"));
-        assertEquals("user", ComponentTabTitles.mainTabTitle(false, "user.dto.ts"));
+        assertEquals("tsconfig", ComponentTabTitles.displayGroupedTitle("tsconfig.app.json"));
+        assertEquals("env", ComponentTabTitles.displayGroupedTitle(".env.local"));
+        assertEquals("cart-state", ComponentTabTitles.displayGroupedTitle("cart.reducer.ts"));
+        assertEquals("user", ComponentTabTitles.displayGroupedTitle("user.dto.ts"));
     }
 }

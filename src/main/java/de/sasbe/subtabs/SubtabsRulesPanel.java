@@ -10,12 +10,15 @@ import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.DefaultCellEditor;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 import java.awt.Component;
 import java.awt.Graphics;
 import java.util.ArrayList;
@@ -23,7 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 
 final class SubtabsRulesPanel {
-    private static final int DRAG_COLUMN = 5;
+    private static final int DRAG_COLUMN = 6;
 
     private final List<CustomSubtabRule> rules = new ArrayList<>();
     private final RulesTableModel tableModel = new RulesTableModel();
@@ -58,20 +61,24 @@ final class SubtabsRulesPanel {
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         table.setShowGrid(false);
         table.setRowHeight(JBUI.scale(22));
-        table.getColumnModel().getColumn(0).setPreferredWidth(90);
+        table.getColumnModel().getColumn(0).setPreferredWidth(48);
         table.getColumnModel().getColumn(1).setPreferredWidth(90);
-        table.getColumnModel().getColumn(2).setPreferredWidth(220);
-        table.getColumnModel().getColumn(3).setPreferredWidth(70);
-        table.getColumnModel().getColumn(4).setPreferredWidth(80);
+        table.getColumnModel().getColumn(2).setPreferredWidth(90);
+        table.getColumnModel().getColumn(3).setPreferredWidth(220);
+        table.getColumnModel().getColumn(4).setPreferredWidth(70);
+        table.getColumnModel().getColumn(5).setPreferredWidth(80);
 
-        table.getColumnModel().getColumn(3).setCellEditor(
+        table.getColumnModel().getColumn(0).setCellRenderer(new BooleanCellRenderer());
+        table.getColumnModel().getColumn(0).setCellEditor(new BooleanCellEditor());
+
+        table.getColumnModel().getColumn(4).setCellEditor(
                 new DefaultCellEditor(new ComboBox<>(new String[]{"Stamm", "Dateien"}))
         );
-        table.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer());
-        table.getColumnModel().getColumn(4).setCellEditor(
+        table.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer());
+        table.getColumnModel().getColumn(5).setCellEditor(
                 new DefaultCellEditor(new ComboBox<>(new String[]{"Ordner", "Nachbarn"}))
         );
-        table.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer());
+        table.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer());
 
         var dragColumn = table.getColumnModel().getColumn(DRAG_COLUMN);
         dragColumn.setPreferredWidth(JBUI.scale(28));
@@ -85,6 +92,7 @@ final class SubtabsRulesPanel {
                 .setToolbarPosition(ActionToolbarPosition.TOP)
                 .setAddAction(button -> addRule())
                 .setRemoveAction(button -> removeSelectedRules())
+                .setRemoveActionUpdater(button -> canRemoveSelectedRules())
                 .setMoveUpAction(button -> moveSelectedRules(-1))
                 .setMoveDownAction(button -> moveSelectedRules(1))
                 .setMoveUpActionUpdater(button -> RulesTableDragSupport.canMoveSelectedBlock(
@@ -127,7 +135,9 @@ final class SubtabsRulesPanel {
                     || !left.slotKeys.equals(right.slotKeys)
                     || !left.groupSuffix.equals(right.groupSuffix)
                     || left.searchNeighbors != right.searchNeighbors
-                    || left.stripComponentSuffix != right.stripComponentSuffix) {
+                    || left.stripComponentSuffix != right.stripComponentSuffix
+                    || left.enabled != right.enabled
+                    || left.builtin != right.builtin) {
                 return false;
             }
         }
@@ -136,17 +146,40 @@ final class SubtabsRulesPanel {
 
     private void addRule() {
         TableUtil.stopEditing(table);
-        rules.add(0, new CustomSubtabRule());
-        tableModel.fireTableRowsInserted(0, 0);
-        table.setRowSelectionInterval(0, 0);
+        int insertIndex = firstSpecialRuleIndex();
+        rules.add(insertIndex, new CustomSubtabRule());
+        tableModel.fireTableRowsInserted(insertIndex, insertIndex);
+        table.setRowSelectionInterval(insertIndex, insertIndex);
+    }
+
+    private int firstSpecialRuleIndex() {
+        for (int index = 0; index < rules.size(); index++) {
+            if (rules.get(index).isSpecial()) {
+                return index;
+            }
+        }
+        return rules.size();
+    }
+
+    private boolean canRemoveSelectedRules() {
+        int[] selected = table.getSelectedRows();
+        if (selected.length == 0) {
+            return false;
+        }
+        for (int row : selected) {
+            if (rules.get(row).builtin) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void removeSelectedRules() {
-        int[] selected = table.getSelectedRows();
-        if (selected.length == 0) {
+        if (!canRemoveSelectedRules()) {
             return;
         }
 
+        int[] selected = table.getSelectedRows();
         TableUtil.stopEditing(table);
         Arrays.sort(selected);
         for (int index = selected.length - 1; index >= 0; index--) {
@@ -219,6 +252,49 @@ final class SubtabsRulesPanel {
         RulesTableDragSupport.restoreSelection(table, adjustedTarget, count);
     }
 
+    private static @NotNull String typeLabel(@NotNull CustomSubtabRule rule) {
+        return switch (rule.type) {
+            case STEM -> "Stamm";
+            case FILES -> "Dateien";
+            case CUSTOM_GROUPS -> "Eigene Gruppen";
+            case FOLDER -> "Ordner";
+        };
+    }
+
+    private static final class BooleanCellRenderer extends JCheckBox implements TableCellRenderer {
+        BooleanCellRenderer() {
+            setHorizontalAlignment(SwingConstants.CENTER);
+            setBorderPaintedFlat(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                javax.swing.JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column
+        ) {
+            setSelected(Boolean.TRUE.equals(value));
+            if (isSelected) {
+                setBackground(table.getSelectionBackground());
+            } else {
+                setBackground(table.getBackground());
+            }
+            return this;
+        }
+    }
+
+    private static final class BooleanCellEditor extends DefaultCellEditor {
+        BooleanCellEditor() {
+            super(new JCheckBox());
+            JCheckBox checkBox = (JCheckBox) getComponent();
+            checkBox.setHorizontalAlignment(SwingConstants.CENTER);
+            checkBox.setBorderPaintedFlat(true);
+        }
+    }
+
     private static final class DragHandleCellRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(
@@ -247,37 +323,51 @@ final class SubtabsRulesPanel {
 
         @Override
         public int getColumnCount() {
-            return 6;
+            return 7;
         }
 
         @Override
         public String getColumnName(int column) {
             return switch (column) {
-                case 0 -> "Name";
-                case 1 -> "Zusatz";
-                case 2 -> "Dateien";
-                case 3 -> "Art";
-                case 4 -> "Suche";
-                case 5 -> "";
+                case 0 -> "Aktiv";
+                case 1 -> "Name";
+                case 2 -> "Zusatz";
+                case 3 -> "Dateien";
+                case 4 -> "Art";
+                case 5 -> "Suche";
+                case 6 -> "";
                 default -> "";
             };
         }
 
         @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            return columnIndex == 0 ? Boolean.class : String.class;
+        }
+
+        @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
-            return columnIndex < 5;
+            CustomSubtabRule rule = rules.get(rowIndex);
+            if (columnIndex == 0) {
+                return true;
+            }
+            if (rule.isSpecial()) {
+                return false;
+            }
+            return columnIndex < 6;
         }
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
             CustomSubtabRule rule = rules.get(rowIndex);
             return switch (columnIndex) {
-                case 0 -> rule.name;
-                case 1 -> rule.groupSuffix;
-                case 2 -> rule.patterns;
-                case 3 -> rule.type == CustomSubtabRule.Type.FILES ? "Dateien" : "Stamm";
-                case 4 -> rule.searchNeighbors ? "Nachbarn" : "Ordner";
-                case 5 -> "";
+                case 0 -> rule.enabled;
+                case 1 -> rule.name;
+                case 2 -> rule.groupSuffix;
+                case 3 -> rule.patterns;
+                case 4 -> typeLabel(rule);
+                case 5 -> rule.searchNeighbors ? "Nachbarn" : "Ordner";
+                case 6 -> "";
                 default -> "";
             };
         }
@@ -286,13 +376,14 @@ final class SubtabsRulesPanel {
         public void setValueAt(Object value, int rowIndex, int columnIndex) {
             CustomSubtabRule rule = rules.get(rowIndex);
             switch (columnIndex) {
-                case 0 -> rule.name = String.valueOf(value).trim();
-                case 1 -> rule.groupSuffix = String.valueOf(value).trim();
-                case 2 -> rule.patterns = String.valueOf(value).trim();
-                case 3 -> rule.type = "Dateien".equals(String.valueOf(value))
+                case 0 -> rule.enabled = Boolean.TRUE.equals(value);
+                case 1 -> rule.name = String.valueOf(value).trim();
+                case 2 -> rule.groupSuffix = String.valueOf(value).trim();
+                case 3 -> rule.patterns = String.valueOf(value).trim();
+                case 4 -> rule.type = "Dateien".equals(String.valueOf(value))
                         ? CustomSubtabRule.Type.FILES
                         : CustomSubtabRule.Type.STEM;
-                case 4 -> rule.searchNeighbors = "Nachbarn".equals(String.valueOf(value));
+                case 5 -> rule.searchNeighbors = "Nachbarn".equals(String.valueOf(value));
                 default -> {
                 }
             }

@@ -161,4 +161,59 @@ class CustomSubtabRuleMatcherTest {
         assertEquals("rule:0:@files", CustomSubtabRuleMatcher.match(".env", List.of(rule)).groupKey());
         assertNull(CustomSubtabRuleMatcher.match(".env.sample", List.of(rule)));
     }
+
+    @Test
+    void skipsDisabledRules() {
+        CustomSubtabRule disabled = new CustomSubtabRule();
+        disabled.enabled = false;
+        disabled.type = CustomSubtabRule.Type.STEM;
+        disabled.patterns = ".ts";
+
+        assertNull(CustomSubtabRuleMatcher.match("user.ts", List.of(disabled)));
+    }
+
+    @Test
+    void matchesCustomGroupDefinitions() {
+        CustomSubtabRule rule = SubtabRulesDefaults.customGroupsRule();
+        CustomSubtabGroupDefinition docker = new CustomSubtabGroupDefinition();
+        docker.name = "Docker";
+        docker.patterns = "Dockerfile, compose.yaml";
+        docker.labels = "Dockerfile, Compose";
+
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(
+                "compose.yaml",
+                List.of(rule),
+                List.of(docker)
+        );
+
+        assertNotNull(match);
+        assertEquals("rule:0:custom:Docker", match.groupKey());
+        assertEquals("Docker", match.displayName());
+        assertEquals(2, match.candidates().size());
+    }
+
+    @Test
+    void matchesFolderRuleForAnyFile() {
+        CustomSubtabRule rule = SubtabRulesDefaults.folderRule();
+
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(
+                "README.md",
+                List.of(rule)
+        );
+
+        assertNotNull(match);
+        assertEquals("rule:0:@folder", match.groupKey());
+        assertTrue(CustomSubtabRuleMatcher.isFolderGroupKey(match.groupKey()));
+    }
+
+    @Test
+    void ignoresCustomGroupsWhenSpecialRuleIsDisabled() {
+        CustomSubtabRule rule = SubtabRulesDefaults.customGroupsRule();
+        rule.enabled = false;
+        CustomSubtabGroupDefinition docker = new CustomSubtabGroupDefinition();
+        docker.name = "Docker";
+        docker.patterns = "Dockerfile";
+
+        assertNull(CustomSubtabRuleMatcher.match("Dockerfile", List.of(rule), List.of(docker)));
+    }
 }

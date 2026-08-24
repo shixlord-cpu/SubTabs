@@ -34,9 +34,27 @@ final class ComponentRelatedFiles {
 
     static @Nullable Match find(@NotNull VirtualFile currentFile) {
         VirtualFile parent = currentFile.getParent();
-        String baseName = ComponentFileNaming.componentBaseName(currentFile.getName());
-        if (parent == null || baseName == null) {
+        if (parent == null) {
             return null;
+        }
+
+        List<CustomSubtabRule> rules = ComponentFileNaming.rules();
+        List<CustomSubtabGroupDefinition> customGroups = ComponentFileNaming.customGroups();
+        CustomSubtabRuleMatcher.Match ruleMatch = CustomSubtabRuleMatcher.match(
+                currentFile.getName(),
+                rules,
+                customGroups
+        );
+        if (ruleMatch == null) {
+            return null;
+        }
+
+        String baseName = ruleMatch.groupKey();
+        if (CustomSubtabRuleMatcher.isFolderGroupKey(baseName)) {
+            return findFolderGroup(currentFile, parent, baseName, rules, customGroups);
+        }
+        if (CustomSubtabRuleMatcher.isCustomGroupKey(baseName)) {
+            return findCustomGroup(currentFile, parent, baseName, rules, customGroups);
         }
 
         if (CustomSubtabRuleMatcher.isExtensionFolderGroupKey(baseName)) {
@@ -90,6 +108,67 @@ final class ComponentRelatedFiles {
             anchor = parent;
         }
         return new Match(anchor, baseName, List.copyOf(relatedFiles));
+    }
+
+    private static @Nullable Match findFolderGroup(
+            @NotNull VirtualFile currentFile,
+            @NotNull VirtualFile parent,
+            @NotNull String groupKey,
+            @NotNull List<CustomSubtabRule> rules,
+            @NotNull List<CustomSubtabGroupDefinition> customGroups
+    ) {
+        List<Entry> relatedFiles = new ArrayList<>();
+        for (VirtualFile child : parent.getChildren()) {
+            if (child.isDirectory()) {
+                continue;
+            }
+            CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(
+                    child.getName(),
+                    rules,
+                    customGroups
+            );
+            if (match != null && groupKey.equals(match.groupKey())) {
+                relatedFiles.add(new Entry(
+                        CustomSubtabRuleMatcher.labelFromFileName(child.getName()),
+                        child
+                ));
+            }
+        }
+
+        relatedFiles.sort(Comparator.comparing(entry -> entry.file().getName()));
+        if (relatedFiles.size() < 2) {
+            return null;
+        }
+        return new Match(parent, groupKey, List.copyOf(relatedFiles));
+    }
+
+    private static @Nullable Match findCustomGroup(
+            @NotNull VirtualFile currentFile,
+            @NotNull VirtualFile parent,
+            @NotNull String groupKey,
+            @NotNull List<CustomSubtabRule> rules,
+            @NotNull List<CustomSubtabGroupDefinition> customGroups
+    ) {
+        CustomSubtabRuleMatcher.Match resolved = CustomSubtabRuleMatcher.resolveGroup(
+                groupKey,
+                rules,
+                customGroups
+        );
+        if (resolved == null) {
+            return null;
+        }
+
+        List<Entry> relatedFiles = new ArrayList<>();
+        for (SubtabCandidate candidate : resolved.candidates()) {
+            VirtualFile file = parent.findChild(candidate.fileName());
+            if (file != null && !file.isDirectory()) {
+                relatedFiles.add(new Entry(candidate.displayLabel(candidate.fileName()), file));
+            }
+        }
+        if (relatedFiles.size() < 2) {
+            return null;
+        }
+        return new Match(parent, groupKey, List.copyOf(relatedFiles));
     }
 
     private static @Nullable Match findExtensionFolderGroup(

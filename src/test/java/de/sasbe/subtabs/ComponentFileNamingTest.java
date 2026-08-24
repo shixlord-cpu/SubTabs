@@ -16,6 +16,7 @@ class ComponentFileNamingTest {
     private static final String STATE_GROUP = "rule:3:cart";
     private static final String MODEL_GROUP = "rule:4:user";
     private static final String COMPONENT_GROUP = "rule:5:user-card.component";
+    private static final String FOLDER_GROUP = "rule:7:@folder";
 
     @Test
     void findsTheSameBaseForEveryComponentPart() {
@@ -34,10 +35,19 @@ class ComponentFileNamingTest {
     }
 
     @Test
-    void ignoresUnrelatedFiles() {
-        assertNull(ComponentFileNaming.componentBaseName("README.md"));
-        assertNull(ComponentFileNaming.componentBaseName(".ts"));
-        assertNull(ComponentFileNaming.componentBaseName("composer.json"));
+    void fallsBackToFolderRuleForUnmatchedFiles() {
+        assertEquals(FOLDER_GROUP, ComponentFileNaming.componentBaseName("README.md"));
+        assertEquals(FOLDER_GROUP, ComponentFileNaming.componentBaseName("composer.json"));
+    }
+
+    @Test
+    void ignoresUnmatchedFilesWhenFolderRuleIsDisabled() {
+        CustomSubtabRule folderRule = SubtabRulesDefaults.folderRule();
+        folderRule.enabled = false;
+        List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
+        rules.set(7, folderRule);
+
+        assertNull(CustomSubtabRuleMatcher.match("README.md", rules));
     }
 
     @Test
@@ -133,7 +143,7 @@ class ComponentFileNamingTest {
     void doesNotTreatComponentOrStateFilesAsModels() {
         assertEquals(COMPONENT_GROUP, ComponentFileNaming.componentBaseName("user-card.component.ts"));
         assertEquals("rule:3:cart", ComponentFileNaming.componentBaseName("cart.state.ts"));
-        assertNull(ComponentFileNaming.componentBaseName("notes.md"));
+        assertEquals(FOLDER_GROUP, ComponentFileNaming.componentBaseName("notes.md"));
     }
 
     @Test

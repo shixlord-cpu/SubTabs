@@ -12,7 +12,7 @@ public final class ComponentEditorTabTitleProvider implements EditorTabTitleProv
     public @Nullable String getEditorTabTitle(@NotNull Project project, @NotNull VirtualFile file) {
         return ComponentTabTitles.mainTabTitle(
                 SubtabsCollapseState.getInstance(project).isCollapsed(),
-                file.getName()
+                file
         );
     }
 

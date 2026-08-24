@@ -34,6 +34,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
     private JLabel barHeightValueLabel;
     private JLabel textSizeValueLabel;
     private SubtabsRulesPanel rulesPanel;
+    private SubtabsCustomGroupsPanel customGroupsPanel;
 
     @Override
     public @NotNull String getId() {
@@ -112,6 +113,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         );
 
         rulesPanel = new SubtabsRulesPanel();
+        customGroupsPanel = new SubtabsCustomGroupsPanel();
 
         JPanel generalPanel = FormBuilder.createFormBuilder()
                 .addComponent(subtabsActiveCheckbox)
@@ -128,14 +130,21 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
 
         JPanel panel = new JPanel(new BorderLayout(0, 12));
         panel.add(generalPanel, BorderLayout.NORTH);
-        panel.add(rulesPanel.createPanel(), BorderLayout.CENTER);
+
+        JPanel rulesArea = new JPanel(new BorderLayout(0, 8));
+        rulesArea.add(rulesPanel.createPanel(), BorderLayout.NORTH);
+        rulesArea.add(FormBuilder.createFormBuilder()
+                .addComponent(new JBLabel("Eigene Gruppen definieren"))
+                .addComponentFillVertically(customGroupsPanel.createPanel(), 0)
+                .getPanel(), BorderLayout.CENTER);
+        panel.add(rulesArea, BorderLayout.CENTER);
         reset();
         return panel;
     }
 
     @Override
     public boolean isModified() {
-        if (subtabsActiveCheckbox == null || rulesPanel == null) {
+        if (subtabsActiveCheckbox == null || rulesPanel == null || customGroupsPanel == null) {
             return false;
         }
 
@@ -150,12 +159,13 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 || invertGroupTreeControlFillCheckbox.isSelected() != settings.isInvertGroupTreeControlFill()
                 || barHeightSlider.getValue() != settings.getBarHeightPercent()
                 || textSizeSlider.getValue() != settings.getTextSizePercent()
-                || !rulesPanel.isSameAs(settings.getRules());
+                || !rulesPanel.isSameAs(settings.getRules())
+                || !customGroupsPanel.isSameAs(settings.getCustomGroups());
     }
 
     @Override
     public void apply() {
-        if (subtabsActiveCheckbox == null || rulesPanel == null) {
+        if (subtabsActiveCheckbox == null || rulesPanel == null || customGroupsPanel == null) {
             return;
         }
 
@@ -171,12 +181,13 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         settings.setBarHeightPercent(barHeightSlider.getValue());
         settings.setTextSizePercent(textSizeSlider.getValue());
         settings.setRules(rulesPanel.getRules());
+        settings.setCustomGroups(customGroupsPanel.getGroups());
         SubtabsPresentation.applySettingsChange();
     }
 
     @Override
     public void reset() {
-        if (subtabsActiveCheckbox == null || rulesPanel == null) {
+        if (subtabsActiveCheckbox == null || rulesPanel == null || customGroupsPanel == null) {
             return;
         }
 
@@ -194,6 +205,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         barHeightValueLabel.setText(formatPercent(barHeightSlider.getValue()));
         textSizeValueLabel.setText(formatPercent(textSizeSlider.getValue()));
         rulesPanel.reset(settings.getRules());
+        customGroupsPanel.reset(settings.getCustomGroups());
     }
 
     @Override
@@ -211,6 +223,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         barHeightValueLabel = null;
         textSizeValueLabel = null;
         rulesPanel = null;
+        customGroupsPanel = null;
     }
 
     private static @NotNull JSlider createSlider(int min, int max, int value) {
