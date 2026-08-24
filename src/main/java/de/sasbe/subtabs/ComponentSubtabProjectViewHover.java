@@ -110,7 +110,8 @@ final class ComponentSubtabProjectViewHover {
             if (path == null) {
                 continue;
             }
-            if (file.equals(virtualFileOf(path))) {
+            Object userObject = TreeUtil.getUserObject(path.getLastPathComponent());
+            if (isDirectFileNode(userObject) && file.equals(virtualFileOf(path))) {
                 return path;
             }
             if (groupPath == null && isSubtabGroupContaining(path, file)) {
@@ -120,6 +121,10 @@ final class ComponentSubtabProjectViewHover {
         return groupPath;
     }
 
+    static boolean isDirectFileNode(@NotNull Object userObject) {
+        return !(userObject instanceof SubtabGroupProjectViewNode);
+    }
+
     private static boolean isSubtabGroupContaining(@NotNull TreePath path, @NotNull VirtualFile file) {
         Object userObject = TreeUtil.getUserObject(path.getLastPathComponent());
         return userObject instanceof SubtabGroupProjectViewNode groupNode && groupNode.contains(file);
@@ -127,6 +132,9 @@ final class ComponentSubtabProjectViewHover {
 
     static @Nullable VirtualFile virtualFileOf(@NotNull TreePath path) {
         Object userObject = TreeUtil.getUserObject(path.getLastPathComponent());
+        if (userObject instanceof SubtabGroupProjectViewNode) {
+            return null;
+        }
         if (userObject instanceof ProjectViewNode<?> node) {
             return node.getVirtualFile();
         }
