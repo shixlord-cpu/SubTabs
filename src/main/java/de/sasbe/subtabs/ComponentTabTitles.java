@@ -27,6 +27,9 @@ final class ComponentTabTitles {
             VirtualFile parent = file.getParent();
             return parent != null ? parent.getName() : ComponentFileNaming.displayName(baseName);
         }
+        if (CustomSubtabRuleMatcher.isUserGroupKey(baseName)) {
+            return ComponentFileNaming.displayName(baseName);
+        }
         return ComponentFileNaming.displayName(baseName);
     }
 

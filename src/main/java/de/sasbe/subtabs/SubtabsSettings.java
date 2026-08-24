@@ -14,7 +14,7 @@ import java.util.List;
 @Service(Service.Level.APP)
 @State(name = "ComponentSubtabsSettings", storages = @Storage("componentSubtabs.xml"))
 public final class SubtabsSettings implements PersistentStateComponent<SubtabsSettings.State> {
-    private static final int CURRENT_RULES_VERSION = 3;
+    private static final int CURRENT_RULES_VERSION = 5;
 
     private State state = new State();
 
@@ -110,14 +110,6 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         state.rules = new ArrayList<>(rules);
     }
 
-    public @NotNull List<CustomSubtabGroupDefinition> getCustomGroups() {
-        return state.customGroups;
-    }
-
-    public void setCustomGroups(@NotNull List<CustomSubtabGroupDefinition> customGroups) {
-        state.customGroups = new ArrayList<>(customGroups);
-    }
-
     @Override
     public @Nullable State getState() {
         return state;
@@ -129,9 +121,6 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         if (this.state.rules == null) {
             this.state.rules = new ArrayList<>();
         }
-        if (this.state.customGroups == null) {
-            this.state.customGroups = new ArrayList<>();
-        }
         migrateRulesIfNeeded();
     }
 
@@ -142,6 +131,7 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         } else if (state.rulesVersion < CURRENT_RULES_VERSION) {
             normalizeRuleFields(state.rules);
             applyDefaultGroupSuffixes(state.rules);
+            removeLegacyCustomGroupRules(state.rules);
             ensureSpecialRules(state.rules);
             state.rulesVersion = CURRENT_RULES_VERSION;
         } else {
@@ -172,11 +162,11 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
     }
 
     private static void ensureSpecialRules(@NotNull List<CustomSubtabRule> rules) {
-        boolean hasCustomGroupsRule = false;
+        boolean hasUserGroupsRule = false;
         boolean hasFolderRule = false;
         for (CustomSubtabRule rule : rules) {
-            if (rule.type == CustomSubtabRule.Type.CUSTOM_GROUPS) {
-                hasCustomGroupsRule = true;
+            if (rule.type == CustomSubtabRule.Type.USER_GROUPS) {
+                hasUserGroupsRule = true;
                 rule.builtin = true;
                 if (rule.name.isBlank()) {
                     rule.name = "Eigene Gruppen";
@@ -189,12 +179,17 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
                 }
             }
         }
-        if (!hasCustomGroupsRule) {
-            rules.add(SubtabRulesDefaults.customGroupsRule());
+        if (!hasUserGroupsRule) {
+            int insertIndex = hasFolderRule ? Math.max(0, rules.size() - 1) : rules.size();
+            rules.add(insertIndex, SubtabRulesDefaults.userGroupsRule());
         }
         if (!hasFolderRule) {
             rules.add(SubtabRulesDefaults.folderRule());
         }
+    }
+
+    private static void removeLegacyCustomGroupRules(@NotNull List<CustomSubtabRule> rules) {
+        rules.removeIf(rule -> "CUSTOM_GROUPS".equals(String.valueOf(rule.type)));
     }
 
     private static void applyDefaultGroupSuffixes(@NotNull List<CustomSubtabRule> rules) {
@@ -227,6 +222,5 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         public int textSizePercent = 75;
         public int rulesVersion = 0;
         public List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
-        public List<CustomSubtabGroupDefinition> customGroups = new ArrayList<>();
     }
 }

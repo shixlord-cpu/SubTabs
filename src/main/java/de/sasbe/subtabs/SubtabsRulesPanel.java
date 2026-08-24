@@ -7,28 +7,38 @@ import com.intellij.ui.TableUtil;
 import com.intellij.ui.ToolbarDecorator;
 import com.intellij.ui.table.JBTable;
 import com.intellij.util.ui.JBUI;
+import com.intellij.ui.JBColor;
+import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.DefaultCellEditor;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 final class SubtabsRulesPanel {
     private static final int DRAG_COLUMN = 6;
+    private static final JBColor BUILTIN_RULE_BACKGROUND =
+            new JBColor(new Color(0xFFF3CD), new Color(0x4A422E));
 
     private final List<CustomSubtabRule> rules = new ArrayList<>();
+    private final TextCellRenderer textCellRenderer = new TextCellRenderer();
+    private final BooleanCellRenderer booleanCellRenderer = new BooleanCellRenderer();
+    private final DragHandleCellRenderer dragHandleCellRenderer = new DragHandleCellRenderer();
     private final RulesTableModel tableModel = new RulesTableModel();
     private RulesTableDragSupport dragSupport;
     private final JBTable table = new JBTable(tableModel) {
@@ -68,25 +78,28 @@ final class SubtabsRulesPanel {
         table.getColumnModel().getColumn(4).setPreferredWidth(70);
         table.getColumnModel().getColumn(5).setPreferredWidth(80);
 
-        table.getColumnModel().getColumn(0).setCellRenderer(new BooleanCellRenderer());
+        table.getColumnModel().getColumn(0).setCellRenderer(booleanCellRenderer);
         table.getColumnModel().getColumn(0).setCellEditor(new BooleanCellEditor());
+
+        for (int column = 1; column <= 5; column++) {
+            table.getColumnModel().getColumn(column).setCellRenderer(textCellRenderer);
+        }
 
         table.getColumnModel().getColumn(4).setCellEditor(
                 new DefaultCellEditor(new ComboBox<>(new String[]{"Stamm", "Dateien"}))
         );
-        table.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer());
         table.getColumnModel().getColumn(5).setCellEditor(
                 new DefaultCellEditor(new ComboBox<>(new String[]{"Ordner", "Nachbarn"}))
         );
-        table.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer());
 
         var dragColumn = table.getColumnModel().getColumn(DRAG_COLUMN);
         dragColumn.setPreferredWidth(JBUI.scale(28));
         dragColumn.setMaxWidth(JBUI.scale(28));
         dragColumn.setMinWidth(JBUI.scale(28));
-        dragColumn.setCellRenderer(new DragHandleCellRenderer());
+        dragColumn.setCellRenderer(dragHandleCellRenderer);
 
         dragSupport = new RulesTableDragSupport(table, DRAG_COLUMN, this::dropSelectedRulesAt);
+        installPersistentRowSelection(table);
 
         ToolbarDecorator decorator = ToolbarDecorator.createDecorator(table)
                 .setToolbarPosition(ActionToolbarPosition.TOP)
@@ -256,12 +269,71 @@ final class SubtabsRulesPanel {
         return switch (rule.type) {
             case STEM -> "Stamm";
             case FILES -> "Dateien";
-            case CUSTOM_GROUPS -> "Eigene Gruppen";
+            case USER_GROUPS -> "Eigene Gruppen";
             case FOLDER -> "Ordner";
         };
     }
 
-    private static final class BooleanCellRenderer extends JCheckBox implements TableCellRenderer {
+    private void applyRowAppearance(
+            @NotNull JTable table,
+            @NotNull JComponent component,
+            int row
+    ) {
+        component.setOpaque(true);
+        if (table.isRowSelected(row)) {
+            boolean focused = table.hasFocus();
+            component.setBackground(UIUtil.getTreeSelectionBackground(focused));
+            component.setForeground(UIUtil.getTreeSelectionForeground(focused));
+            return;
+        }
+        if (row >= 0 && row < rules.size() && rules.get(row).builtin) {
+            component.setBackground(BUILTIN_RULE_BACKGROUND);
+            component.setForeground(UIUtil.getLabelForeground());
+            return;
+        }
+        component.setBackground(table.getBackground());
+        component.setForeground(UIUtil.getLabelForeground());
+    }
+
+    private static void installPersistentRowSelection(@NotNull JBTable table) {
+        Runnable repaintSelection = table::repaint;
+        table.getSelectionModel().addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting()) {
+                repaintSelection.run();
+            }
+        });
+        table.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent event) {
+                repaintSelection.run();
+            }
+
+            @Override
+            public void focusLost(FocusEvent event) {
+                repaintSelection.run();
+            }
+        });
+    }
+
+    private final class TextCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column
+        ) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(
+                    table, value, table.isRowSelected(row), hasFocus, row, column
+            );
+            applyRowAppearance(table, label, row);
+            return label;
+        }
+    }
+
+    private final class BooleanCellRenderer extends JCheckBox implements TableCellRenderer {
         BooleanCellRenderer() {
             setHorizontalAlignment(SwingConstants.CENTER);
             setBorderPaintedFlat(true);
@@ -269,7 +341,7 @@ final class SubtabsRulesPanel {
 
         @Override
         public Component getTableCellRendererComponent(
-                javax.swing.JTable table,
+                JTable table,
                 Object value,
                 boolean isSelected,
                 boolean hasFocus,
@@ -277,11 +349,7 @@ final class SubtabsRulesPanel {
                 int column
         ) {
             setSelected(Boolean.TRUE.equals(value));
-            if (isSelected) {
-                setBackground(table.getSelectionBackground());
-            } else {
-                setBackground(table.getBackground());
-            }
+            applyRowAppearance(table, this, row);
             return this;
         }
     }
@@ -295,10 +363,10 @@ final class SubtabsRulesPanel {
         }
     }
 
-    private static final class DragHandleCellRenderer extends DefaultTableCellRenderer {
+    private final class DragHandleCellRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(
-                javax.swing.JTable table,
+                JTable table,
                 Object value,
                 boolean isSelected,
                 boolean hasFocus,
@@ -306,11 +374,12 @@ final class SubtabsRulesPanel {
                 int column
         ) {
             JLabel label = (JLabel) super.getTableCellRendererComponent(
-                    table, value, isSelected, hasFocus, row, column
+                    table, value, table.isRowSelected(row), hasFocus, row, column
             );
             label.setText("");
             label.setIcon(AllIcons.General.Drag);
             label.setHorizontalAlignment(SwingConstants.CENTER);
+            applyRowAppearance(table, label, row);
             return label;
         }
     }

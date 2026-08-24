@@ -55,6 +55,9 @@ class SubtabsSettingsTest {
         assertEquals("Cubes", SubtabGroupTreeControlStyle.CUBES.label());
         assertEquals("Circles", SubtabGroupTreeControlStyle.CIRCLES.label());
         assertEquals("Blue-Arrows", SubtabGroupTreeControlStyle.BLUE_ARROWS.label());
+        assertEquals("None", SubtabGroupTreeControlStyle.NONE.label());
+        assertFalse(SubtabGroupTreeControlStyle.NONE.allowsGroupExpansion());
+        assertTrue(SubtabGroupTreeControlStyle.DEFAULT.allowsGroupExpansion());
     }
 
     @Test
@@ -71,10 +74,10 @@ class SubtabsSettingsTest {
         assertEquals("tsconfig", new SubtabsSettings.State().rules.get(1).name);
         assertEquals("Komponente", new SubtabsSettings.State().rules.get(5).name);
         assertEquals("Eigene Gruppen", new SubtabsSettings.State().rules.get(6).name);
-        assertEquals("Ordner", new SubtabsSettings.State().rules.get(7).name);
         assertTrue(new SubtabsSettings.State().rules.get(6).enabled);
-        assertTrue(new SubtabsSettings.State().rules.get(7).enabled);
         assertTrue(new SubtabsSettings.State().rules.get(6).builtin);
+        assertEquals("Ordner", new SubtabsSettings.State().rules.get(7).name);
+        assertTrue(new SubtabsSettings.State().rules.get(7).enabled);
         assertTrue(new SubtabsSettings.State().rules.get(7).builtin);
     }
 }

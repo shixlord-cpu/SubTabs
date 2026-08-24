@@ -25,6 +25,7 @@ dependencies {
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
     testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:1.13.4")
     testImplementation("org.opentest4j:opentest4j:1.3.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.13.4")
 }

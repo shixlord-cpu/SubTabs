@@ -6,32 +6,3 @@ import { Component } from '@angular/core';
   styleUrl: './user-card.component.scss',
 })
 export class UserCardComponent {}
-g
-g
-g
-g
-g
-
-
-gg
-g
-gg
-gg
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

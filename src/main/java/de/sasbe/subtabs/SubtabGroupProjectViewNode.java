@@ -64,6 +64,25 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
         if (fileNodes.size() > 1) {
             presentation.setLocationString(fileNodes.size() + " Dateien");
         }
+        if (hasModifiedMember()) {
+            presentation.setForcedTextForeground(ComponentSubtabModifiedUi.foreground(true, false));
+        } else {
+            presentation.setForcedTextForeground(null);
+        }
+    }
+
+    boolean hasModifiedMember() {
+        Project project = getProject();
+        if (project == null) {
+            return false;
+        }
+        for (PsiFileNode fileNode : fileNodes) {
+            VirtualFile file = fileNode.getVirtualFile();
+            if (file != null && ComponentSubtabModifiedUi.isModified(project, file)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -101,6 +120,10 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
                 requestFocus,
                 () -> fileNodes.get(0).navigate(requestFocus)
         );
+    }
+
+    @NotNull List<VirtualFile> memberVirtualFiles() {
+        return groupFiles();
     }
 
     private @NotNull List<VirtualFile> groupFiles() {

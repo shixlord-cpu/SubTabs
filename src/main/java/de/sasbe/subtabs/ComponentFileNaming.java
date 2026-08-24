@@ -10,36 +10,17 @@ final class ComponentFileNaming {
     }
 
     static @Nullable String componentBaseName(@NotNull String fileName) {
-        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(
-                fileName,
-                rules(),
-                customGroups()
-        );
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(fileName, rules());
         return match == null ? null : match.groupKey();
     }
 
-    static @NotNull List<CustomSubtabGroupDefinition> customGroups() {
-        if (com.intellij.openapi.application.ApplicationManager.getApplication() == null) {
-            return List.of();
-        }
-        return SubtabsSettings.getInstance().getCustomGroups();
-    }
-
     static boolean searchNeighbors(@NotNull String baseName) {
-        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
-                baseName,
-                rules(),
-                customGroups()
-        );
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(baseName, rules());
         return match != null && match.searchNeighbors();
     }
 
     static @NotNull String displayName(@NotNull String groupKey) {
-        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
-                groupKey,
-                rules(),
-                customGroups()
-        );
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(groupKey, rules());
         if (match == null) {
             return groupKey;
         }
@@ -54,11 +35,7 @@ final class ComponentFileNaming {
     }
 
     static @NotNull List<SubtabCandidate> candidates(@NotNull String baseName) {
-        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
-                baseName,
-                rules(),
-                customGroups()
-        );
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(baseName, rules());
         return match == null ? List.of() : match.candidates();
     }
 

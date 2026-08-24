@@ -7,6 +7,7 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
@@ -141,7 +142,12 @@ final class ComponentSubtabBarPanel extends JPanel {
             VirtualFile file = entry.getKey();
             boolean openElsewhere = manager.isFileOpen(file) && !file.equals(displayedFile);
             ComponentSubtabUi.setOpenElsewhere(entry.getValue(), openElsewhere);
+            ComponentSubtabUi.setModified(entry.getValue(), ComponentSubtabModifiedUi.isModified(project, file));
         }
+    }
+
+    @Nullable JToggleButton buttonFor(@NotNull VirtualFile file) {
+        return buttonsByFile.get(file);
     }
 
     private void applyChrome() {
@@ -202,6 +208,7 @@ final class ComponentSubtabBarPanel extends JPanel {
                     ComponentSubtabMainTabHover.onExit(button);
                 }
             });
+            ComponentSubtabBarPopup.install(project, button, relatedFile.file(), () -> displayedFile);
             overflowStrip.attachWheel(button);
 
             buttonGroup.add(button);

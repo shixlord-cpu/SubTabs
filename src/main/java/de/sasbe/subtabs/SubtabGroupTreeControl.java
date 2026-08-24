@@ -11,6 +11,7 @@ import com.intellij.ui.JBColor;
 import com.intellij.ui.tree.ui.Control;
 import com.intellij.ui.tree.ui.DefaultControl;
 import com.intellij.util.IconUtil;
+import com.intellij.util.ui.EmptyIcon;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import com.intellij.util.ui.tree.TreeUtil;
@@ -19,6 +20,9 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.Icon;
 import javax.swing.JTree;
+import javax.swing.SwingUtilities;
+import javax.swing.event.TreeExpansionEvent;
+import javax.swing.event.TreeExpansionListener;
 import javax.swing.tree.TreePath;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -35,6 +39,7 @@ final class SubtabGroupTreeControl {
     static final Color FILL = new Color(0x3B82F6);
     static final Color BORDER = new JBColor(new Color(0x8A8A8A), new Color(0x6B7280));
     private static final String INSTALLED = "subtabs.groupTreeControl";
+    private static final String EXPANSION_GUARD = "subtabs.groupTreeExpansionGuard";
 
     private SubtabGroupTreeControl() {
     }
@@ -46,12 +51,16 @@ final class SubtabGroupTreeControl {
         AbstractProjectViewPane pane = ProjectView.getInstance(project).getCurrentProjectViewPane();
         if (pane != null && pane.getTree() != null) {
             refresh(pane.getTree());
+            ComponentSubtabProjectViewEditorHover.installOn(project);
         }
         ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow(ToolWindowId.PROJECT_VIEW);
         if (toolWindow != null) {
             for (JTree tree : UIUtil.findComponentsOfType(toolWindow.getComponent(), JTree.class)) {
                 refresh(tree);
             }
+        }
+        if (!SubtabsSettings.getInstance().getGroupTreeControlStyle().allowsGroupExpansion()) {
+            collapseExpandedSubtabGroups(project);
         }
     }
 
@@ -66,6 +75,60 @@ final class SubtabGroupTreeControl {
             ClientProperty.put(tree, Control.CUSTOM_CONTROL, new Resolver(current));
             tree.putClientProperty(INSTALLED, Boolean.TRUE);
         }
+        installExpansionGuard(tree);
+    }
+
+    static void collapseExpandedSubtabGroups(@NotNull Project project) {
+        AbstractProjectViewPane pane = ProjectView.getInstance(project).getCurrentProjectViewPane();
+        if (pane != null && pane.getTree() != null) {
+            collapseExpandedSubtabGroups(pane.getTree());
+        }
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow(ToolWindowId.PROJECT_VIEW);
+        if (toolWindow != null) {
+            for (JTree tree : UIUtil.findComponentsOfType(toolWindow.getComponent(), JTree.class)) {
+                collapseExpandedSubtabGroups(tree);
+            }
+        }
+    }
+
+    private static void collapseExpandedSubtabGroups(@NotNull JTree tree) {
+        Object root = tree.getModel().getRoot();
+        if (root == null) {
+            return;
+        }
+        collapseExpandedSubtabGroups(tree, new TreePath(root));
+    }
+
+    private static void collapseExpandedSubtabGroups(@NotNull JTree tree, @NotNull TreePath path) {
+        if (isSubtabGroupPath(path) && tree.isExpanded(path)) {
+            tree.collapsePath(path);
+        }
+        Object node = path.getLastPathComponent();
+        int childCount = tree.getModel().getChildCount(node);
+        for (int i = 0; i < childCount; i++) {
+            Object child = tree.getModel().getChild(node, i);
+            collapseExpandedSubtabGroups(tree, path.pathByAddingChild(child));
+        }
+    }
+
+    private static void installExpansionGuard(@NotNull JTree tree) {
+        if (Boolean.TRUE.equals(tree.getClientProperty(EXPANSION_GUARD))) {
+            return;
+        }
+        tree.addTreeExpansionListener(new TreeExpansionListener() {
+            @Override
+            public void treeExpanded(TreeExpansionEvent event) {
+                if (!SubtabsSettings.getInstance().getGroupTreeControlStyle().allowsGroupExpansion()
+                        && isSubtabGroupPath(event.getPath())) {
+                    SwingUtilities.invokeLater(() -> tree.collapsePath(event.getPath()));
+                }
+            }
+
+            @Override
+            public void treeCollapsed(TreeExpansionEvent event) {
+            }
+        });
+        tree.putClientProperty(EXPANSION_GUARD, Boolean.TRUE);
     }
 
     static boolean isSubtabGroupPath(@Nullable TreePath path) {
@@ -78,6 +141,7 @@ final class SubtabGroupTreeControl {
             case CUBES -> ShapeControl.CUBES;
             case CIRCLES -> ShapeControl.CIRCLES;
             case BLUE_ARROWS -> BlueArrowControl.INSTANCE;
+            case NONE -> NoneControl.INSTANCE;
         };
     }
 
@@ -210,6 +274,39 @@ final class SubtabGroupTreeControl {
         @Override
         public int getIconHeight() {
             return JBUI.scale(16);
+        }
+    }
+
+    private static final class NoneControl implements Control {
+        private static final NoneControl INSTANCE = new NoneControl();
+        private static final Icon EMPTY = EmptyIcon.create(0);
+
+        @Override
+        public @NotNull Icon getIcon(boolean expanded, boolean selected) {
+            return EMPTY;
+        }
+
+        @Override
+        public int getWidth() {
+            return 0;
+        }
+
+        @Override
+        public int getHeight() {
+            return 0;
+        }
+
+        @Override
+        public void paint(
+                @NotNull Component component,
+                @NotNull Graphics graphics,
+                int x,
+                int y,
+                int width,
+                int height,
+                boolean expanded,
+                boolean selected
+        ) {
         }
     }
 

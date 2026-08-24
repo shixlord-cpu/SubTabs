@@ -18,6 +18,7 @@ final class SubtabGroupTreeControlListener implements ToolWindowManagerListener 
     public void toolWindowShown(@NotNull ToolWindow toolWindow) {
         if (ToolWindowId.PROJECT_VIEW.equals(toolWindow.getId())) {
             SubtabGroupTreeControl.installOn(project);
+            ComponentSubtabProjectViewEditorHover.installOn(project);
         }
     }
 

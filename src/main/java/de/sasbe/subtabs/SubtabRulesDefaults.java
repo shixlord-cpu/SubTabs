@@ -17,15 +17,15 @@ public final class SubtabRulesDefaults {
         rules.add(stateRule());
         rules.add(modelRule());
         rules.add(componentRule());
-        rules.add(customGroupsRule());
+        rules.add(userGroupsRule());
         rules.add(folderRule());
         return rules;
     }
 
-    static @NotNull CustomSubtabRule customGroupsRule() {
+    static @NotNull CustomSubtabRule userGroupsRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "Eigene Gruppen";
-        rule.type = CustomSubtabRule.Type.CUSTOM_GROUPS;
+        rule.type = CustomSubtabRule.Type.USER_GROUPS;
         rule.enabled = true;
         rule.builtin = true;
         return rule;
@@ -105,7 +105,6 @@ public final class SubtabRulesDefaults {
         rule.labels = "Test, Test, TS, HTML, Style, Style, Style, Style";
         rule.slotKeys = ".spec.ts, .test.ts, .ts, .html, style, style, style, style";
         rule.stripComponentSuffix = true;
-        rule.groupSuffix = "components";
         return rule;
     }
 }

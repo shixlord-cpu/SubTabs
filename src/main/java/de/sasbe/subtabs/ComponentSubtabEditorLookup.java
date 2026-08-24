@@ -10,6 +10,18 @@ final class ComponentSubtabEditorLookup {
     private ComponentSubtabEditorLookup() {
     }
 
+    static @Nullable EditorWindow findWindowWithFile(
+            @NotNull FileEditorManagerEx manager,
+            @NotNull VirtualFile file
+    ) {
+        for (EditorWindow window : manager.getWindows()) {
+            if (window.isFileOpen(file)) {
+                return window;
+            }
+        }
+        return null;
+    }
+
     static @Nullable EditorWindow windowForFileOrCurrent(
             @NotNull FileEditorManagerEx manager,
             @NotNull VirtualFile file

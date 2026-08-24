@@ -39,6 +39,15 @@ class SubtabGroupTreeControlTest {
         assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.CUBES));
         assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.CIRCLES));
         assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.BLUE_ARROWS));
+        assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.NONE));
+    }
+
+    @Test
+    void noneStyleUsesEmptyControlWithoutSize() {
+        var control = SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.NONE);
+        assertNotNull(control);
+        assertEquals(0, control.getWidth());
+        assertEquals(0, control.getHeight());
     }
 
     @Test

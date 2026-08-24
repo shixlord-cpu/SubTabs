@@ -25,8 +25,7 @@ final class SubtabGroupNavigation {
                 file -> FileEditorManager.getInstance(project).isFileOpen(file)
         );
         if (openFile != null) {
-            FileEditorManager.getInstance(project).openFile(openFile, requestFocus);
-            ComponentSubtabsManager.syncSelectionForFile(project, openFile);
+            ComponentSubtabNavigation.focusExistingFile(project, openFile, requestFocus);
             return;
         }
         openPrimaryFile.run();
