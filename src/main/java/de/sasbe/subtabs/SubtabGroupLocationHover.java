@@ -30,7 +30,8 @@ import java.util.Comparator;
 import java.util.List;
 
 final class SubtabGroupLocationHover {
-    private static final int SHOW_DELAY_MS = 0;
+    private static final int LOCATION_SHOW_DELAY_MS = 0;
+    private static final int GROUP_ROW_SHOW_DELAY_MS = 250;
     private static final String HOVERED_LOCATION_ROW_KEY = "componentSubtabs.locationHoveredRow";
     private static final String SHOW_TIMER_KEY = "componentSubtabs.locationShowTimer";
     private static final String POPUP_KEY = "componentSubtabs.locationPopup";
@@ -162,7 +163,8 @@ final class SubtabGroupLocationHover {
 
         cancelShowTimer(tree);
 
-        Timer showTimer = new Timer(SHOW_DELAY_MS, event -> {
+        int delayMs = mode == PopupMode.GROUP_ROW ? GROUP_ROW_SHOW_DELAY_MS : LOCATION_SHOW_DELAY_MS;
+        Timer showTimer = new Timer(delayMs, event -> {
             if (row != getHoveredLocationRow(tree)) {
                 return;
             }
