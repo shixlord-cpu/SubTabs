@@ -1,0 +1,40 @@
+<idea-plugin>
+
+    <id>de.sasbe.component-subtabs</id>
+
+    <name>Component Subtabs</name>
+
+    <vendor>SasBe</vendor>
+
+
+
+    <description><![CDATA[
+
+        Shows compact subtabs above the editor for related component source,
+
+        test, template, and style files.
+
+    ]]></description>
+
+
+
+    <depends>com.intellij.modules.platform</depends>
+
+
+
+    <extensions defaultExtensionNs="com.intellij">
+        <editorTabTitleProvider implementation="de.sasbe.subtabs.ComponentEditorTabTitleProvider"/>
+        <projectActivity implementation="de.sasbe.subtabs.ComponentSubtabsStartupActivity"/>
+    </extensions>
+
+
+
+    <projectListeners>
+        <listener class="de.sasbe.subtabs.ComponentSubtabsFileEditorListener"
+                  topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+        <listener class="de.sasbe.subtabs.ComponentSubtabsFileEditorListener"
+                  topic="com.intellij.openapi.fileEditor.FileEditorManagerListener$Before"/>
+    </projectListeners>
+
+</idea-plugin>
+
