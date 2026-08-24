@@ -9,7 +9,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service(Service.Level.APP)
 @State(name = "ComponentSubtabsSettings", storages = @Storage("componentSubtabs.xml"))
@@ -102,6 +104,37 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         state.invertGroupTreeControlFill = invert;
     }
 
+    public boolean isGroupColorsEnabled() {
+        return state.groupColorsEnabled;
+    }
+
+    public void setGroupColorsEnabled(boolean enabled) {
+        state.groupColorsEnabled = enabled;
+    }
+
+    public @NotNull Map<String, String> getGroupColorHexes() {
+        if (state.groupColorHexes == null) {
+            state.groupColorHexes = new LinkedHashMap<>();
+        }
+        return state.groupColorHexes;
+    }
+
+    public @Nullable String getGroupColorHex(@NotNull String key) {
+        return getGroupColorHexes().get(key);
+    }
+
+    public void setGroupColorHex(@NotNull String key, @NotNull String hex) {
+        getGroupColorHexes().put(key, hex);
+    }
+
+    public int getNextGroupColorIndex() {
+        return state.nextGroupColorIndex;
+    }
+
+    public void setNextGroupColorIndex(int index) {
+        state.nextGroupColorIndex = Math.max(0, index);
+    }
+
     public @NotNull List<CustomSubtabRule> getRules() {
         return state.rules;
     }
@@ -150,6 +183,9 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         }
         if (state.groupTreeControlStyle == null || state.groupTreeControlStyle.isBlank()) {
             state.groupTreeControlStyle = SubtabGroupTreeControlStyle.DEFAULT.name();
+        }
+        if (state.groupColorHexes == null) {
+            state.groupColorHexes = new LinkedHashMap<>();
         }
     }
 
@@ -218,6 +254,9 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         public String overflowMode = "SCROLLBAR";
         public String groupTreeControlStyle = "DEFAULT";
         public boolean invertGroupTreeControlFill = false;
+        public boolean groupColorsEnabled = false;
+        public Map<String, String> groupColorHexes = new LinkedHashMap<>();
+        public int nextGroupColorIndex = 0;
         public int barHeightPercent = 75;
         public int textSizePercent = 75;
         public int rulesVersion = 0;

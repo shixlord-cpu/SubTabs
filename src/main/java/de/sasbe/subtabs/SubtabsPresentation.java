@@ -27,7 +27,18 @@ final class SubtabsPresentation {
             if (!project.isDisposed()) {
                 ProjectView.getInstance(project).refresh();
                 SubtabGroupTreeControl.installOn(project);
+                ComponentSubtabProjectViewEditorHover.installOn(project);
             }
         }
+    }
+
+    static void refreshGroupColors() {
+        for (Project project : ProjectManager.getInstance().getOpenProjects()) {
+            if (project.isDisposed()) {
+                continue;
+            }
+            ComponentSubtabsManager.refreshAppearance(project);
+        }
+        refreshProjectViews();
     }
 }

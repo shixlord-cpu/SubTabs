@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.BorderFactory;
 import javax.swing.JToggleButton;
@@ -20,6 +21,7 @@ final class ComponentSubtabUi {
     private static final String MODIFIED_KEY = "componentSubtabs.modified";
     private static final String FIT_KEY = "componentSubtabs.fitScale";
     private static final String EXTERNAL_HOVER_KEY = "componentSubtabs.externalHover";
+    private static final String GROUP_COLOR_KEY = "componentSubtabs.groupColor";
     private static final Color HOVER_BACKGROUND = JBUI.CurrentTheme.TabbedPane.HOVER_COLOR;
     private static final Color SELECTED_BACKGROUND = JBUI.CurrentTheme.TabbedPane.FOCUS_COLOR;
     private static final Color SELECTED_UNDERLINE = JBUI.CurrentTheme.TabbedPane.ENABLED_SELECTED_COLOR;
@@ -113,6 +115,15 @@ final class ComponentSubtabUi {
         applyAppearance(button);
     }
 
+    static void setGroupColor(@NotNull JToggleButton button, @Nullable Color groupColor) {
+        Color current = (Color) button.getClientProperty(GROUP_COLOR_KEY);
+        if ((current != null && current.equals(groupColor)) || (current == null && groupColor == null)) {
+            return;
+        }
+        button.putClientProperty(GROUP_COLOR_KEY, groupColor);
+        applyAppearance(button);
+    }
+
     private static void applyAppearance(@NotNull JToggleButton button) {
         boolean selected = button.isSelected();
         boolean openElsewhere = Boolean.TRUE.equals(button.getClientProperty(OPEN_ELSEWHERE_KEY));
@@ -137,7 +148,7 @@ final class ComponentSubtabUi {
                 !selected && openElsewhere
         );
         button.setFont(scaledFont(selected, fit, height));
-        button.setBorder(createBorder(selected, fit));
+        button.setBorder(createBorder(button, selected, fit));
         int width = preferredWidth(button, fit);
         Dimension size = new Dimension(width, height);
         button.setPreferredSize(size);
@@ -165,9 +176,32 @@ final class ComponentSubtabUi {
         return styled.deriveFont(Math.max(8f, size));
     }
 
-    private static @NotNull Border createBorder(boolean selected, @NotNull SubtabFitScale.Result fit) {
+    private static @NotNull Border createBorder(
+            @NotNull JToggleButton button,
+            boolean selected,
+            @NotNull SubtabFitScale.Result fit
+    ) {
         int horizontal = Math.max(1, Math.round(2 * fit.paddingScale()));
         Border empty = JBUI.Borders.empty(0, horizontal);
+        Color groupColor = SubtabGroupColors.isEnabled()
+                ? (Color) button.getClientProperty(GROUP_COLOR_KEY)
+                : null;
+
+        if (groupColor != null) {
+            Border sides = BorderFactory.createMatteBorder(0, 1, 0, 1, groupColor);
+            if (selected) {
+                Border underline = BorderFactory.createMatteBorder(
+                        0,
+                        0,
+                        Math.max(1, JBUI.scale(2)),
+                        0,
+                        groupColor
+                );
+                return BorderFactory.createCompoundBorder(underline, BorderFactory.createCompoundBorder(sides, empty));
+            }
+            return BorderFactory.createCompoundBorder(sides, empty);
+        }
+
         if (!selected) {
             return empty;
         }

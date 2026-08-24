@@ -16,6 +16,7 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
+import javax.swing.JTabbedPane;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -29,6 +30,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
     private ComboBox<SubtabOverflowMode> overflowModeCombo;
     private ComboBox<SubtabGroupTreeControlStyle> groupTreeControlStyleCombo;
     private JCheckBox invertGroupTreeControlFillCheckbox;
+    private JCheckBox groupColorsEnabledCheckbox;
     private JSlider barHeightSlider;
     private JSlider textSizeSlider;
     private JLabel barHeightValueLabel;
@@ -100,6 +102,13 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
 
         invertGroupTreeControlFillCheckbox = new JCheckBox("Füllung invertieren (gefüllt wenn geöffnet)");
 
+        groupColorsEnabledCheckbox = new JCheckBox(
+                "Subtabgruppen im Editor und Projektbaum farblich markieren"
+        );
+        groupColorsEnabledCheckbox.setToolTipText(
+                "Weist jeder Subtabgruppe eine Farbe zu und zeigt sie als Rand im Editor und Projektbaum an."
+        );
+
         barHeightSlider = createSlider(25, 100, 75);
         barHeightValueLabel = new JBLabel(formatPercent(barHeightSlider.getValue()));
         barHeightSlider.addChangeListener(event ->
@@ -127,8 +136,21 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 .addLabeledComponent("Schriftgröße", sliderRow(textSizeSlider, textSizeValueLabel))
                 .getPanel();
 
+        JPanel groupColorsPanel = FormBuilder.createFormBuilder()
+                .addComponent(groupColorsEnabledCheckbox)
+                .addComponent(new JBLabel(
+                        "Beim Aktivieren erhalten alle bestehenden Subtabgruppen automatisch unterschiedliche Farben. "
+                                + "Neue Gruppen werden während der Aktivierung ebenfalls eingefärbt. "
+                                + "Im Projektbaum kann die Farbe per Rechtsklick auf eine Gruppe geändert werden."
+                ))
+                .getPanel();
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Allgemein", generalPanel);
+        tabs.addTab("Gruppenfarben", groupColorsPanel);
+
         JPanel panel = new JPanel(new BorderLayout(0, 12));
-        panel.add(generalPanel, BorderLayout.NORTH);
+        panel.add(tabs, BorderLayout.NORTH);
         panel.add(rulesPanel.createPanel(), BorderLayout.CENTER);
         reset();
         return panel;
@@ -149,6 +171,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 || overflowModeCombo.getItem() != settings.getOverflowMode()
                 || groupTreeControlStyleCombo.getItem() != settings.getGroupTreeControlStyle()
                 || invertGroupTreeControlFillCheckbox.isSelected() != settings.isInvertGroupTreeControlFill()
+                || groupColorsEnabledCheckbox.isSelected() != settings.isGroupColorsEnabled()
                 || barHeightSlider.getValue() != settings.getBarHeightPercent()
                 || textSizeSlider.getValue() != settings.getTextSizePercent()
                 || !rulesPanel.isSameAs(settings.getRules());
@@ -169,6 +192,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         settings.setOverflowMode(overflowModeCombo.getItem());
         settings.setGroupTreeControlStyle(groupTreeControlStyleCombo.getItem());
         settings.setInvertGroupTreeControlFill(invertGroupTreeControlFillCheckbox.isSelected());
+        SubtabGroupColors.setEnabled(groupColorsEnabledCheckbox.isSelected());
         settings.setBarHeightPercent(barHeightSlider.getValue());
         settings.setTextSizePercent(textSizeSlider.getValue());
         settings.setRules(rulesPanel.getRules());
@@ -190,6 +214,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         overflowModeCombo.setItem(settings.getOverflowMode());
         groupTreeControlStyleCombo.setItem(settings.getGroupTreeControlStyle());
         invertGroupTreeControlFillCheckbox.setSelected(settings.isInvertGroupTreeControlFill());
+        groupColorsEnabledCheckbox.setSelected(settings.isGroupColorsEnabled());
         updateGroupTreeControlOptions();
         barHeightSlider.setValue(settings.getBarHeightPercent());
         textSizeSlider.setValue(settings.getTextSizePercent());
@@ -208,6 +233,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         overflowModeCombo = null;
         groupTreeControlStyleCombo = null;
         invertGroupTreeControlFillCheckbox = null;
+        groupColorsEnabledCheckbox = null;
         barHeightSlider = null;
         textSizeSlider = null;
         barHeightValueLabel = null;

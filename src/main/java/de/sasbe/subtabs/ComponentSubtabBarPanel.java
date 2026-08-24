@@ -18,6 +18,7 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.Scrollable;
 import java.awt.AWTEvent;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
@@ -110,6 +111,7 @@ final class ComponentSubtabBarPanel extends JPanel {
         ));
         collapseButton.updateSize();
         applyChrome();
+        applyGroupColors();
         revalidate();
         updateFitToEditorWidth();
         repaint();
@@ -128,6 +130,7 @@ final class ComponentSubtabBarPanel extends JPanel {
         rebuildButtonsIfNeeded();
         updateSelection(displayedFile);
         refreshOpenStates();
+        applyGroupColors();
     }
 
     void setDisplayedFile(@NotNull VirtualFile displayedFile) {
@@ -224,7 +227,35 @@ final class ComponentSubtabBarPanel extends JPanel {
             dragInstalled = true;
         }
         naturalStripWidth = 0;
+        applyGroupColors();
         updateFitToEditorWidth();
+    }
+
+    private void applyGroupColors() {
+        if (!SubtabGroupColors.isEnabled() || displayedFile == null) {
+            tabsHost.setBorder(BorderFactory.createEmptyBorder());
+            for (JToggleButton button : buttonsByFile.values()) {
+                ComponentSubtabUi.setGroupColor(button, null);
+            }
+            return;
+        }
+
+        Color groupColor = SubtabGroupColors.colorForFile(displayedFile);
+        if (groupColor == null) {
+            String key = SubtabGroupColors.colorKey(displayedFile);
+            if (key != null) {
+                groupColor = SubtabGroupColors.ensureColor(key);
+            }
+        }
+
+        for (JToggleButton button : buttonsByFile.values()) {
+            ComponentSubtabUi.setGroupColor(button, groupColor);
+        }
+        if (groupColor != null) {
+            tabsHost.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, groupColor));
+        } else {
+            tabsHost.setBorder(BorderFactory.createEmptyBorder());
+        }
     }
 
     private void updateSelection(@NotNull VirtualFile currentFile) {
