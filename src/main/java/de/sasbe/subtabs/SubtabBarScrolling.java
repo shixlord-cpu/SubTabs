@@ -68,21 +68,31 @@ final class SubtabBarScrolling {
         }
 
         int nextX = snapshot.scrolledBy(delta);
-        Dimension size = viewport.getViewSize();
-        if (size.width < snapshot.viewWidth() || size.height < 1) {
-            viewport.setViewSize(new Dimension(
-                    snapshot.viewWidth(),
-                    Math.max(size.height, 1)
-            ));
-        }
+        syncViewWidth(viewport, snapshot.viewWidth(), snapshot.viewportWidth());
         if (bar != null) {
-            bar.setValues(nextX, snapshot.viewportWidth(), 0, Math.max(snapshot.viewWidth(), snapshot.viewportWidth()));
+            int maximum = Math.max(snapshot.viewWidth(), snapshot.viewportWidth());
+            bar.setValues(nextX, snapshot.viewportWidth(), 0, maximum);
         }
         Point current = viewport.getViewPosition();
         if (current.x != nextX) {
             viewport.setViewPosition(new Point(nextX, current.y));
         }
         return new ViewportSnapshot(viewport.getViewPosition().x, snapshot.viewportWidth(), snapshot.viewWidth());
+    }
+
+    static void syncViewWidth(@NotNull JViewport viewport, int contentWidth, int viewportWidth) {
+        int width = Math.max(Math.max(contentWidth, viewportWidth), 1);
+        Dimension size = viewport.getViewSize();
+        int height = Math.max(size.height, 1);
+        if (viewport.getView() != null) {
+            height = Math.max(height, Math.max(viewport.getView().getPreferredSize().height, 1));
+        }
+        if (size.width != width || size.height != height) {
+            viewport.setViewSize(new Dimension(width, height));
+        }
+        if (viewport.getView() != null && (viewport.getView().getWidth() < width || viewport.getView().getHeight() < 1)) {
+            viewport.getView().setSize(width, height);
+        }
     }
 
     record ViewportSnapshot(int x, int viewportWidth, int viewWidth) {

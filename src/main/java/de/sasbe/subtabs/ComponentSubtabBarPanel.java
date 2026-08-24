@@ -15,6 +15,7 @@ import javax.swing.JScrollBar;
 import javax.swing.JToggleButton;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.Scrollable;
+import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
@@ -26,6 +27,7 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -289,7 +291,16 @@ final class ComponentSubtabBarPanel extends JPanel {
         return button;
     }
 
-    private static final class TabStrip extends JPanel implements Scrollable {
+    private final class TabStrip extends JPanel implements Scrollable {
+        private TabStrip() {
+            enableEvents(AWTEvent.MOUSE_WHEEL_EVENT_MASK);
+        }
+
+        @Override
+        protected void processMouseWheelEvent(MouseWheelEvent event) {
+            overflowStrip.wheelListener().mouseWheelMoved(event);
+        }
+
         @Override
         public Dimension getPreferredScrollableViewportSize() {
             Dimension preferred = getPreferredSize();
