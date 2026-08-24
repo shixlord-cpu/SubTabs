@@ -48,6 +48,13 @@ class SubtabsSettingsTest {
     }
 
     @Test
+    void namesArrowOverflowRandpfeile() {
+        assertEquals("Randpfeile", SubtabOverflowMode.ARROWS.label());
+        assertEquals("Randpfeile", SubtabOverflowMode.ARROWS.toString());
+        assertEquals("Scrollbalken", SubtabOverflowMode.SCROLLBAR.label());
+    }
+
+    @Test
     void shipsWithBuiltInRules() {
         assertEquals(6, new SubtabsSettings.State().rules.size());
         assertEquals("npm", new SubtabsSettings.State().rules.get(0).name);

@@ -17,4 +17,9 @@ enum SubtabOverflowMode {
     @NotNull String label() {
         return this == ARROWS ? "Randpfeile" : "Scrollbalken";
     }
+
+    @Override
+    public String toString() {
+        return label();
+    }
 }

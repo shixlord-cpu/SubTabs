@@ -12,14 +12,19 @@ import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JViewport;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import java.awt.AWTEvent;
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
+import java.awt.event.AWTEventListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
@@ -36,6 +41,11 @@ final class SubtabOverflowStrip extends JPanel {
     private final ArrowButton leftArrow = new ArrowButton(true);
     private final ArrowButton rightArrow = new ArrowButton(false);
     private final MouseWheelListener wheelListener = this::onWheel;
+    private final AWTEventListener globalWheel = event -> {
+        if (event instanceof MouseWheelEvent wheel) {
+            onWheel(wheel);
+        }
+    };
     private SubtabOverflowMode mode = SubtabOverflowMode.SCROLLBAR;
 
     SubtabOverflowStrip(
@@ -46,6 +56,7 @@ final class SubtabOverflowStrip extends JPanel {
         this.scrollPane = scrollPane;
         this.contentWidth = contentWidth;
         setOpaque(false);
+        enableEvents(AWTEvent.MOUSE_WHEEL_EVENT_MASK);
         add(scrollPane);
         add(leftArrow);
         add(rightArrow);
@@ -83,12 +94,36 @@ final class SubtabOverflowStrip extends JPanel {
     void setMode(@NotNull SubtabOverflowMode mode) {
         this.mode = mode;
         JScrollBar bar = scrollPane.getHorizontalScrollBar();
-        bar.setPreferredSize(mode == SubtabOverflowMode.ARROWS ? new Dimension(0, 0) : null);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        boolean arrows = mode == SubtabOverflowMode.ARROWS;
+        bar.setPreferredSize(arrows ? new Dimension(0, 0) : null);
+        bar.setMinimumSize(arrows ? new Dimension(0, 0) : null);
+        bar.setMaximumSize(arrows ? new Dimension(0, 0) : null);
+        scrollPane.setHorizontalScrollBarPolicy(
+                arrows
+                        ? ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS
+                        : ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+        );
         layoutChildren();
         updateArrows();
         revalidate();
         repaint();
+    }
+
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        Toolkit.getDefaultToolkit().addAWTEventListener(globalWheel, AWTEvent.MOUSE_WHEEL_EVENT_MASK);
+    }
+
+    @Override
+    public void removeNotify() {
+        Toolkit.getDefaultToolkit().removeAWTEventListener(globalWheel);
+        super.removeNotify();
+    }
+
+    @Override
+    protected void processMouseWheelEvent(MouseWheelEvent event) {
+        onWheel(event);
     }
 
     @Override
@@ -122,6 +157,13 @@ final class SubtabOverflowStrip extends JPanel {
     }
 
     private void onWheel(@NotNull MouseWheelEvent event) {
+        if (event.isConsumed()) {
+            return;
+        }
+        Component source = event.getComponent();
+        if (source != null && !SwingUtilities.isDescendingFrom(source, this) && source != this) {
+            return;
+        }
         int delta = SubtabBarScrolling.wheelPixelDelta(
                 event.getPreciseWheelRotation(),
                 event.getWheelRotation(),
@@ -151,11 +193,15 @@ final class SubtabOverflowStrip extends JPanel {
     }
 
     private void updateArrows() {
-        boolean arrows = mode == SubtabOverflowMode.ARROWS;
-        SubtabBarScrolling.ViewportSnapshot snapshot = SubtabBarScrolling.snapshot(
-                scrollPane.getViewport(),
-                contentWidth.getAsInt()
+        JViewport viewport = scrollPane.getViewport();
+        int width = contentWidth.getAsInt();
+        SubtabBarScrolling.syncViewWidth(
+                viewport,
+                width,
+                Math.max(viewport.getExtentSize().width, viewport.getWidth())
         );
+        boolean arrows = mode == SubtabOverflowMode.ARROWS;
+        SubtabBarScrolling.ViewportSnapshot snapshot = SubtabBarScrolling.snapshot(viewport, width);
         leftArrow.setVisible(arrows && snapshot.canScrollLeft());
         rightArrow.setVisible(arrows && snapshot.canScrollRight());
     }
@@ -172,6 +218,7 @@ final class SubtabOverflowStrip extends JPanel {
             setBorder(JBUI.Borders.empty());
             setContentAreaFilled(false);
             setOpaque(false);
+            enableEvents(AWTEvent.MOUSE_WHEEL_EVENT_MASK);
             setIcon(left ? AllIcons.General.ChevronLeft : AllIcons.General.ChevronRight);
             setToolTipText(left ? "Nach links scrollen" : "Nach rechts scrollen");
             addMouseListener(new MouseAdapter() {

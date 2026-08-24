@@ -37,4 +37,31 @@ class SubtabBarScrollingTest {
         assertEquals(140, SubtabBarScrolling.nextViewX(0, 200, 100, 240));
         assertEquals(0, SubtabBarScrolling.nextViewX(20, -80, 100, 240));
     }
+
+    @Test
+    void widensUndersizedViewSoWheelAndArrowsCanScroll() {
+        javax.swing.JPanel view = new javax.swing.JPanel();
+        view.setPreferredSize(new java.awt.Dimension(400, 20));
+        view.setSize(200, 20);
+
+        javax.swing.JViewport viewport = new javax.swing.JViewport();
+        viewport.setView(view);
+        viewport.setSize(200, 20);
+        viewport.setExtentSize(new java.awt.Dimension(200, 20));
+        viewport.setViewSize(new java.awt.Dimension(200, 20));
+
+        SubtabBarScrolling.ViewportSnapshot result = SubtabBarScrolling.applyHorizontalScroll(
+                viewport,
+                null,
+                400,
+                80
+        );
+
+        assertEquals(80, result.x());
+        assertEquals(80, viewport.getViewPosition().x);
+        assertTrue(viewport.getViewSize().width >= 400);
+        assertTrue(view.getWidth() >= 400);
+        assertTrue(result.canScrollLeft());
+        assertTrue(result.canScrollRight());
+    }
 }
