@@ -10,14 +10,34 @@ public final class SubtabRulesDefaults {
     }
 
     public static @NotNull List<CustomSubtabRule> createDefaults() {
-        List<CustomSubtabRule> rules = new ArrayList<>(6);
+        List<CustomSubtabRule> rules = new ArrayList<>(8);
         rules.add(npmRule());
         rules.add(tsconfigRule());
         rules.add(envRule());
         rules.add(stateRule());
         rules.add(modelRule());
         rules.add(componentRule());
+        rules.add(customGroupsRule());
+        rules.add(folderRule());
         return rules;
+    }
+
+    static @NotNull CustomSubtabRule customGroupsRule() {
+        CustomSubtabRule rule = new CustomSubtabRule();
+        rule.name = "Eigene Gruppen";
+        rule.type = CustomSubtabRule.Type.CUSTOM_GROUPS;
+        rule.enabled = true;
+        rule.builtin = true;
+        return rule;
+    }
+
+    static @NotNull CustomSubtabRule folderRule() {
+        CustomSubtabRule rule = new CustomSubtabRule();
+        rule.name = "Ordner";
+        rule.type = CustomSubtabRule.Type.FOLDER;
+        rule.enabled = true;
+        rule.builtin = true;
+        return rule;
     }
 
     private static @NotNull CustomSubtabRule npmRule() {

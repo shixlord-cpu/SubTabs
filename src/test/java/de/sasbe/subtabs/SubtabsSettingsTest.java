@@ -66,9 +66,15 @@ class SubtabsSettingsTest {
 
     @Test
     void shipsWithBuiltInRules() {
-        assertEquals(6, new SubtabsSettings.State().rules.size());
+        assertEquals(8, new SubtabsSettings.State().rules.size());
         assertEquals("npm", new SubtabsSettings.State().rules.get(0).name);
         assertEquals("tsconfig", new SubtabsSettings.State().rules.get(1).name);
         assertEquals("Komponente", new SubtabsSettings.State().rules.get(5).name);
+        assertEquals("Eigene Gruppen", new SubtabsSettings.State().rules.get(6).name);
+        assertEquals("Ordner", new SubtabsSettings.State().rules.get(7).name);
+        assertTrue(new SubtabsSettings.State().rules.get(6).enabled);
+        assertTrue(new SubtabsSettings.State().rules.get(7).enabled);
+        assertTrue(new SubtabsSettings.State().rules.get(6).builtin);
+        assertTrue(new SubtabsSettings.State().rules.get(7).builtin);
     }
 }

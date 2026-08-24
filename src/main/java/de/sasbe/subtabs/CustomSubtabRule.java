@@ -5,7 +5,9 @@ import org.jetbrains.annotations.NotNull;
 public final class CustomSubtabRule {
     public enum Type {
         STEM,
-        FILES
+        FILES,
+        CUSTOM_GROUPS,
+        FOLDER
     }
 
     public String name = "";
@@ -16,6 +18,8 @@ public final class CustomSubtabRule {
     public String groupSuffix = "";
     public boolean searchNeighbors = false;
     public boolean stripComponentSuffix = false;
+    public boolean enabled = true;
+    public boolean builtin = false;
 
     public @NotNull CustomSubtabRule copy() {
         CustomSubtabRule copy = new CustomSubtabRule();
@@ -27,6 +31,12 @@ public final class CustomSubtabRule {
         copy.groupSuffix = groupSuffix;
         copy.searchNeighbors = searchNeighbors;
         copy.stripComponentSuffix = stripComponentSuffix;
+        copy.enabled = enabled;
+        copy.builtin = builtin;
         return copy;
+    }
+
+    public boolean isSpecial() {
+        return type == Type.CUSTOM_GROUPS || type == Type.FOLDER;
     }
 }
