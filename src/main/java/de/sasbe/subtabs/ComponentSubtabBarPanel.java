@@ -190,6 +190,7 @@ final class ComponentSubtabBarPanel extends JPanel {
                     return;
                 }
                 ComponentSubtabNavigation.switchToRelatedFile(project, displayedFile, target);
+                updateSelection(displayedFile);
             });
             button.addMouseListener(new MouseAdapter() {
                 @Override
