@@ -58,25 +58,13 @@ public class ComponentSubtabModifiedRenderingTest extends LightPlatformTestCase 
         });
     }
 
-    public void testModifiedPopupLabelUsesHtmlBlueText() throws Exception {
-        ApplicationManager.getApplication().invokeAndWait(() -> {
-            JBLabel label = new JBLabel("Reducer");
-            ComponentSubtabModifiedUi.applyToLabel(label, "Reducer", true, false);
-
-            String text = label.getText();
-            Color expected = ComponentSubtabModifiedUi.foreground(true, false);
-            assertTrue(text.contains("<font color="));
-            assertTrue(text.contains(ColorUtil.toHtmlColor(expected)));
-        });
-    }
-
-    public void testModifiedPopupLabelRendersBluePixels() throws Exception {
+    public void testModifiedPopupLabelUsesCustomPaint() throws Exception {
         Path outputDir = Path.of("build", "test-output", "screenshots");
         Files.createDirectories(outputDir);
 
         ApplicationManager.getApplication().invokeAndWait(() -> {
-            JBLabel label = new JBLabel("Reducer");
-            ComponentSubtabModifiedUi.applyToLabel(label, "Reducer", true, true);
+            ComponentSubtabModifiedLabel label = new ComponentSubtabModifiedLabel();
+            ComponentSubtabModifiedUi.applyToLabel(label, "Reducer", true, false);
             Dimension size = label.getPreferredSize();
             label.setSize(size);
 
@@ -88,7 +76,7 @@ public class ComponentSubtabModifiedRenderingTest extends LightPlatformTestCase 
                 graphics.dispose();
             }
 
-            Color expected = ComponentSubtabModifiedUi.foreground(true, true);
+            Color expected = ComponentSubtabModifiedUi.foreground(true, false);
             assertTrue(containsSimilarColor(image, expected));
 
             try {
@@ -96,6 +84,12 @@ public class ComponentSubtabModifiedRenderingTest extends LightPlatformTestCase 
             } catch (IOException ignored) {
             }
         });
+    }
+
+    public void testModifiedPopupLabelUsesPlainText() {
+        ComponentSubtabModifiedLabel label = new ComponentSubtabModifiedLabel();
+        ComponentSubtabModifiedUi.applyToLabel(label, "Reducer", true, false);
+        assertEquals("Reducer", label.getText());
     }
 
     public void testTreeRendererRendersModifiedGroupName() throws Exception {

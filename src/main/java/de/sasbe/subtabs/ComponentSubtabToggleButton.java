@@ -11,7 +11,7 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 
 final class ComponentSubtabToggleButton extends JToggleButton {
-    private static final String MODIFIED_KEY = "componentSubtabs.modified";
+    static final String MODIFIED_KEY = "componentSubtabs.modified";
     private static final String OPEN_ELSEWHERE_KEY = "componentSubtabs.openElsewhere";
 
     ComponentSubtabToggleButton(@NotNull String label) {
@@ -19,18 +19,20 @@ final class ComponentSubtabToggleButton extends JToggleButton {
     }
 
     @Override
-    protected void paintComponent(Graphics graphics) {
+    public void paint(Graphics graphics) {
         boolean modified = Boolean.TRUE.equals(getClientProperty(MODIFIED_KEY));
-        if (!modified) {
-            super.paintComponent(graphics);
-            return;
-        }
-
         String savedText = getText();
-        setText("");
-        super.paintComponent(graphics);
-        setText(savedText);
+        if (modified) {
+            setText("");
+        }
+        super.paint(graphics);
+        if (modified) {
+            setText(savedText);
+            paintModifiedText(graphics);
+        }
+    }
 
+    private void paintModifiedText(@NotNull Graphics graphics) {
         String plainLabel = ComponentSubtabModifiedUi.plainLabel(this);
         boolean grayed = !isSelected() && Boolean.TRUE.equals(getClientProperty(OPEN_ELSEWHERE_KEY));
         Color color = ComponentSubtabModifiedUi.foreground(true, grayed);
@@ -43,7 +45,7 @@ final class ComponentSubtabToggleButton extends JToggleButton {
             Rectangle textRect = new Rectangle();
             Rectangle viewRect = new Rectangle(getSize());
             Rectangle iconRect = new Rectangle();
-            String text = SwingUtilities.layoutCompoundLabel(
+            SwingUtilities.layoutCompoundLabel(
                     this,
                     metrics,
                     plainLabel,

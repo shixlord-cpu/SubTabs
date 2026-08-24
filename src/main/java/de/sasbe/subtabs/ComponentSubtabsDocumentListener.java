@@ -1,5 +1,6 @@
 package de.sasbe.subtabs;
 
+import com.intellij.ide.projectView.ProjectView;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.CommandEvent;
@@ -104,6 +105,7 @@ final class ComponentSubtabsDocumentListener implements DocumentListener, FileDo
         }
 
         if (SubtabProjectViewGrouping.isEnabled()) {
+            ProjectView.getInstance(project).refresh();
             var toolWindow = ToolWindowManager.getInstance(project).getToolWindow(ToolWindowId.PROJECT_VIEW);
             if (toolWindow != null) {
                 for (JTree tree : UIUtil.findComponentsOfType(toolWindow.getComponent(), JTree.class)) {
