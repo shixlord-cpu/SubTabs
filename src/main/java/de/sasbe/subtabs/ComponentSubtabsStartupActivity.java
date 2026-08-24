@@ -14,7 +14,10 @@ final class ComponentSubtabsStartupActivity implements ProjectActivity {
             @NotNull Continuation<? super Unit> continuation
     ) {
         ComponentSubtabsFileEditorListener.attachToAlreadyOpenFiles(project);
+        ComponentSubtabsDocumentListener.install(project);
+        ComponentSubtabMainTabSelectPopup.installOn(project);
         SubtabGroupTreeControl.installOn(project);
+        ComponentSubtabProjectViewEditorHover.installOn(project);
         return Unit.INSTANCE;
     }
 }

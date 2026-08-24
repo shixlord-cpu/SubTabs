@@ -117,6 +117,10 @@ final class ComponentSubtabsManager {
         refreshOpenStates(project);
     }
 
+    static void refreshPresentationStates(@NotNull Project project) {
+        refreshOpenStates(project);
+    }
+
     static void refreshOpenStates(@NotNull Project project) {
         FileEditorManager manager = FileEditorManager.getInstance(project);
         for (FileEditor editor : manager.getAllEditors()) {

@@ -13,7 +13,7 @@ final class CustomSubtabRuleMatcher {
     private static final String GROUP_PREFIX = "rule:";
     private static final String EXTENSION_GROUP_MARKER = "@ext:";
     private static final String FOLDER_GROUP_MARKER = "@folder";
-    private static final String CUSTOM_GROUP_MARKER = "custom:";
+    static final String NESTING_GROUP_MARKER = "@nesting:";
     private static final Pattern GROUP_KEY = Pattern.compile("^rule:(\\d+):(.+)$");
     private static final Pattern EXTENSION_GROUP_KEY =
             Pattern.compile("^rule:(\\d+):@ext:(.+)$");
@@ -48,20 +48,12 @@ final class CustomSubtabRuleMatcher {
     }
 
     static @Nullable Match match(@NotNull String fileName, @NotNull List<CustomSubtabRule> rules) {
-        return match(fileName, rules, List.of());
-    }
-
-    static @Nullable Match match(
-            @NotNull String fileName,
-            @NotNull List<CustomSubtabRule> rules,
-            @NotNull List<CustomSubtabGroupDefinition> customGroups
-    ) {
         for (int index = 0; index < rules.size(); index++) {
             CustomSubtabRule rule = rules.get(index);
             if (!rule.enabled) {
                 continue;
             }
-            Match match = matchRule(fileName, rule, index, customGroups);
+            Match match = matchRule(fileName, rule, index);
             if (match != null) {
                 return match;
             }
@@ -100,14 +92,6 @@ final class CustomSubtabRuleMatcher {
             @NotNull String groupKey,
             @NotNull List<CustomSubtabRule> rules
     ) {
-        return resolveGroup(groupKey, rules, List.of());
-    }
-
-    static @Nullable Match resolveGroup(
-            @NotNull String groupKey,
-            @NotNull List<CustomSubtabRule> rules,
-            @NotNull List<CustomSubtabGroupDefinition> customGroups
-    ) {
         ExtensionGroupSpec extensionGroup = parseExtensionGroup(groupKey, rules);
         if (extensionGroup != null) {
             return buildExtensionFolderMatch(extensionGroup.rule(), extensionGroup.ruleIndex(), extensionGroup.extensions());
@@ -121,7 +105,7 @@ final class CustomSubtabRuleMatcher {
         CustomSubtabRule rule = rules.get(parsed.ruleIndex());
         return switch (rule.type) {
             case FILES -> buildFilesMatch(rule, parsed.ruleIndex());
-            case CUSTOM_GROUPS -> buildCustomGroupMatch(rule, parsed.ruleIndex(), parsed.stem(), customGroups);
+            case USER_GROUPS -> buildUserGroupMatch(rule, parsed.ruleIndex(), parsed.stem());
             case FOLDER -> buildFolderMatch(rule, parsed.ruleIndex());
             case STEM -> buildStemMatch(rule, parsed.ruleIndex(), parsed.stem());
         };
@@ -136,30 +120,50 @@ final class CustomSubtabRuleMatcher {
         return parsed != null && FOLDER_GROUP_MARKER.equals(parsed.stem());
     }
 
-    static boolean isCustomGroupKey(@NotNull String groupKey) {
+    static boolean isUserGroupKey(@NotNull String groupKey) {
         ParsedGroupKey parsed = parseGroupKey(groupKey);
-        return parsed != null && parsed.stem().startsWith(CUSTOM_GROUP_MARKER);
-    }
-
-    static @Nullable String customGroupName(@NotNull String groupKey) {
-        ParsedGroupKey parsed = parseGroupKey(groupKey);
-        if (parsed == null || !parsed.stem().startsWith(CUSTOM_GROUP_MARKER)) {
-            return null;
-        }
-        return parsed.stem().substring(CUSTOM_GROUP_MARKER.length());
+        return parsed != null && parsed.stem().startsWith(NESTING_GROUP_MARKER);
     }
 
     private static @Nullable Match matchRule(
             @NotNull String fileName,
             @NotNull CustomSubtabRule rule,
-            int index,
-            @NotNull List<CustomSubtabGroupDefinition> customGroups
+            int index
     ) {
         return switch (rule.type) {
             case STEM, FILES -> matchPatternRule(fileName, rule, index);
-            case CUSTOM_GROUPS -> matchCustomGroups(fileName, rule, index, customGroups);
+            case USER_GROUPS -> matchUserGroups(fileName, rule, index);
             case FOLDER -> buildFolderMatch(rule, index);
         };
+    }
+
+    private static @Nullable Match matchUserGroups(
+            @NotNull String fileName,
+            @NotNull CustomSubtabRule rule,
+            int index
+    ) {
+        SubtabFileNestingGroups.Group group = SubtabFileNestingGroups.findGroup(fileName);
+        if (group == null) {
+            return null;
+        }
+        return buildUserGroupMatch(rule, index, group.groupStem());
+    }
+
+    private static @NotNull Match buildUserGroupMatch(
+            @NotNull CustomSubtabRule rule,
+            int index,
+            @NotNull String stem
+    ) {
+        String parentFileName = SubtabFileNestingGroups.parentFileName(stem);
+        String displayName = parentFileName != null && !parentFileName.isBlank()
+                ? parentFileName
+                : (!rule.name.isBlank() ? rule.name : "Eigene Gruppen");
+        return new Match(
+                groupKey(index, stem),
+                displayName,
+                List.of(),
+                false
+        );
     }
 
     private static @Nullable Match matchPatternRule(
@@ -179,46 +183,6 @@ final class CustomSubtabRuleMatcher {
         };
     }
 
-    private static @Nullable Match matchCustomGroups(
-            @NotNull String fileName,
-            @NotNull CustomSubtabRule rule,
-            int index,
-            @NotNull List<CustomSubtabGroupDefinition> customGroups
-    ) {
-        for (CustomSubtabGroupDefinition group : customGroups) {
-            if (group.name.isBlank()) {
-                continue;
-            }
-            List<String> patterns = parseCsv(group.patterns);
-            if (patterns.contains(fileName)) {
-                return buildCustomGroupMatch(rule, index, customGroupStem(group.name), List.of(group));
-            }
-        }
-        return null;
-    }
-
-    private static @NotNull Match buildCustomGroupMatch(
-            @NotNull CustomSubtabRule rule,
-            int index,
-            @NotNull String stem,
-            @NotNull List<CustomSubtabGroupDefinition> customGroups
-    ) {
-        String groupName = customGroupNameFromStem(stem);
-        CustomSubtabGroupDefinition definition = findCustomGroup(groupName, customGroups);
-        String displayName = definition != null && !definition.name.isBlank()
-                ? definition.name
-                : groupName;
-        List<SubtabCandidate> candidates = definition == null
-                ? List.of()
-                : buildCustomGroupCandidates(definition);
-        return new Match(
-                groupKey(index, stem),
-                displayName,
-                candidates,
-                false
-        );
-    }
-
     private static @NotNull Match buildFolderMatch(@NotNull CustomSubtabRule rule, int index) {
         String displayName = !rule.name.isBlank() ? rule.name : "Ordner";
         return new Match(
@@ -227,44 +191,6 @@ final class CustomSubtabRuleMatcher {
                 List.of(),
                 false
         );
-    }
-
-    private static @NotNull String customGroupStem(@NotNull String groupName) {
-        return CUSTOM_GROUP_MARKER + groupName;
-    }
-
-    private static @NotNull String customGroupNameFromStem(@NotNull String stem) {
-        return stem.startsWith(CUSTOM_GROUP_MARKER)
-                ? stem.substring(CUSTOM_GROUP_MARKER.length())
-                : stem;
-    }
-
-    private static @Nullable CustomSubtabGroupDefinition findCustomGroup(
-            @NotNull String groupName,
-            @NotNull List<CustomSubtabGroupDefinition> customGroups
-    ) {
-        for (CustomSubtabGroupDefinition group : customGroups) {
-            if (groupName.equals(group.name)) {
-                return group;
-            }
-        }
-        return null;
-    }
-
-    private static @NotNull List<SubtabCandidate> buildCustomGroupCandidates(
-            @NotNull CustomSubtabGroupDefinition group
-    ) {
-        List<String> patterns = parseCsv(group.patterns);
-        List<String> labels = parseCsv(group.labels);
-        List<SubtabCandidate> candidates = new ArrayList<>();
-        for (int index = 0; index < patterns.size(); index++) {
-            String pattern = patterns.get(index);
-            String label = index < labels.size() && !labels.get(index).isBlank()
-                    ? labels.get(index)
-                    : labelFromFileName(pattern);
-            candidates.add(new SubtabCandidate(pattern, label, pattern));
-        }
-        return List.copyOf(candidates);
     }
 
     private static @Nullable Match matchStem(

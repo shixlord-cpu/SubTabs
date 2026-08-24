@@ -17,7 +17,9 @@ import java.awt.event.MouseEvent;
 
 final class ComponentSubtabUi {
     private static final String OPEN_ELSEWHERE_KEY = "componentSubtabs.openElsewhere";
+    private static final String MODIFIED_KEY = "componentSubtabs.modified";
     private static final String FIT_KEY = "componentSubtabs.fitScale";
+    private static final String EXTERNAL_HOVER_KEY = "componentSubtabs.externalHover";
     private static final Color HOVER_BACKGROUND = JBUI.CurrentTheme.TabbedPane.HOVER_COLOR;
     private static final Color SELECTED_BACKGROUND = JBUI.CurrentTheme.TabbedPane.FOCUS_COLOR;
     private static final Color SELECTED_UNDERLINE = JBUI.CurrentTheme.TabbedPane.ENABLED_SELECTED_COLOR;
@@ -53,11 +55,13 @@ final class ComponentSubtabUi {
     }
 
     static @NotNull JToggleButton createSubtabButton(@NotNull String label, boolean selected) {
-        JToggleButton button = new JToggleButton(label);
+        JToggleButton button = new ComponentSubtabToggleButton(label);
         button.setSelected(selected);
         button.setFocusable(false);
         button.putClientProperty("JButton.buttonType", "segmented");
         button.putClientProperty(OPEN_ELSEWHERE_KEY, false);
+        button.putClientProperty(MODIFIED_KEY, false);
+        button.putClientProperty(ComponentSubtabModifiedUi.PLAIN_LABEL_KEY, label);
         button.putClientProperty(FIT_KEY, SubtabFitScale.Result.FULL);
         button.addChangeListener(event -> applyAppearance(button));
         button.addMouseListener(new MouseAdapter() {
@@ -75,6 +79,15 @@ final class ComponentSubtabUi {
         });
         applyAppearance(button);
         return button;
+    }
+
+    static void setExternalHover(@NotNull JToggleButton button, boolean hovered) {
+        Boolean current = (Boolean) button.getClientProperty(EXTERNAL_HOVER_KEY);
+        if (current != null && current == hovered) {
+            return;
+        }
+        button.putClientProperty(EXTERNAL_HOVER_KEY, hovered);
+        applyAppearance(button);
     }
 
     static void refreshButton(@NotNull JToggleButton button) {
@@ -95,17 +108,34 @@ final class ComponentSubtabUi {
         applyAppearance(button);
     }
 
+    static void setModified(@NotNull JToggleButton button, boolean modified) {
+        button.putClientProperty(MODIFIED_KEY, modified);
+        applyAppearance(button);
+    }
+
     private static void applyAppearance(@NotNull JToggleButton button) {
         boolean selected = button.isSelected();
         boolean openElsewhere = Boolean.TRUE.equals(button.getClientProperty(OPEN_ELSEWHERE_KEY));
+        boolean modified = Boolean.TRUE.equals(button.getClientProperty(MODIFIED_KEY));
+        boolean externalHover = Boolean.TRUE.equals(button.getClientProperty(EXTERNAL_HOVER_KEY));
         SubtabFitScale.Result fit = fitOf(button);
         int height = tabHeight();
+        String plainLabel = ComponentSubtabModifiedUi.plainLabel(button);
         button.setMargin(JBUI.insets(0, horizontalMargin(fit)));
         button.setOpaque(true);
-        button.setBackground(selected ? SELECTED_BACKGROUND : UIUtil.getPanelBackground());
-        button.setForeground(selected || !openElsewhere
-                ? UIUtil.getLabelForeground()
-                : UIUtil.getInactiveTextColor());
+        if (selected) {
+            button.setBackground(SELECTED_BACKGROUND);
+        } else if (externalHover) {
+            button.setBackground(HOVER_BACKGROUND);
+        } else {
+            button.setBackground(UIUtil.getPanelBackground());
+        }
+        ComponentSubtabModifiedUi.applyToToggleButton(
+                button,
+                plainLabel,
+                modified,
+                !selected && openElsewhere
+        );
         button.setFont(scaledFont(selected, fit, height));
         button.setBorder(createBorder(selected, fit));
         int width = preferredWidth(button, fit);
@@ -113,11 +143,12 @@ final class ComponentSubtabUi {
         button.setPreferredSize(size);
         button.setMinimumSize(size);
         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
+        button.repaint();
     }
 
     private static int preferredWidth(@NotNull JToggleButton button, @NotNull SubtabFitScale.Result fit) {
         FontMetrics metrics = button.getFontMetrics(button.getFont());
-        int textWidth = metrics.stringWidth(button.getText());
+        int textWidth = metrics.stringWidth(ComponentSubtabModifiedUi.plainLabel(button));
         return textWidth + 2 * JBUI.scale(horizontalMargin(fit)) + 2 * JBUI.scale(Math.max(1, Math.round(2 * fit.paddingScale()))) + JBUI.scale(8);
     }
 

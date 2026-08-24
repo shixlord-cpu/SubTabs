@@ -17,6 +17,7 @@ final class SubtabsPresentation {
             ComponentSubtabsManager.applyPresentationState(project);
             ComponentSubtabsManager.refreshAppearance(project);
             ComponentSubtabsFileEditorListener.attachToAlreadyOpenFiles(project);
+            ComponentSubtabMainTabSelectPopup.installOn(project);
         }
         refreshProjectViews();
     }

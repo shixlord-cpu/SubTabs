@@ -6,7 +6,7 @@ public final class CustomSubtabRule {
     public enum Type {
         STEM,
         FILES,
-        CUSTOM_GROUPS,
+        USER_GROUPS,
         FOLDER
     }
 
@@ -37,6 +37,6 @@ public final class CustomSubtabRule {
     }
 
     public boolean isSpecial() {
-        return type == Type.CUSTOM_GROUPS || type == Type.FOLDER;
+        return type == Type.USER_GROUPS || type == Type.FOLDER;
     }
 }

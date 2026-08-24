@@ -16,7 +16,9 @@ import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import javax.swing.JComponent;
 
 final class ComponentSubtabMainTabHover {
@@ -33,9 +35,33 @@ final class ComponentSubtabMainTabHover {
             @NotNull VirtualFile file,
             @NotNull JComponent source
     ) {
+        onEnterAny(project, List.of(file), source);
+    }
+
+    static void onEnterAny(
+            @NotNull Project project,
+            @NotNull Iterable<VirtualFile> files,
+            @NotNull JComponent source
+    ) {
         onExit(source);
 
-        List<Handle> handles = findVisibleTabHandles(project, file);
+        List<Handle> handles = new ArrayList<>();
+        for (VirtualFile file : files) {
+            handles.addAll(findVisibleTabHandles(project, file));
+        }
+        applyHandles(source, handles);
+    }
+
+    static void onEnterGroup(
+            @NotNull Project project,
+            @NotNull String groupKey,
+            @NotNull JComponent source
+    ) {
+        onExit(source);
+        applyHandles(source, findVisibleTabHandlesForGroup(project, groupKey));
+    }
+
+    private static void applyHandles(@NotNull JComponent source, @NotNull List<Handle> handles) {
         if (handles.isEmpty()) {
             return;
         }
@@ -65,6 +91,54 @@ final class ComponentSubtabMainTabHover {
         source.putClientProperty(ACTIVE_HOVERS_KEY, null);
     }
 
+    private static @NotNull List<Handle> findVisibleTabHandlesForGroup(
+            @NotNull Project project,
+            @NotNull String groupKey
+    ) {
+        String targetMergeKey = SubtabProjectViewGrouping.mergeKey(groupKey);
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        List<Handle> handles = new ArrayList<>();
+        Set<TabLabel> seenLabels = new LinkedHashSet<>();
+
+        for (EditorWindow window : manager.getWindows()) {
+            JBTabs tabs = window.getTabbedPane().getTabs();
+            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
+                continue;
+            }
+
+            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+                if (tabInfo.isHidden()) {
+                    continue;
+                }
+                Object tabObject = tabInfo.getObject();
+                if (!(tabObject instanceof VirtualFile file)) {
+                    continue;
+                }
+                if (!belongsToMergeGroup(file, targetMergeKey)) {
+                    continue;
+                }
+
+                TabLabel label = tabsImpl.getTabLabel(tabInfo);
+                if (label == null || !label.isVisible() || !seenLabels.add(label)) {
+                    continue;
+                }
+                handles.add(new Handle(tabsImpl, label));
+            }
+        }
+        return handles;
+    }
+
+    private static boolean belongsToMergeGroup(
+            @NotNull VirtualFile file,
+            @NotNull String targetMergeKey
+    ) {
+        ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(file);
+        if (match == null) {
+            return false;
+        }
+        return targetMergeKey.equals(SubtabProjectViewGrouping.mergeKey(match.baseName()));
+    }
+
     private static @NotNull List<Handle> findVisibleTabHandles(
             @NotNull Project project,
             @NotNull VirtualFile file
@@ -88,7 +162,7 @@ final class ComponentSubtabMainTabHover {
             }
 
             TabLabel label = tabsImpl.getTabLabel(tabInfo);
-            if (label != null && label.isShowing()) {
+            if (label != null && label.isVisible()) {
                 handles.add(new Handle(tabsImpl, label));
             }
         }
