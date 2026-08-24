@@ -1,9 +1,9 @@
 package de.sasbe.subtabs;
 
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
@@ -20,47 +20,65 @@ final class ComponentSubtabsManager {
     }
 
     static void attachIfNeeded(@NotNull Project project, @NotNull VirtualFile file) {
-        VirtualFile parent = file.getParent();
-        String baseName = ComponentFileNaming.componentBaseName(file.getName());
-        if (parent == null || baseName == null) {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        if (!settings.isSubtabsActive() && !settings.isShowCollapseButton()) {
             return;
         }
 
         ComponentSubtabGroupRegistry registry = ComponentSubtabGroupRegistry.getInstance(project);
-        ComponentSubtabGroup group = registry.getOrCreateGroup(parent, baseName, file);
+        ComponentSubtabGroup group = registry.getOrCreateGroup(file);
         if (group == null) {
             return;
         }
 
         FileEditorManager manager = FileEditorManager.getInstance(project);
-        boolean collapsed = SubtabsCollapseState.getInstance(project).isCollapsed();
         for (FileEditor editor : editorsFor(manager, file)) {
             ComponentSubtabBarPanel existing = editor.getUserData(SUBTAB_BAR_KEY);
             if (existing != null) {
                 existing.bind(group, file);
-                installBar(project, manager, editor, existing, collapsed);
+                installBar(project, manager, editor, existing);
                 continue;
             }
 
-            ComponentSubtabBarPanel panel = registry.createOrReusePanel(group, parent, baseName, file);
+            ComponentSubtabBarPanel panel = registry.createOrReusePanel(group, file);
             editor.putUserData(SUBTAB_BAR_KEY, panel);
-            installBar(project, manager, editor, panel, collapsed);
+            installBar(project, manager, editor, panel);
         }
     }
 
-    static void applyCollapsedState(@NotNull Project project, boolean collapsed) {
+    static void applyPresentationState(@NotNull Project project) {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
         FileEditorManager manager = FileEditorManager.getInstance(project);
+
+        if (!settings.isSubtabsActive() && !settings.isShowCollapseButton()) {
+            for (FileEditor editor : manager.getAllEditors()) {
+                SubtabsExpandOverlay.hide(editor);
+                ComponentSubtabBarPanel panel = editor.getUserData(SUBTAB_BAR_KEY);
+                if (panel != null) {
+                    detachFromSwing(panel);
+                    manager.removeTopComponent(editor, panel);
+                }
+            }
+            updateTabPresentations(manager);
+            return;
+        }
+
         for (FileEditor editor : manager.getAllEditors()) {
             ComponentSubtabBarPanel panel = editor.getUserData(SUBTAB_BAR_KEY);
             if (panel == null) {
+                SubtabsExpandOverlay.hide(editor);
                 continue;
             }
-            installBar(project, manager, editor, panel, collapsed);
+            installBar(project, manager, editor, panel);
         }
 
-        for (VirtualFile file : manager.getOpenFiles()) {
-            if (ComponentFileNaming.componentBaseName(file.getName()) != null) {
-                manager.updateFilePresentation(file);
+        updateTabPresentations(manager);
+    }
+
+    static void refreshAllOpenProjects() {
+        for (Project project : ProjectManager.getInstance().getOpenProjects()) {
+            if (!project.isDisposed()) {
+                applyPresentationState(project);
             }
         }
     }
@@ -109,6 +127,16 @@ final class ComponentSubtabsManager {
         }
     }
 
+    static void refreshAppearance(@NotNull Project project) {
+        FileEditorManager manager = FileEditorManager.getInstance(project);
+        for (FileEditor editor : manager.getAllEditors()) {
+            ComponentSubtabBarPanel panel = editor.getUserData(SUBTAB_BAR_KEY);
+            if (panel != null) {
+                panel.refreshAppearance();
+            }
+        }
+    }
+
     static void detachFromFile(@NotNull Project project, @NotNull VirtualFile file) {
         if (ComponentSubtabGroupRegistry.getInstance(project).hasPendingTransfer()) {
             return;
@@ -137,10 +165,10 @@ final class ComponentSubtabsManager {
             detachFromSwing(panel);
             manager.removeTopComponent(editor, panel);
             editor.putUserData(SUBTAB_BAR_KEY, null);
-            registry.recyclePanel(parent, baseName, panel);
+            registry.recyclePanel(file, panel);
         }
 
-        ApplicationManager.getApplication().invokeLater(() -> {
+        com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() -> {
             if (!project.isDisposed()) {
                 registry.onFilePossiblyClosed(file);
             }
@@ -164,13 +192,22 @@ final class ComponentSubtabsManager {
             @NotNull Project project,
             @NotNull FileEditorManager manager,
             @NotNull FileEditor editor,
-            @NotNull ComponentSubtabBarPanel panel,
-            boolean collapsed
+            @NotNull ComponentSubtabBarPanel panel
     ) {
-        if (collapsed) {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        boolean active = settings.isSubtabsActive();
+        boolean showCollapseButton = settings.isShowCollapseButton();
+
+        panel.setCollapseButtonVisible(showCollapseButton);
+
+        if (!active) {
             detachFromSwing(panel);
             manager.removeTopComponent(editor, panel);
-            SubtabsExpandOverlay.show(project, editor);
+            if (showCollapseButton) {
+                SubtabsExpandOverlay.show(project, editor);
+            } else {
+                SubtabsExpandOverlay.hide(editor);
+            }
             return;
         }
 
@@ -178,6 +215,14 @@ final class ComponentSubtabsManager {
         detachFromSwing(panel);
         manager.removeTopComponent(editor, panel);
         manager.addTopComponent(editor, panel);
+    }
+
+    private static void updateTabPresentations(@NotNull FileEditorManager manager) {
+        for (VirtualFile file : manager.getOpenFiles()) {
+            if (ComponentFileNaming.componentBaseName(file.getName()) != null) {
+                manager.updateFilePresentation(file);
+            }
+        }
     }
 
     private static void detachFromSwing(@NotNull ComponentSubtabBarPanel panel) {

@@ -29,31 +29,24 @@ final class ComponentSubtabGroupRegistry {
         return project.getService(ComponentSubtabGroupRegistry.class);
     }
 
-    @Nullable ComponentSubtabGroup getOrCreateGroup(
-            @NotNull VirtualFile parent,
-            @NotNull String baseName,
-            @NotNull VirtualFile currentFile
-    ) {
-        String key = componentKey(parent, baseName);
-        ComponentSubtabGroup existing = groupsByKey.get(key);
+    @Nullable ComponentSubtabGroup getOrCreateGroup(@NotNull VirtualFile currentFile) {
+        ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(currentFile);
+        if (match == null) {
+            return null;
+        }
+
+        ComponentSubtabGroup existing = groupsByKey.get(match.key());
         if (existing != null) {
             return existing;
         }
 
-        var relatedFiles = ComponentRelatedFiles.find(parent, baseName, currentFile);
-        if (relatedFiles == null) {
-            return null;
-        }
-
-        ComponentSubtabGroup group = new ComponentSubtabGroup(relatedFiles);
-        groupsByKey.put(key, group);
+        ComponentSubtabGroup group = new ComponentSubtabGroup(match.relatedFiles());
+        groupsByKey.put(match.key(), group);
         return group;
     }
 
     @NotNull ComponentSubtabBarPanel createOrReusePanel(
             @NotNull ComponentSubtabGroup group,
-            @NotNull VirtualFile parent,
-            @NotNull String baseName,
             @NotNull VirtualFile displayedFile
     ) {
         ComponentSubtabBarPanel transfer = takePendingTransfer();
@@ -63,8 +56,8 @@ final class ComponentSubtabGroupRegistry {
             return transfer;
         }
 
-        String key = componentKey(parent, baseName);
-        List<ComponentSubtabBarPanel> recycled = recycledPanelsByKey.get(key);
+        String key = keyFor(displayedFile);
+        List<ComponentSubtabBarPanel> recycled = key == null ? null : recycledPanelsByKey.get(key);
         if (recycled != null && !recycled.isEmpty()) {
             ComponentSubtabBarPanel panel = recycled.remove(recycled.size() - 1);
             panel.bind(group, displayedFile);
@@ -86,31 +79,33 @@ final class ComponentSubtabGroupRegistry {
         return pendingTransfer != null;
     }
 
-    void recyclePanel(
-            @NotNull VirtualFile parent,
-            @NotNull String baseName,
-            @NotNull ComponentSubtabBarPanel panel
-    ) {
+    void recyclePanel(@NotNull VirtualFile file, @NotNull ComponentSubtabBarPanel panel) {
         activePanels.remove(panel);
-        recycledPanelsByKey
-                .computeIfAbsent(componentKey(parent, baseName), unused -> new ArrayList<>())
-                .add(panel);
+        String key = keyFor(file);
+        if (key == null) {
+            return;
+        }
+        recycledPanelsByKey.computeIfAbsent(key, unused -> new ArrayList<>()).add(panel);
     }
 
     void onFilePossiblyClosed(@NotNull VirtualFile file) {
-        VirtualFile parent = file.getParent();
-        String baseName = ComponentFileNaming.componentBaseName(file.getName());
-        if (parent == null || baseName == null) {
+        ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(file);
+        String key = match != null ? match.key() : keyForClosedFile(file);
+        if (key == null) {
             return;
         }
 
-        if (hasOpenComponentFile(parent, baseName)) {
+        if (hasOpenGroupFile(key, file)) {
             return;
         }
 
-        String key = componentKey(parent, baseName);
         groupsByKey.remove(key);
         recycledPanelsByKey.remove(key);
+    }
+
+    void clearGroups() {
+        groupsByKey.clear();
+        recycledPanelsByKey.clear();
     }
 
     private @Nullable ComponentSubtabBarPanel takePendingTransfer() {
@@ -119,20 +114,34 @@ final class ComponentSubtabGroupRegistry {
         return panel;
     }
 
-    private boolean hasOpenComponentFile(@NotNull VirtualFile parent, @NotNull String baseName) {
+    private boolean hasOpenGroupFile(@NotNull String key, @NotNull VirtualFile closingFile) {
         FileEditorManager manager = FileEditorManager.getInstance(project);
         for (VirtualFile openFile : manager.getOpenFiles()) {
-            if (!parent.equals(openFile.getParent())) {
+            if (openFile.equals(closingFile)) {
                 continue;
             }
-            if (baseName.equals(ComponentFileNaming.componentBaseName(openFile.getName()))) {
+            if (key.equals(keyFor(openFile))) {
                 return true;
             }
         }
         return false;
     }
 
+    private static @Nullable String keyFor(@NotNull VirtualFile file) {
+        ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(file);
+        return match == null ? null : match.key();
+    }
+
+    private static @Nullable String keyForClosedFile(@NotNull VirtualFile file) {
+        VirtualFile parent = file.getParent();
+        String baseName = ComponentFileNaming.componentBaseName(file.getName());
+        if (parent == null || baseName == null) {
+            return null;
+        }
+        return componentKey(parent, baseName);
+    }
+
     static @NotNull String componentKey(@NotNull VirtualFile parent, @NotNull String baseName) {
-        return parent.getPath() + "|" + baseName;
+        return parent.getPath().replace('\\', '/') + "|" + baseName;
     }
 }

@@ -6,7 +6,7 @@ set GRADLE_ARGS=--console=plain --no-configuration-cache
 
 echo.
 echo ============================================================
-echo  Component Subtabs - Test-IDE starten
+echo  SubTabs - Test-IDE starten
 echo ============================================================
 echo.
 echo WICHTIG - warum es "haengen" kann:
