@@ -6,25 +6,25 @@ import org.jetbrains.annotations.NotNull;
 
 @Service(Service.Level.PROJECT)
 public final class SubtabsCollapseState {
-    private boolean collapsed;
-
     public static @NotNull SubtabsCollapseState getInstance(@NotNull Project project) {
         return project.getService(SubtabsCollapseState.class);
     }
 
     public boolean isCollapsed() {
-        return collapsed;
+        return !SubtabsSettings.getInstance().isSubtabsActive();
     }
 
     public void setCollapsed(@NotNull Project project, boolean collapsed) {
-        if (this.collapsed == collapsed) {
+        boolean active = !collapsed;
+        if (SubtabsSettings.getInstance().isSubtabsActive() == active) {
             return;
         }
-        this.collapsed = collapsed;
-        ComponentSubtabsManager.applyCollapsedState(project, collapsed);
+        SubtabsSettings.getInstance().setSubtabsActive(active);
+        ComponentSubtabsManager.refreshAllOpenProjects();
+        SubtabsPresentation.refreshProjectViews();
     }
 
     public void toggle(@NotNull Project project) {
-        setCollapsed(project, !collapsed);
+        setCollapsed(project, !isCollapsed());
     }
 }

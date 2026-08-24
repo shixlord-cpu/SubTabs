@@ -1,20 +1,81 @@
-# Component Subtabs
+# SubTabs
 
 Ein MVP für IntelliJ-basierte IDEs, der zusammengehörige Dateien einer
 Komponente als schmale Subtabs direkt oberhalb des Editors anzeigt.
 
 ## Unterstützte Dateien
 
-Dateien müssen im selben Ordner liegen und denselben Basisnamen besitzen:
+Die Leiste wird nur angezeigt, wenn mindestens zwei zusammengehörige Dateien
+gefunden werden. Pro Kategorie wird ein Tab gezeigt. Beim Anklicken öffnet
+IntelliJ die gewählte Datei im normalen Editor. Die meisten Gruppen suchen nur
+im selben Ordner; State-Management sucht zusätzlich in benachbarten Ordnern.
+
+### Angular-Komponenten
+
+Dateien mit demselben Basisnamen:
 
 - `*.ts`
 - `*.spec.ts` oder `*.test.ts`
 - `*.html`
 - `*.scss`, `*.sass`, `*.css` oder `*.less`
 
-Die Leiste wird nur angezeigt, wenn mindestens zwei zusammengehörige Dateien
-existieren. Pro Kategorie wird ein Tab gezeigt. Beim Anklicken öffnet IntelliJ
-die gewählte Datei im normalen Editor.
+### NPM-Konfiguration
+
+Feste Dateinamen im selben Ordner:
+
+- `package.json`
+- `package-lock.json` oder `npm-shrinkwrap.json`
+- `yarn.lock`, `pnpm-lock.yaml`, `bun.lock` / `bun.lockb`
+- `.npmrc`
+- `.nvmrc` oder `.node-version`
+
+### TypeScript-Konfiguration
+
+- `tsconfig.json`
+- `tsconfig.base.json`
+- `tsconfig.app.json`
+- `tsconfig.spec.json`
+- `tsconfig.lib.json`
+- `tsconfig.editor.json`
+- `tsconfig.build.json`
+
+### Env-Dateien
+
+- `.env`
+- `.env.local`
+- `.env.example` oder `.env.sample`
+- `.env.development`
+- `.env.production`
+- `.env.test`
+
+### State-Management
+
+Dateien desselben Entity-Namens (`cart.actions.ts`, `cart.reducer.ts`, …):
+
+- `*.actions.ts`
+- `*.reducer.ts` / `*.reducers.ts`
+- `*.effects.ts`
+- `*.selectors.ts`
+- `*.state.ts`
+- `*.store.ts`
+- `*.facade.ts`
+
+Zwei Layouts werden erkannt:
+
+- **Zentral:** alle Store-Dateien liegen im selben Ordner.
+- **Feature-basiert:** zugehörige Store-Dateien liegen im selben Ordner **oder** in einem benachbarten Ordner (Geschwisterordner wie `products/` und `products-state/`).
+
+### Models
+
+Model-Daten desselben Entity-Namens im **selben Ordner**:
+
+- `*.model.ts`
+- `*.dto.ts`
+- `*.entity.ts`
+- `*.interface.ts`
+- `*.type.ts`
+- `*.mapper.ts`
+- `*.mock.ts`
 
 ## Voraussetzungen
 
@@ -68,6 +129,13 @@ Das oeffnet automatisch das Demo-Projekt unter `demo-project/`.
 5. Oeffne `demo-project/src/app/user-card.component.ts`.
 6. Direkt unter dem normalen Editor-Tab erscheinen die Subtabs `TS`, `Test`, `HTML` und `SCSS`.
 7. Jeden Subtab anklicken und pruefen, ob die passende Datei geoeffnet wird.
+8. Oeffne `demo-project/package.json`. Es erscheinen Subtabs wie `Package`, `Lock`, `npmrc` und `nvm`.
+9. Oeffne `tsconfig.json` und `.env` im Projektroot.
+10. Oeffne `src/app/state-management/central/cart.actions.ts` (zentraler Store).
+11. Oeffne `src/app/state-management/feature-based/products/products.actions.ts`
+    (Feature-Store über `products/` und `products-state/`).
+12. Oeffne `src/app/models/central/user.model.ts` und
+    `src/app/models/feature-based/user/user.model.ts`.
 
 ## Automatisierte Tests und Build
 
@@ -85,6 +153,25 @@ Zur Installation in der normalen IDE:
 3. Das ZIP aus `build\distributions\` auswählen.
 4. Die IDE neu starten.
 
+## Einstellungen
+
+Unter `Settings | Tools | SubTabs`:
+
+- **SubTabs anzeigen** (standardmäßig an). Entspricht dem ausgeklappten Zustand; deaktivieren blendet die Leiste aus und entspricht dem Einklappen über das Symbol.
+- **Einklappen-Symbol anzeigen** (standardmäßig an). Blendet das Minimize-/Expand-Icon aus. SubTabs lassen sich dann nur noch über die Einstellung ein- und ausschalten.
+- **Subtab-Regeln**: Tabelle mit allen mitgelieferten Regeln (npm, tsconfig, env, State, Model, Komponente) plus eigene Ergänzungen.
+- **Beim Hover über einen Subtab zur Datei im Projektbaum scrollen** (standardmäßig aus).
+  Ist die Option aus, wird die Datei nur gehovert, wenn sie im Projektbaum bereits sichtbar ist.
+
+## Tastenkürzel
+
+Wenn SubTabs sichtbar sind:
+
+- **Alt+←** — vorheriger Subtab
+- **Alt+→** — nächster Subtab
+
+Anpassbar unter `Settings | Keymap` („Vorheriger Subtab“ / „Nächster Subtab“).
+
 ## Projektstruktur
 
 - `ComponentSubtabsManager` / `ComponentSubtabBar`: erzeugt die scrollbare Leiste direkt über dem Editor.
@@ -95,7 +182,8 @@ Zur Installation in der normalen IDE:
 
 ## Bewusste Grenzen des MVP
 
-- Verwandte Dateien werden nur im selben Ordner gesucht.
+- Verwandte Dateien werden meist im selben Ordner gesucht; State-Management
+  berücksichtigt zusätzlich benachbarte Ordner.
 - Es gibt noch keine Einstellungen für eigene Suffixe oder Tab-Reihenfolgen.
 - Änderungen im Dateisystem werden beim erneuten Anzeigen des Editors sichtbar;
   eine sofortige Aktualisierung einer bereits sichtbaren Leiste folgt später.

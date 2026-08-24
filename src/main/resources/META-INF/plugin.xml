@@ -2,7 +2,7 @@
 
     <id>de.sasbe.component-subtabs</id>
 
-    <name>Component Subtabs</name>
+    <name>SubTabs</name>
 
     <vendor>SasBe</vendor>
 
@@ -10,9 +10,9 @@
 
     <description><![CDATA[
 
-        Shows compact subtabs above the editor for related component source,
+        Shows compact subtabs above the editor for related Angular component
 
-        test, template, and style files.
+        files, NPM/TypeScript/env configs, state-management files, and models.
 
     ]]></description>
 
@@ -25,7 +25,31 @@
     <extensions defaultExtensionNs="com.intellij">
         <editorTabTitleProvider implementation="de.sasbe.subtabs.ComponentEditorTabTitleProvider"/>
         <projectActivity implementation="de.sasbe.subtabs.ComponentSubtabsStartupActivity"/>
+        <applicationConfigurable
+                parentId="tools"
+                instance="de.sasbe.subtabs.SubtabsConfigurable"
+                id="de.sasbe.subtabs.settings"
+                displayName="SubTabs"
+                icon="de.sasbe.subtabs.SubtabsIcons.ACTIVE"/>
+        <treeStructureProvider implementation="de.sasbe.subtabs.SubtabGroupTreeStructureProvider"/>
     </extensions>
+
+
+
+    <actions>
+        <action id="SubTabs.SelectPreviousSubtab"
+                class="de.sasbe.subtabs.SubtabSelectPreviousAction"
+                text="Vorheriger Subtab"
+                description="Zum linken Subtab wechseln">
+            <keyboard-shortcut keymap="$default" first-keystroke="alt LEFT"/>
+        </action>
+        <action id="SubTabs.SelectNextSubtab"
+                class="de.sasbe.subtabs.SubtabSelectNextAction"
+                text="Nächster Subtab"
+                description="Zum rechten Subtab wechseln">
+            <keyboard-shortcut keymap="$default" first-keystroke="alt RIGHT"/>
+        </action>
+    </actions>
 
 
 

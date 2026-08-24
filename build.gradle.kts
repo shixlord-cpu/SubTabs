@@ -58,7 +58,7 @@ tasks {
 
 intellijPlatform {
     pluginConfiguration {
-        name = "Component Subtabs"
+        name = "SubTabs"
         version = project.version.toString()
     }
 }

@@ -1,17 +1,13 @@
 package de.sasbe.subtabs;
 
-import com.intellij.icons.AllIcons;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import org.jetbrains.annotations.NotNull;
 
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLayeredPane;
 import javax.swing.SwingUtilities;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.event.ComponentAdapter;
@@ -30,7 +26,7 @@ final class SubtabsExpandOverlay {
         hide(editor);
 
         JComponent editorComponent = editor.getComponent();
-        JButton button = createExpandButton(project);
+        ComponentSubtabIconButton button = createExpandButton(project);
         Handle handle = new Handle(editorComponent, button);
         editor.putUserData(OVERLAY_KEY, handle);
         handle.install();
@@ -45,29 +41,22 @@ final class SubtabsExpandOverlay {
         editor.putUserData(OVERLAY_KEY, null);
     }
 
-    private static @NotNull JButton createExpandButton(@NotNull Project project) {
-        JButton button = new JButton(AllIcons.General.ChevronDown);
-        button.setFocusable(false);
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        button.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        button.setContentAreaFilled(false);
-        button.setOpaque(false);
-        button.setToolTipText("Subtabs ausklappen");
-        button.getAccessibleContext().setAccessibleName("Subtabs ausklappen");
+    private static @NotNull ComponentSubtabIconButton createExpandButton(@NotNull Project project) {
+        ComponentSubtabIconButton button = new ComponentSubtabIconButton(SubtabsIcons.INACTIVE);
+        button.setToolTipText("SubTabs ausklappen");
+        button.getAccessibleContext().setAccessibleName("SubTabs ausklappen");
         button.addActionListener(event -> SubtabsCollapseState.getInstance(project).toggle(project));
-        Dimension size = button.getPreferredSize();
-        button.setSize(size);
         return button;
     }
 
     private static final class Handle {
         private final JComponent editorComponent;
-        private final JButton button;
+        private final ComponentSubtabIconButton button;
         private final ComponentListener componentListener;
         private final HierarchyListener hierarchyListener;
         private JLayeredPane layeredPane;
 
-        private Handle(@NotNull JComponent editorComponent, @NotNull JButton button) {
+        private Handle(@NotNull JComponent editorComponent, @NotNull ComponentSubtabIconButton button) {
             this.editorComponent = editorComponent;
             this.button = button;
             this.componentListener = new ComponentAdapter() {
