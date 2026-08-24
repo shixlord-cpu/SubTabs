@@ -25,6 +25,7 @@ final class SubtabsPresentation {
         for (Project project : ProjectManager.getInstance().getOpenProjects()) {
             if (!project.isDisposed()) {
                 ProjectView.getInstance(project).refresh();
+                SubtabGroupTreeControl.installOn(project);
             }
         }
     }
