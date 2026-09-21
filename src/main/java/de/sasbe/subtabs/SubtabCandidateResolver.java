@@ -13,7 +13,7 @@ import java.util.Set;
 final class SubtabCandidateResolver {
     record Located(
             @NotNull String slotId,
-            @NotNull String label,
+            int nameSegment,
             @NotNull String directory,
             @NotNull String fileName
     ) {
@@ -97,7 +97,7 @@ final class SubtabCandidateResolver {
 
             Located located = new Located(
                     candidate.slotId(),
-                    candidate.label(),
+                    candidate.nameSegment(),
                     directory,
                     candidate.fileName()
             );

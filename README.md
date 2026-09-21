@@ -131,9 +131,11 @@ Das oeffnet automatisch das Demo-Projekt unter `demo-project/`.
 7. Jeden Subtab anklicken und pruefen, ob die passende Datei geoeffnet wird.
 8. Oeffne `demo-project/package.json`. Es erscheinen Subtabs wie `Package`, `Lock`, `npmrc` und `nvm`.
 9. Oeffne `tsconfig.json` und `.env` im Projektroot.
-10. Oeffne `src/app/state-management/central/cart.actions.ts` (zentraler Store).
+10. Oeffne `src/app/state-management/central/cart.actions.ts` (zentraler Store, alle Dateien in einem Ordner).
+    Probiere auch `user.actions.ts` und `catalog.actions.ts` — jeweils eigene Subtab-Gruppe `cart`, `user`, `catalog`.
 11. Oeffne `src/app/state-management/feature-based/products/products.actions.ts`
     (Feature-Store über `products/` und `products-state/`).
+    Gleiches Muster fuer `checkout/` + `checkout-state/` sowie `orders/` + `orders-state/`.
 12. Oeffne `src/app/models/central/user.model.ts` und
     `src/app/models/feature-based/user/user.model.ts`.
 

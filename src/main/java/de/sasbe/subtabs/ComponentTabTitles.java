@@ -71,7 +71,7 @@ final class ComponentTabTitles {
 
         for (SubtabCandidate candidate : ComponentFileNaming.candidates(ruleMatch.groupKey())) {
             if (candidate.fileName().equals(file.getName())) {
-                return candidate.displayLabel(file.getName());
+                return candidate.resolveLabel(file.getName());
             }
         }
         return null;

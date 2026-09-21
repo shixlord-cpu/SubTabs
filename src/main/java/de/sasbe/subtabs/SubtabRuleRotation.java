@@ -18,13 +18,21 @@ final class SubtabRuleRotation {
             @NotNull List<CustomSubtabRule> rules
     ) {
         List<Integer> indices = new ArrayList<>();
-        for (CustomSubtabRuleMatcher.Match match : CustomSubtabRuleMatcher.matchAll(fileName, rules)) {
-            CustomSubtabRuleMatcher.ParsedGroupKey parsed = CustomSubtabRuleMatcher.parseGroupKey(match.groupKey());
-            if (parsed != null) {
-                indices.add(parsed.ruleIndex());
+        for (int index = 0; index < rules.size(); index++) {
+            CustomSubtabRule rule = rules.get(index);
+            if (!participatesInRuleSwitch(rule)) {
+                continue;
+            }
+            if (CustomSubtabRuleMatcher.matchesRuleIndex(fileName, rules, index)) {
+                indices.add(index);
             }
         }
         return List.copyOf(indices);
+    }
+
+    static boolean participatesInRuleSwitch(@NotNull CustomSubtabRule rule) {
+        return rule.type != CustomSubtabRule.Type.FOLDER
+                && rule.type != CustomSubtabRule.Type.USER_GROUPS;
     }
 
     /**

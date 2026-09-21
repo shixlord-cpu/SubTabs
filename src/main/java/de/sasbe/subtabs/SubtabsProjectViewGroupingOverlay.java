@@ -41,9 +41,17 @@ final class SubtabsProjectViewGroupingOverlay {
             Key.create("componentSubtabs.projectViewGroupingViewportListener");
     private static final Key<Integer> INSTALL_GENERATION_KEY =
             Key.create("componentSubtabs.projectViewGroupingInstallGeneration");
+    private static final Key<Integer> INSTALL_RESET_CYCLE_KEY =
+            Key.create("componentSubtabs.projectViewGroupingInstallResetCycle");
     private static final int MAX_INSTALL_ATTEMPTS = 20;
+    private static final int MAX_INSTALL_RESET_CYCLES = 8;
 
     private SubtabsProjectViewGroupingOverlay() {
+    }
+
+    private static boolean shouldShowGroupingButton() {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        return settings.isFamiliaEnabled() && settings.isGroupRelatedFilesInProjectView();
     }
 
     static void installOn(@NotNull Project project) {
@@ -51,6 +59,7 @@ final class SubtabsProjectViewGroupingOverlay {
             disposeAll(project);
             return;
         }
+        project.putUserData(INSTALL_RESET_CYCLE_KEY, 0);
         scheduleInstall(project, 0);
     }
 
@@ -80,7 +89,7 @@ final class SubtabsProjectViewGroupingOverlay {
             disposeHandle(tree);
             return;
         }
-        if (!SubtabsSettings.getInstance().isShowCollapseButton()) {
+        if (!shouldShowGroupingButton()) {
             disposeHandle(tree);
             return;
         }
@@ -201,7 +210,7 @@ final class SubtabsProjectViewGroupingOverlay {
             return;
         }
 
-        if (!SubtabsSettings.getInstance().isShowCollapseButton()) {
+        if (!shouldShowGroupingButton()) {
             for (JTree tree : trees) {
                 disposeHandle(tree);
             }
@@ -218,6 +227,7 @@ final class SubtabsProjectViewGroupingOverlay {
             if (SubtabsProjectViewGroupingBusyState.getInstance(project).isBusy()) {
                 finishBusyWhenReady(project);
             }
+            scheduleInstallReset(project);
             return;
         }
         int generation = installGeneration(project);
@@ -232,13 +242,37 @@ final class SubtabsProjectViewGroupingOverlay {
         );
     }
 
+    private static void scheduleInstallReset(@NotNull Project project) {
+        int resetCycle = installResetCycle(project) + 1;
+        if (resetCycle > MAX_INSTALL_RESET_CYCLES || !shouldShowGroupingButton()) {
+            return;
+        }
+        project.putUserData(INSTALL_RESET_CYCLE_KEY, resetCycle);
+        int generation = installGeneration(project);
+        ApplicationManager.getApplication().invokeLater(
+                () -> {
+                    if (project.isDisposed() || generation != installGeneration(project)) {
+                        return;
+                    }
+                    scheduleInstall(project, 0);
+                },
+                project.getDisposed()
+        );
+    }
+
     private static void bumpInstallGeneration(@NotNull Project project) {
         project.putUserData(INSTALL_GENERATION_KEY, installGeneration(project) + 1);
+        project.putUserData(INSTALL_RESET_CYCLE_KEY, 0);
     }
 
     private static int installGeneration(@NotNull Project project) {
         Integer generation = project.getUserData(INSTALL_GENERATION_KEY);
         return generation == null ? 0 : generation;
+    }
+
+    private static int installResetCycle(@NotNull Project project) {
+        Integer cycle = project.getUserData(INSTALL_RESET_CYCLE_KEY);
+        return cycle == null ? 0 : cycle;
     }
 
     private static void restoreTreeInViewport(@NotNull JTree tree) {
@@ -289,7 +323,7 @@ final class SubtabsProjectViewGroupingOverlay {
     }
 
     private static @NotNull ComponentSubtabIconButton createButton(@NotNull Project project) {
-        ComponentSubtabIconButton button = new ComponentSubtabIconButton(SubtabsIcons.ACTIVE);
+        ComponentSubtabIconButton button = new ComponentSubtabIconButton(SubtabsIcons.GROUPING_EXPANDED);
         int size = Math.max(JBUI.scale(20), ComponentSubtabUi.tabHeight());
         Dimension dimension = new Dimension(size, size);
         button.setPreferredSize(dimension);
@@ -470,11 +504,10 @@ final class SubtabsProjectViewGroupingOverlay {
         }
 
         private void updateButtonPresentation(@NotNull Project project) {
-            if (button.isLoading()) {
-                return;
-            }
             boolean collapsed = SubtabsProjectViewGroupingState.getInstance(project).isCollapsed();
-            button.setIcon(collapsed ? SubtabsIcons.INACTIVE : SubtabsIcons.ACTIVE);
+            if (!button.isLoading()) {
+                button.setIcon(collapsed ? SubtabsIcons.GROUPING_COLLAPSED : SubtabsIcons.GROUPING_EXPANDED);
+            }
             String tooltip = collapsed
                     ? "Gruppierung im Projektbaum ausklappen"
                     : "Gruppierung im Projektbaum einklappen";
@@ -484,8 +517,11 @@ final class SubtabsProjectViewGroupingOverlay {
 
         private void setBusy(boolean busy, @NotNull Project project) {
             button.setLoading(busy);
-            if (!busy) {
+            if (busy) {
+                button.setIcon(SubtabsIcons.GROUPING_EXPANDED);
+            } else {
                 updateButtonPresentation(project);
+                attach();
             }
         }
 

@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -17,7 +19,7 @@ class CustomSubtabRuleMatcherTest {
                 .findFirst()
                 .orElseThrow();
         CustomSubtabRule neighbor = state.copy();
-        neighbor.name = "State Nachbar";
+        neighbor.name = "State Folder";
         neighbor.searchNeighbors = true;
         List<CustomSubtabRule> rules = List.of(state, neighbor);
 
@@ -28,12 +30,11 @@ class CustomSubtabRuleMatcherTest {
     }
 
     @Test
-    void matchesStemRuleBeforeBuiltIns() {
+    void matchesSuffixPatternFromShape() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "Stories";
-        rule.type = CustomSubtabRule.Type.STEM;
         rule.patterns = ".stories.ts, .stories.tsx";
-        rule.labels = "Stories, Stories";
+        rule.nameSegments = "2, 2";
 
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(
                 "button.stories.ts",
@@ -52,9 +53,8 @@ class CustomSubtabRuleMatcherTest {
     void matchesExactFileRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "Docker";
-        rule.type = CustomSubtabRule.Type.FILES;
         rule.patterns = "Dockerfile, compose.yaml";
-        rule.labels = "Dockerfile, Compose";
+        rule.nameSegments = "1, 1";
 
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(
                 "compose.yaml",
@@ -62,7 +62,7 @@ class CustomSubtabRuleMatcherTest {
         );
 
         assertNotNull(match);
-        assertEquals("rule:0:@files", match.groupKey());
+        assertEquals("rule:0:Docker", match.groupKey());
         assertEquals("Docker", match.displayName());
         assertEquals(2, match.candidates().size());
     }
@@ -70,9 +70,8 @@ class CustomSubtabRuleMatcherTest {
     @Test
     void resolvesStoredGroupKey() {
         CustomSubtabRule rule = new CustomSubtabRule();
-        rule.type = CustomSubtabRule.Type.STEM;
         rule.patterns = ".dto.ts, .model.ts";
-        rule.labels = "DTO, Model";
+        rule.nameSegments = "2, 2";
 
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
                 "rule:0:user",
@@ -86,25 +85,25 @@ class CustomSubtabRuleMatcherTest {
     }
 
     @Test
-    void stripsComponentSuffixForDisplayName() {
+    void usesGroupNameSegmentsForGroupKeyAndDisplayName() {
         CustomSubtabRule rule = new CustomSubtabRule();
-        rule.type = CustomSubtabRule.Type.STEM;
-        rule.patterns = ".ts";
-        rule.stripComponentSuffix = true;
+        rule.patterns = ".ts, .html";
+        rule.nameSegments = "2, -1";
+        rule.groupNameSegments = "1";
 
-        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
-                "rule:0:user-card.component",
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(
+                "user-card.component.ts",
                 List.of(rule)
         );
 
         assertNotNull(match);
+        assertEquals("rule:0:user-card#user-card.component", match.groupKey());
         assertEquals("user-card", match.displayName());
     }
 
     @Test
-    void appendsProjectViewSuffixForStemGroups() {
+    void appendsProjectViewSuffixForGroupName() {
         CustomSubtabRule rule = new CustomSubtabRule();
-        rule.type = CustomSubtabRule.Type.STEM;
         rule.patterns = ".actions.ts, .reducer.ts";
         rule.groupSuffix = "state";
 
@@ -124,13 +123,12 @@ class CustomSubtabRuleMatcherTest {
     @Test
     void appendsSuffixForComponentGroups() {
         CustomSubtabRule rule = new CustomSubtabRule();
-        rule.type = CustomSubtabRule.Type.STEM;
         rule.patterns = ".ts, .html";
-        rule.stripComponentSuffix = true;
+        rule.groupNameSegments = "1";
         rule.groupSuffix = "component";
 
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
-                "rule:0:products.component",
+                "rule:0:products#products.component",
                 List.of(rule)
         );
 
@@ -154,7 +152,6 @@ class CustomSubtabRuleMatcherTest {
     void groupsAllMatchingExtensionsInFolderRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "xml";
-        rule.type = CustomSubtabRule.Type.FILES;
         rule.patterns = ".xml";
 
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(
@@ -169,13 +166,13 @@ class CustomSubtabRuleMatcherTest {
     }
 
     @Test
-    void keepsExactDotfileListsAsFileRules() {
+    void groupsExactDotfileListsByRuleName() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "env";
-        rule.type = CustomSubtabRule.Type.FILES;
         rule.patterns = ".env, .env.local";
 
-        assertEquals("rule:0:@files", CustomSubtabRuleMatcher.match(".env", List.of(rule)).groupKey());
+        assertEquals("rule:0:env", CustomSubtabRuleMatcher.match(".env", List.of(rule)).groupKey());
+        assertEquals("rule:0:env", CustomSubtabRuleMatcher.match(".env.local", List.of(rule)).groupKey());
         assertNull(CustomSubtabRuleMatcher.match(".env.sample", List.of(rule)));
     }
 
@@ -183,14 +180,13 @@ class CustomSubtabRuleMatcherTest {
     void skipsDisabledRules() {
         CustomSubtabRule disabled = new CustomSubtabRule();
         disabled.enabled = false;
-        disabled.type = CustomSubtabRule.Type.STEM;
         disabled.patterns = ".ts";
 
         assertNull(CustomSubtabRuleMatcher.match("user.ts", List.of(disabled)));
     }
 
     @Test
-    void skipsStemRuleWhenStemEndsWithExcludedSuffix() {
+    void skipsSuffixRuleWhenPrefixEndsWithExcludedSuffix() {
         CustomSubtabRule htmlRule = SubtabRulesDefaults.htmlRule();
         CustomSubtabRule componentRule = SubtabRulesDefaults.createDefaults().stream()
                 .filter(rule -> "Komponente".equals(rule.name))
@@ -200,13 +196,104 @@ class CustomSubtabRuleMatcherTest {
 
         assertNull(CustomSubtabRuleMatcher.match("header.component.html", List.of(htmlRule)));
         assertEquals(
-                "rule:1:header.component",
+                "rule:1:header#header.component",
                 CustomSubtabRuleMatcher.match("header.component.html", rules).groupKey()
         );
         assertEquals(
                 "rule:0:catalog-page",
                 CustomSubtabRuleMatcher.match("catalog-page.html", rules).groupKey()
         );
+    }
+
+    @Test
+    void singleTabSegmentAppliesToEveryPattern() {
+        CustomSubtabRule rule = new CustomSubtabRule();
+        rule.patterns = ".actions.ts, .reducer.ts, .effects.ts";
+        rule.nameSegments = "1";
+
+        assertEquals("cart", CustomSubtabRuleMatcher.resolveTabName(rule, "cart.actions.ts"));
+        assertEquals("cart", CustomSubtabRuleMatcher.resolveTabName(rule, "cart.reducer.ts"));
+        assertEquals("cart", CustomSubtabRuleMatcher.resolveTabName(rule, "cart.effects.ts"));
+    }
+
+    @Test
+    void resolvesTabNamesFromNameSegments() {
+        CustomSubtabRule rule = SubtabRulesDefaults.createDefaults().stream()
+                .filter(stored -> "State".equals(stored.name))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("actions", CustomSubtabRuleMatcher.resolveTabName(rule, "cart.actions.ts"));
+        assertEquals("reducer", CustomSubtabRuleMatcher.resolveTabName(rule, "cart.reducer.ts"));
+    }
+
+    @Test
+    void resolvesGroupNamesFromGroupNameSegments() {
+        CustomSubtabRule rule = SubtabRulesDefaults.createDefaults().stream()
+                .filter(stored -> "State".equals(stored.name))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("cart", CustomSubtabRuleMatcher.resolveGroupName(rule, "cart"));
+        assertEquals("products", CustomSubtabRuleMatcher.resolveGroupName(rule, "products"));
+    }
+
+    @Test
+    void groupKeyFollowsGroupNameSegmentsNotFileStem() {
+        CustomSubtabRule rule = SubtabRulesDefaults.createDefaults().stream()
+                .filter(stored -> "State".equals(stored.name))
+                .findFirst()
+                .orElseThrow()
+                .copy();
+        rule.groupNameSegments = "2";
+
+        assertEquals(
+                "rule:0:actions#cart",
+                CustomSubtabRuleMatcher.match("cart.actions.ts", List.of(rule)).groupKey()
+        );
+        assertEquals(
+                "rule:0:reducer#cart",
+                CustomSubtabRuleMatcher.match("cart.reducer.ts", List.of(rule)).groupKey()
+        );
+        assertNotEquals(
+                CustomSubtabRuleMatcher.match("cart.actions.ts", List.of(rule)).groupKey(),
+                CustomSubtabRuleMatcher.match("cart.reducer.ts", List.of(rule)).groupKey()
+        );
+    }
+
+    @Test
+    void detectsSuffixPatternsFromShape() {
+        assertTrue(CustomSubtabRuleMatcher.usesSuffixMatching(".actions.ts"));
+        assertFalse(CustomSubtabRuleMatcher.usesSuffixMatching("package.json"));
+        assertFalse(CustomSubtabRuleMatcher.usesSuffixMatching(".env"));
+    }
+
+    @Test
+    void excludesMatchingFilesFromRule() {
+        CustomSubtabRule rule = SubtabRulesDefaults.createDefaults().stream()
+                .filter(stored -> "Komponente".equals(stored.name))
+                .findFirst()
+                .orElseThrow();
+
+        assertNull(CustomSubtabRuleMatcher.match("cart.actions.ts", List.of(rule)));
+        assertNull(CustomSubtabRuleMatcher.match("cart.reducer.ts", List.of(rule)));
+        assertNotNull(CustomSubtabRuleMatcher.match("header.component.ts", List.of(rule)));
+        assertEquals(
+                "rule:0:header#header.component",
+                CustomSubtabRuleMatcher.match("header.component.ts", List.of(rule)).groupKey()
+        );
+    }
+
+    @Test
+    void excludePatternsAllowRuleMatchWhenEmpty() {
+        CustomSubtabRule rule = SubtabRulesDefaults.createDefaults().stream()
+                .filter(stored -> "Komponente".equals(stored.name))
+                .findFirst()
+                .orElseThrow()
+                .copy();
+        rule.excludePatterns = "";
+
+        assertNotNull(CustomSubtabRuleMatcher.match("cart.actions.ts", List.of(rule)));
     }
 
     @Test

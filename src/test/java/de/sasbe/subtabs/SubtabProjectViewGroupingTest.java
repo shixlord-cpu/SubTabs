@@ -58,7 +58,7 @@ class SubtabProjectViewGroupingTest {
                 "README.md"
         ));
         assertEquals(1, groupKeys.size());
-        assertTrue(groupKeys.get(0).endsWith(":user-card.component"));
+        assertTrue(groupKeys.get(0).endsWith(":user-card#user-card.component"));
     }
 
     @Test
@@ -88,24 +88,32 @@ class SubtabProjectViewGroupingTest {
     @Test
     void keepsLocalGroupsSeparateWithoutNeighborSearch() {
         assertEquals(
-                "rule:6:products.component",
-                SubtabProjectViewGrouping.mergeKey("rule:6:products.component")
+                "rule:7:products#products.component",
+                SubtabProjectViewGrouping.mergeKey("rule:7:products#products.component")
+        );
+    }
+
+    @Test
+    void keepsStateFolderGroupsLocalWithoutNeighborMerge() {
+        assertEquals(
+                "rule:4:cart",
+                SubtabProjectViewGrouping.mergeKey("rule:4:cart")
         );
     }
 
     @Test
     void keepsDistinctMergeKeysForDifferentComponentStems() {
         assertNotEquals(
-                SubtabProjectViewGrouping.mergeKey("rule:6:products.component"),
-                SubtabProjectViewGrouping.mergeKey("rule:6:user-card.component")
+                SubtabProjectViewGrouping.mergeKey("rule:7:products#products.component"),
+                SubtabProjectViewGrouping.mergeKey("rule:7:user-card#user-card.component")
         );
     }
 
     @Test
     void usesStableMergeKeyForSameComponentGroup() {
         assertEquals(
-                SubtabProjectViewGrouping.mergeKey("rule:6:products.component"),
-                SubtabProjectViewGrouping.mergeKey("rule:6:products.component")
+                SubtabProjectViewGrouping.mergeKey("rule:7:products#products.component"),
+                SubtabProjectViewGrouping.mergeKey("rule:7:products#products.component")
         );
     }
 }

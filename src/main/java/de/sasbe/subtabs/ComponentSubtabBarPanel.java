@@ -64,6 +64,7 @@ final class ComponentSubtabBarPanel extends JPanel {
     private SubtabFitScale.Result fit = SubtabFitScale.Result.FULL;
     private int naturalStripWidth;
     private int topSpacerHeight;
+    private @Nullable String boundActiveRuleName;
 
     ComponentSubtabBarPanel(
             @NotNull Project project,
@@ -89,7 +90,7 @@ final class ComponentSubtabBarPanel extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setBackground(UIUtil.getPanelBackground());
         scrollPane.getViewport().setBackground(UIUtil.getPanelBackground());
-        scrollPane.setOverlappingScrollBar(false);
+        scrollPane.setOverlappingScrollBar(true);
         JScrollBar horizontalBar = scrollPane.getHorizontalScrollBar();
         horizontalBar.setOpaque(true);
         horizontalBar.putClientProperty(JBScrollPane.IGNORE_SCROLLBAR_IN_INSETS, Boolean.FALSE);
@@ -103,19 +104,22 @@ final class ComponentSubtabBarPanel extends JPanel {
         ruleSwitchPanel = new JPanel();
         ruleSwitchPanel.setLayout(new BoxLayout(ruleSwitchPanel, BoxLayout.X_AXIS));
         ruleSwitchPanel.setOpaque(false);
+        ruleSwitchPanel.setBorder(JBUI.Borders.emptyLeft(4));
         ruleSwitchPanel.add(ruleSwitchButton);
         ruleSwitchPanel.setVisible(false);
 
         trailingPanel = new JPanel();
         trailingPanel.setLayout(new BoxLayout(trailingPanel, BoxLayout.X_AXIS));
         trailingPanel.setOpaque(false);
+        trailingPanel.setBorder(JBUI.Borders.emptyLeft(2));
         trailingPanel.add(collapseButton);
         trailingPanel.add(closeSideButton);
 
-        JPanel eastPanel = new JPanel(new BorderLayout(0, 0));
+        JPanel eastPanel = new JPanel();
+        eastPanel.setLayout(new BoxLayout(eastPanel, BoxLayout.X_AXIS));
         eastPanel.setOpaque(false);
-        eastPanel.add(ruleSwitchPanel, BorderLayout.WEST);
-        eastPanel.add(trailingPanel, BorderLayout.EAST);
+        eastPanel.add(ruleSwitchPanel);
+        eastPanel.add(trailingPanel);
 
         applyChrome();
         add(overflowStrip, BorderLayout.CENTER);
@@ -135,6 +139,7 @@ final class ComponentSubtabBarPanel extends JPanel {
         });
 
         bind(group, displayedFile);
+        updateScrollReserve();
     }
 
     void refreshAppearance() {
@@ -181,6 +186,7 @@ final class ComponentSubtabBarPanel extends JPanel {
 
     private void updateTrailingPanelVisibility() {
         trailingPanel.setVisible(collapseButton.isVisible() || closeSideButton.isVisible());
+        updateScrollReserve();
     }
 
     void refreshRuleSwitchButton() {
@@ -194,12 +200,12 @@ final class ComponentSubtabBarPanel extends JPanel {
         );
         ruleSwitchPanel.setVisible(visible);
         if (visible) {
+            List<CustomSubtabRule> rules = ComponentFileNaming.rules();
             List<Integer> indices = SubtabRuleRotation.matchingRuleIndices(
                     displayedFile.getName(),
-                    ComponentFileNaming.rules()
+                    rules
             );
             if (!indices.isEmpty()) {
-                List<CustomSubtabRule> rules = ComponentFileNaming.rules();
                 int activeIndex = indices.get(0);
                 String ruleName = activeIndex >= 0 && activeIndex < rules.size()
                         ? rules.get(activeIndex).name
@@ -210,8 +216,42 @@ final class ComponentSubtabBarPanel extends JPanel {
                 ruleSwitchButton.getAccessibleContext().setAccessibleName("Regel wechseln");
             }
         }
+        updateScrollReserve();
         revalidate();
         repaint();
+    }
+
+    private void updateScrollReserve() {
+        overflowStrip.setRightReserve(reservedEastWidth());
+    }
+
+    private int reservedEastWidth() {
+        int width = 0;
+        if (ruleSwitchPanel.isVisible()) {
+            width += Math.max(
+                    ruleSwitchPanel.getPreferredSize().width,
+                    ruleSwitchButton.getPreferredSize().width
+            );
+        }
+        if (trailingPanel.isVisible()) {
+            width += trailingPanel.getPreferredSize().width;
+        }
+        if (width > 0) {
+            width += JBUI.scale(4);
+        }
+        return width;
+    }
+
+    private static @Nullable String activeRuleName(
+            @NotNull VirtualFile file,
+            @NotNull List<CustomSubtabRule> rules
+    ) {
+        List<Integer> indices = SubtabRuleRotation.matchingRuleIndices(file.getName(), rules);
+        if (indices.isEmpty()) {
+            return null;
+        }
+        int activeIndex = indices.get(0);
+        return activeIndex >= 0 && activeIndex < rules.size() ? rules.get(activeIndex).name : null;
     }
 
     private static boolean sameRelatedFiles(
@@ -242,12 +282,18 @@ final class ComponentSubtabBarPanel extends JPanel {
     }
 
     void bind(@NotNull ComponentSubtabGroup group, @NotNull VirtualFile displayedFile) {
+        List<CustomSubtabRule> rules = ComponentFileNaming.rules();
+        String activeRuleName = activeRuleName(displayedFile, rules);
         boolean groupChanged = this.group != null && !sameRelatedFiles(this.group, group);
+        boolean ruleChanged = boundActiveRuleName != null
+                && activeRuleName != null
+                && !boundActiveRuleName.equals(activeRuleName);
         this.group = group;
         this.displayedFile = displayedFile;
-        if (groupChanged) {
+        if (groupChanged || ruleChanged) {
             clearButtons();
         }
+        boundActiveRuleName = activeRuleName;
         rebuildButtonsIfNeeded();
         updateSelection(displayedFile);
         refreshOpenStates();
@@ -260,6 +306,20 @@ final class ComponentSubtabBarPanel extends JPanel {
         updateSelection(displayedFile);
         refreshOpenStates();
         refreshRuleSwitchButton();
+    }
+
+    void refreshRelatedFiles(@NotNull ComponentSubtabGroup group, @NotNull VirtualFile displayedFile) {
+        this.group = group;
+        this.displayedFile = displayedFile;
+        boundActiveRuleName = activeRuleName(displayedFile, ComponentFileNaming.rules());
+        clearButtons();
+        rebuildButtonsIfNeeded();
+        updateSelection(displayedFile);
+        refreshOpenStates();
+        refreshRuleSwitchButton();
+        watchAllDocuments();
+        revalidate();
+        repaint();
     }
 
     @NotNull VirtualFile displayedFile() {
@@ -397,6 +457,21 @@ final class ComponentSubtabBarPanel extends JPanel {
         overflowStrip.setMode(mode);
     }
 
+    @Override
+    public Dimension getPreferredSize() {
+        return new Dimension(super.getPreferredSize().width, stablePanelHeight());
+    }
+
+    @Override
+    public Dimension getMinimumSize() {
+        return new Dimension(0, stablePanelHeight());
+    }
+
+    private int stablePanelHeight() {
+        Insets insets = getInsets();
+        return insets.top + ComponentSubtabUi.barRowHeight() + insets.bottom;
+    }
+
     private void rebuildButtonsIfNeeded() {
         if (!buttonsByFile.isEmpty()) {
             updateSelection(displayedFile);
@@ -520,10 +595,18 @@ final class ComponentSubtabBarPanel extends JPanel {
         }
         if (width <= 0) {
             Container parent = getParent();
-            int eastWidth = ruleSwitchPanel.getPreferredSize().width + trailingPanel.getPreferredSize().width;
-            width = Math.max(0, (parent != null ? parent.getWidth() : getWidth()) - eastWidth - getInsets().left - getInsets().right);
+            Component east = ((BorderLayout) getLayout()).getLayoutComponent(BorderLayout.EAST);
+            int eastWidth = east != null ? east.getPreferredSize().width : 0;
+            width = Math.max(0, (parent != null ? parent.getWidth() : getWidth())
+                    - eastWidth
+                    - getInsets().left
+                    - getInsets().right);
         }
-        return width;
+        return Math.max(0, width - overflowStripRightGap());
+    }
+
+    private int overflowStripRightGap() {
+        return reservedEastWidth();
     }
 
     private int measureNaturalStripWidth() {

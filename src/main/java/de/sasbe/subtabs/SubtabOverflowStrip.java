@@ -47,6 +47,7 @@ final class SubtabOverflowStrip extends JPanel {
         }
     };
     private SubtabOverflowMode mode = SubtabOverflowMode.SCROLLBAR;
+    private int rightReserve;
 
     SubtabOverflowStrip(
             @NotNull JBScrollPane scrollPane,
@@ -91,6 +92,14 @@ final class SubtabOverflowStrip extends JPanel {
         component.addMouseWheelListener(wheelListener);
     }
 
+    void setRightReserve(int rightReserve) {
+        this.rightReserve = Math.max(0, rightReserve);
+        layoutChildren();
+        updateArrows();
+        revalidate();
+        repaint();
+    }
+
     void setMode(@NotNull SubtabOverflowMode mode) {
         this.mode = mode;
         JScrollBar bar = scrollPane.getHorizontalScrollBar();
@@ -133,12 +142,17 @@ final class SubtabOverflowStrip extends JPanel {
 
     @Override
     public Dimension getPreferredSize() {
-        return scrollPane.getPreferredSize();
+        Dimension scroll = scrollPane.getPreferredSize();
+        return new Dimension(scroll.width, stableRowHeight());
     }
 
     @Override
     public Dimension getMinimumSize() {
-        return new Dimension(0, scrollPane.getPreferredSize().height);
+        return new Dimension(0, stableRowHeight());
+    }
+
+    private static int stableRowHeight() {
+        return ComponentSubtabUi.barRowHeight();
     }
 
     @Override
@@ -150,10 +164,11 @@ final class SubtabOverflowStrip extends JPanel {
     private void layoutChildren() {
         int width = getWidth();
         int height = getHeight();
-        scrollPane.setBounds(0, 0, width, height);
+        int scrollWidth = Math.max(0, width - rightReserve);
+        scrollPane.setBounds(0, 0, scrollWidth, height);
         int arrowWidth = JBUI.scale(ARROW_WIDTH);
         leftArrow.setBounds(0, 0, arrowWidth, height);
-        rightArrow.setBounds(Math.max(0, width - arrowWidth), 0, arrowWidth, height);
+        rightArrow.setBounds(Math.max(0, scrollWidth - arrowWidth), 0, arrowWidth, height);
     }
 
     private void onWheel(@NotNull MouseWheelEvent event) {

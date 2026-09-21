@@ -15,6 +15,7 @@ public final class SubtabRulesDefaults {
         rules.add(tsconfigRule());
         rules.add(envRule());
         rules.add(stateRule());
+        rules.add(stateFolderRule());
         rules.add(modelRule());
         rules.add(htmlRule());
         rules.add(componentRule());
@@ -27,6 +28,7 @@ public final class SubtabRulesDefaults {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "Eigene Gruppen";
         rule.type = CustomSubtabRule.Type.USER_GROUPS;
+        rule.nameSegments = "1";
         rule.enabled = true;
         rule.builtin = true;
         return rule;
@@ -36,6 +38,7 @@ public final class SubtabRulesDefaults {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "Ordner";
         rule.type = CustomSubtabRule.Type.FOLDER;
+        rule.nameSegments = "1";
         rule.enabled = true;
         rule.builtin = true;
         return rule;
@@ -44,11 +47,11 @@ public final class SubtabRulesDefaults {
     private static @NotNull CustomSubtabRule npmRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "npm";
-        rule.type = CustomSubtabRule.Type.FILES;
         rule.patterns = """
                 package.json, package-lock.json, npm-shrinkwrap.json, yarn.lock, pnpm-lock.yaml,\
                  bun.lock, bun.lockb, .npmrc, .nvmrc, .node-version""".replace('\n', ' ').trim();
-        rule.labels = "Package, Lock, Lock, Yarn, pnpm, Bun, Bun, npmrc, nvm, nvm";
+        rule.nameSegments = "1, 1, 1, 1, 1, 1, 1, 2, 2, 2";
+        rule.groupNameSegments = "1";
         rule.slotKeys = "package.json, lock, lock, yarn.lock, pnpm-lock.yaml, bun.lock, bun.lockb, .npmrc, nvm, nvm";
         return rule;
     }
@@ -56,31 +59,31 @@ public final class SubtabRulesDefaults {
     private static @NotNull CustomSubtabRule tsconfigRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "tsconfig";
-        rule.type = CustomSubtabRule.Type.FILES;
         rule.patterns = """
                 tsconfig.json, tsconfig.base.json, tsconfig.app.json, tsconfig.spec.json,\
                  tsconfig.lib.json, tsconfig.editor.json, tsconfig.build.json""".replace('\n', ' ').trim();
-        rule.labels = "JSON, Base, App, Spec, Lib, Editor, Build";
+        rule.nameSegments = "1, 2, 2, 2, 2, 2, 2";
+        rule.groupNameSegments = "1";
         return rule;
     }
 
     private static @NotNull CustomSubtabRule envRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "env";
-        rule.type = CustomSubtabRule.Type.FILES;
         rule.patterns = """
                 .env, .env.local, .env.example, .env.sample, .env.development, .env.production, .env.test""".replace('\n', ' ').trim();
-        rule.labels = "env, local, example, example, dev, prod, test";
+        rule.nameSegments = "2, 3, 3, 3, 3, 3, 3";
+        rule.groupNameSegments = "2";
         return rule;
     }
 
     private static @NotNull CustomSubtabRule stateRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "State";
-        rule.type = CustomSubtabRule.Type.STEM;
         rule.patterns = """
                 .actions.ts, .reducer.ts, .reducers.ts, .effects.ts, .selectors.ts, .state.ts, .store.ts, .facade.ts""".replace('\n', ' ').trim();
-        rule.labels = "Actions, Reducer, Reducer, Effects, Selectors, State, Store, Facade";
+        rule.nameSegments = "2, 2, 2, 2, 2, 2, 2, 2";
+        rule.groupNameSegments = "1";
         rule.slotKeys = """
                 .actions.ts, .reducer.ts, .reducer.ts, .effects.ts, .selectors.ts, .state.ts, .store.ts, .facade.ts""".replace('\n', ' ').trim();
         rule.searchNeighbors = true;
@@ -88,37 +91,56 @@ public final class SubtabRulesDefaults {
         return rule;
     }
 
+    static @NotNull CustomSubtabRule stateFolderRule() {
+        CustomSubtabRule rule = new CustomSubtabRule();
+        rule.name = "State Folder";
+        rule.patterns = """
+                .actions.ts, .reducer.ts, .reducers.ts, .effects.ts, .selectors.ts, .state.ts, .store.ts, .facade.ts""".replace('\n', ' ').trim();
+        rule.nameSegments = "2, 2, 2, 2, 2, 2, 2, 2";
+        rule.groupNameSegments = "1";
+        rule.slotKeys = """
+                .actions.ts, .reducer.ts, .reducer.ts, .effects.ts, .selectors.ts, .state.ts, .store.ts, .facade.ts""".replace('\n', ' ').trim();
+        rule.searchNeighbors = false;
+        rule.groupSuffix = "state";
+        return rule;
+    }
+
     private static @NotNull CustomSubtabRule modelRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "Model";
-        rule.type = CustomSubtabRule.Type.STEM;
         rule.patterns = """
                 .interface.ts, .entity.ts, .mapper.ts, .model.ts, .mock.ts, .dto.ts, .type.ts""".replace('\n', ' ').trim();
-        rule.labels = "Interface, Entity, Mapper, Model, Mock, DTO, Type";
+        rule.nameSegments = "2, 2, 2, 2, 2, 2, 2";
+        rule.groupNameSegments = "1";
         return rule;
+    }
+
+    static @NotNull String defaultStateExcludePatterns() {
+        return """
+                .actions.ts, .reducer.ts, .reducers.ts, .effects.ts, .selectors.ts, .state.ts, .store.ts, .facade.ts""".replace('\n', ' ').trim();
     }
 
     private static @NotNull CustomSubtabRule componentRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "Komponente";
-        rule.type = CustomSubtabRule.Type.STEM;
         rule.patterns = ".spec.ts, .test.ts, .ts, .html, .scss, .sass, .css, .less";
-        rule.labels = "Test, Test, TS, HTML, Style, Style, Style, Style";
+        rule.nameSegments = "-2, -2, 2, -1, -1, -1, -1, -1";
+        rule.groupNameSegments = "1";
         rule.slotKeys = ".spec.ts, .test.ts, .ts, .html, style, style, style, style";
-        rule.stripComponentSuffix = true;
+        rule.excludePatterns = defaultStateExcludePatterns();
+        rule.groupSuffix = "component";
         return rule;
     }
 
     static @NotNull CustomSubtabRule htmlRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "HTML";
-        rule.type = CustomSubtabRule.Type.STEM;
         rule.patterns = ".html, .htm, .xhtml, .css, .js";
-        rule.labels = "HTML, HTML, HTML, Style, Script";
+        rule.nameSegments = "1, 1, 1, -1, -1";
+        rule.groupNameSegments = "1";
         rule.slotKeys = ".html, .htm, .xhtml, style, script";
-        rule.excludeStemSuffixes = ".component";
+        rule.excludePatterns = ".component.html, .component.htm, .component.xhtml, .component.css, .component.js";
         rule.enabled = true;
-        rule.builtin = true;
         return rule;
     }
 }

@@ -21,14 +21,14 @@ public class ComponentSubtabMainTabTitleTest extends RealEditorWindowTestCase {
                 "main tab title should use grouped component name",
                 () -> {
                     TabInfo tabInfo = tabInfoOf(html);
-                    return tabInfo != null && "header".equals(tabInfo.getText());
+                    return tabInfo != null && "header-component".equals(tabInfo.getText());
                 },
                 30
         );
 
         TabInfo tabInfo = tabInfoOf(html);
         assertNotNull(tabInfo);
-        assertEquals("header", tabInfo.getText());
+        assertEquals("header-component", tabInfo.getText());
     }
 
     public void testLastOpenFileKeepsGroupedTitleAfterSiblingsClose() throws Exception {
@@ -48,14 +48,14 @@ public class ComponentSubtabMainTabTitleTest extends RealEditorWindowTestCase {
                 "surviving tab should keep grouped component name",
                 () -> {
                     TabInfo tabInfo = tabInfoOf(scss);
-                    return tabInfo != null && "header".equals(tabInfo.getText());
+                    return tabInfo != null && "header-component".equals(tabInfo.getText());
                 },
                 30
         );
 
         TabInfo tabInfo = tabInfoOf(scss);
         assertNotNull(tabInfo);
-        assertEquals("header", tabInfo.getText());
+        assertEquals("header-component", tabInfo.getText());
     }
 
     public void testOnlyOpenedMemberUsesComponentNameInMainTab() throws Exception {
@@ -67,6 +67,6 @@ public class ComponentSubtabMainTabTitleTest extends RealEditorWindowTestCase {
 
         TabInfo tabInfo = tabInfoOf(html);
         assertNotNull(tabInfo);
-        assertEquals("header", tabInfo.getText());
+        assertEquals("header-component", tabInfo.getText());
     }
 }

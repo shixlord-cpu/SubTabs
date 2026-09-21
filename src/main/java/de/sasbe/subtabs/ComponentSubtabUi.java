@@ -60,6 +60,10 @@ final class ComponentSubtabUi {
         return Math.max(0, Math.round(JBUI.scale(1) * heightFactor()));
     }
 
+    static int barRowHeight() {
+        return tabHeight() + 2 * verticalGap();
+    }
+
     static @NotNull Color popupHighlightedBackground() {
         return new JBColor(new Color(0xDEEAF6), new Color(0x2D4A5E));
     }

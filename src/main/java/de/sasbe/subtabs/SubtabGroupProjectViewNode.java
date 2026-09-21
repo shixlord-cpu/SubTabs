@@ -1,5 +1,6 @@
 package de.sasbe.subtabs;
 
+import com.intellij.icons.AllIcons;
 import com.intellij.ide.projectView.PresentationData;
 import com.intellij.ide.projectView.ProjectViewNode;
 import com.intellij.ide.projectView.ViewSettings;
@@ -59,14 +60,11 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
 
     @Override
     protected void update(@NotNull PresentationData presentation) {
-        presentation.setPresentableText(getValue().displayName());
-
-        PsiFileNode primaryNode = fileNodes.get(0);
-        PresentationData primaryPresentation = new PresentationData();
-        primaryNode.update(primaryPresentation);
-        if (primaryPresentation.getIcon(false) != null) {
-            presentation.setIcon(primaryPresentation.getIcon(false));
-        }
+        VirtualFile primary = getValue().primaryFile();
+        presentation.setPresentableText(ComponentFileNaming.displayName(groupKey, primary));
+        presentation.setIcon(ComponentFileNaming.createsSubtabs(groupKey)
+                ? SubtabsIcons.GROUPING_NODE
+                : AllIcons.Nodes.Package);
         if (fileNodes.size() > 1) {
             presentation.setLocationString(fileNodes.size() + " Dateien");
         }

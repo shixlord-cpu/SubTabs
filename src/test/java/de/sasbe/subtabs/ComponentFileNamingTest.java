@@ -7,18 +7,19 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ComponentFileNamingTest {
-    private static final String NPM_GROUP = "rule:0:@files";
-    private static final String TSCONFIG_GROUP = "rule:1:@files";
-    private static final String ENV_GROUP = "rule:2:@files";
+    private static final String NPM_GROUP = "rule:0:npm";
+    private static final String TSCONFIG_GROUP = "rule:1:tsconfig";
+    private static final String ENV_GROUP = "rule:2:env";
     private static final String STATE_GROUP = "rule:3:cart";
-    private static final String MODEL_GROUP = "rule:4:user";
-    private static final String HTML_GROUP = "rule:5:catalog-page";
-    private static final String COMPONENT_GROUP = "rule:6:user-card.component";
-    private static final String FOLDER_GROUP = "rule:8:@folder";
+    private static final String MODEL_GROUP = "rule:5:user";
+    private static final String HTML_GROUP = "rule:6:catalog-page";
+    private static final String COMPONENT_GROUP = "rule:7:user-card#user-card.component";
+    private static final String FOLDER_GROUP = "rule:9:@folder";
 
     @Test
     void findsTheSameBaseForEveryComponentPart() {
@@ -47,7 +48,7 @@ class ComponentFileNamingTest {
         CustomSubtabRule folderRule = SubtabRulesDefaults.folderRule();
         folderRule.enabled = false;
         List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
-        rules.set(8, folderRule);
+        rules.set(9, folderRule);
 
         assertNull(CustomSubtabRuleMatcher.match("README.md", rules));
     }
@@ -160,25 +161,32 @@ class ComponentFileNamingTest {
     void keepsComponentHtmlOnComponentRule() {
         assertEquals(COMPONENT_GROUP, ComponentFileNaming.componentBaseName("user-card.component.html"));
         assertEquals(COMPONENT_GROUP, ComponentFileNaming.componentBaseName("user-card.component.css"));
-        assertEquals("user-card", ComponentFileNaming.displayName(COMPONENT_GROUP));
+        assertEquals("user-card-component", ComponentFileNaming.displayName(COMPONENT_GROUP));
     }
 
     @Test
     void plainHtmlDoesNotInheritComponentNaming() {
         assertEquals("catalog-page", ComponentFileNaming.displayName(HTML_GROUP));
-        assertEquals("landing-page", ComponentFileNaming.displayName("rule:5:landing-page"));
-        assertNotEquals(
-                "landing-page-component",
+        assertEquals("landing-page", ComponentFileNaming.displayName("rule:6:landing-page"));
+        assertEquals(
+                "landing-page",
                 CustomSubtabRuleMatcher.displayNameWithSuffix(
                         "landing-page",
                         SubtabRulesDefaults.createDefaults().get(6)
+                )
+        );
+        assertEquals(
+                "landing-page-component",
+                CustomSubtabRuleMatcher.displayNameWithSuffix(
+                        "landing-page",
+                        SubtabRulesDefaults.createDefaults().get(7)
                 )
         );
     }
 
     @Test
     void createsCandidatesInVisibleTabOrder() {
-        List<SubtabCandidate> candidates = ComponentFileNaming.candidates("rule:6:app.component");
+        List<SubtabCandidate> candidates = ComponentFileNaming.candidates("rule:7:app#app.component");
 
         assertEquals(".spec.ts", candidates.get(0).slotId());
         assertEquals("app.component.spec.ts", candidates.get(0).fileName());
@@ -192,15 +200,30 @@ class ComponentFileNamingTest {
     @Test
     void folderGroupRulesCreateSubtabsButUserGroupsDoNot() {
         assertTrue(ComponentFileNaming.createsSubtabs(FOLDER_GROUP));
-        assertFalse(ComponentFileNaming.createsSubtabs("rule:6:@nesting:package.json"));
+        assertFalse(ComponentFileNaming.createsSubtabs("rule:8:@nesting:package.json"));
         assertTrue(ComponentFileNaming.createsSubtabs(COMPONENT_GROUP));
         assertTrue(ComponentFileNaming.createsSubtabs(NPM_GROUP));
     }
 
     @Test
     void usesShortComponentNameForTabTitle() {
-        assertEquals("user-card", ComponentFileNaming.displayName(COMPONENT_GROUP));
-        assertEquals("app", ComponentFileNaming.displayName("rule:6:app.component"));
-        assertEquals("landing-page", ComponentFileNaming.displayName("rule:5:landing-page"));
+        assertEquals("user-card-component", ComponentFileNaming.displayName(COMPONENT_GROUP));
+        assertEquals("app-component", ComponentFileNaming.displayName("rule:7:app#app.component"));
+        assertEquals("landing-page", ComponentFileNaming.displayName("rule:6:landing-page"));
+    }
+
+    @Test
+    void usesStateFolderRuleWhenItHasPriority() {
+        CustomSubtabRule state = SubtabRulesDefaults.createDefaults().stream()
+                .filter(rule -> "State".equals(rule.name))
+                .findFirst()
+                .orElseThrow();
+        CustomSubtabRule stateFolder = SubtabRulesDefaults.stateFolderRule();
+        List<CustomSubtabRule> rules = List.of(stateFolder, state);
+
+        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match("cart.actions.ts", rules);
+        assertNotNull(match);
+        assertEquals("rule:0:cart", match.groupKey());
+        assertFalse(match.searchNeighbors());
     }
 }

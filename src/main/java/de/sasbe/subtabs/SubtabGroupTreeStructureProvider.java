@@ -104,9 +104,10 @@ public final class SubtabGroupTreeStructureProvider implements TreeStructureProv
                 merged.addAll(files == null ? List.of() : files);
                 continue;
             }
+            String mergedGroupKey = groupKeyByMergeKey.getOrDefault(mergeKey, groupNode.groupKey());
             merged.add(new SubtabGroupProjectViewNode(
                     project,
-                    groupKeyByMergeKey.getOrDefault(mergeKey, groupNode.groupKey()),
+                    mergedGroupKey,
                     files,
                     settings
             ));
