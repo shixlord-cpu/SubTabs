@@ -6,6 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SubtabProjectViewGroupingTest {
@@ -87,8 +88,24 @@ class SubtabProjectViewGroupingTest {
     @Test
     void keepsLocalGroupsSeparateWithoutNeighborSearch() {
         assertEquals(
-                "rule:5:products.component",
-                SubtabProjectViewGrouping.mergeKey("rule:5:products.component")
+                "rule:6:products.component",
+                SubtabProjectViewGrouping.mergeKey("rule:6:products.component")
+        );
+    }
+
+    @Test
+    void keepsDistinctMergeKeysForDifferentComponentStems() {
+        assertNotEquals(
+                SubtabProjectViewGrouping.mergeKey("rule:6:products.component"),
+                SubtabProjectViewGrouping.mergeKey("rule:6:user-card.component")
+        );
+    }
+
+    @Test
+    void usesStableMergeKeyForSameComponentGroup() {
+        assertEquals(
+                SubtabProjectViewGrouping.mergeKey("rule:6:products.component"),
+                SubtabProjectViewGrouping.mergeKey("rule:6:products.component")
         );
     }
 }

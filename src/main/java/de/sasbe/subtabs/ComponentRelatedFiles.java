@@ -1,5 +1,7 @@
 package de.sasbe.subtabs;
 
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -33,6 +35,14 @@ final class ComponentRelatedFiles {
     }
 
     static @Nullable Match find(@NotNull VirtualFile currentFile) {
+        Project project = ProjectUtil.guessProjectForFile(currentFile);
+        if (project != null && !project.isDisposed()) {
+            return ComponentRelatedFilesCache.getInstance(project).get(currentFile);
+        }
+        return findUncached(currentFile);
+    }
+
+    static @Nullable Match findUncached(@NotNull VirtualFile currentFile) {
         VirtualFile parent = currentFile.getParent();
         if (parent == null) {
             return null;
@@ -48,6 +58,9 @@ final class ComponentRelatedFiles {
         }
 
         String baseName = ruleMatch.groupKey();
+        if (!ComponentFileNaming.createsSubtabs(baseName)) {
+            return null;
+        }
         if (CustomSubtabRuleMatcher.isFolderGroupKey(baseName)) {
             return findFolderGroup(parent, baseName, rules);
         }

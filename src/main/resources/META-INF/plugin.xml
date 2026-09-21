@@ -19,17 +19,19 @@
 
 
     <depends>com.intellij.modules.platform</depends>
+    <depends optional="true">com.intellij.modules.vcs</depends>
 
 
 
     <extensions defaultExtensionNs="com.intellij">
         <editorTabTitleProvider implementation="de.sasbe.subtabs.ComponentEditorTabTitleProvider"/>
+        <editorTabColorProvider implementation="de.sasbe.subtabs.SubtabGroupEditorTabColorProvider"/>
         <projectActivity implementation="de.sasbe.subtabs.ComponentSubtabsStartupActivity"/>
         <applicationConfigurable
                 parentId="tools"
                 instance="de.sasbe.subtabs.SubtabsConfigurable"
                 id="de.sasbe.subtabs.settings"
-                displayName="SubTabs"
+                displayName="Familia"
                 icon="de.sasbe.subtabs.SubtabsIcons.ACTIVE"/>
         <treeStructureProvider implementation="de.sasbe.subtabs.SubtabGroupTreeStructureProvider"/>
     </extensions>
@@ -49,6 +51,24 @@
                 description="Zum rechten Subtab wechseln">
             <keyboard-shortcut keymap="$default" first-keystroke="alt RIGHT"/>
         </action>
+        <group id="SubTabs.Familia"
+                class="de.sasbe.subtabs.SubtabFamiliaActionGroup"
+                popup="true"
+                text="Familia">
+            <action id="SubTabs.RevealInProjectView"
+                    class="de.sasbe.subtabs.SubtabRevealInProjectViewAction"
+                    text="Im Projektbaum anzeigen"/>
+            <separator/>
+            <action id="SubTabs.ChangeGroupColor"
+                    class="de.sasbe.subtabs.SubtabGroupChangeColorAction"
+                    text="Gruppenfarbe ändern…"/>
+            <separator/>
+            <action id="SubTabs.ResetGroupColor"
+                    class="de.sasbe.subtabs.SubtabGroupResetColorAction"
+                    text="Gruppenfarbe neu zuweisen"/>
+            <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </group>
     </actions>
 
 

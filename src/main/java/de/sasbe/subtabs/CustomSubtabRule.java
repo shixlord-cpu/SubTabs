@@ -16,6 +16,7 @@ public final class CustomSubtabRule {
     public String labels = "";
     public String slotKeys = "";
     public String groupSuffix = "";
+    public String excludeStemSuffixes = "";
     public boolean searchNeighbors = false;
     public boolean stripComponentSuffix = false;
     public boolean enabled = true;
@@ -29,6 +30,7 @@ public final class CustomSubtabRule {
         copy.labels = labels;
         copy.slotKeys = slotKeys;
         copy.groupSuffix = groupSuffix;
+        copy.excludeStemSuffixes = excludeStemSuffixes;
         copy.searchNeighbors = searchNeighbors;
         copy.stripComponentSuffix = stripComponentSuffix;
         copy.enabled = enabled;

@@ -43,7 +43,7 @@ final class ComponentSubtabProjectViewNavigation {
             return false;
         }
 
-        ComponentSubtabNavigation.switchInSelectedEditor(
+        ComponentSubtabNavigation.switchInTabOf(
                 project,
                 anchorFile,
                 targetFile,

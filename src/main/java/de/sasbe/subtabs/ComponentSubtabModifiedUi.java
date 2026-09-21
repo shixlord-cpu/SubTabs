@@ -4,12 +4,15 @@ import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vcs.FileStatus;
+import com.intellij.openapi.vcs.FileStatusManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.ColorUtil;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.JToggleButton;
 import java.awt.Color;
@@ -27,7 +30,18 @@ final class ComponentSubtabModifiedUi {
         if (project.isDisposed() || file.isDirectory()) {
             return false;
         }
-        return ReadAction.compute(() -> isModifiedInReadAction(file));
+        return ReadAction.compute(() -> isModifiedInReadAction(project, file));
+    }
+
+    static boolean isModifiedForDocument(@NotNull Project project, @NotNull Document document) {
+        if (project.isDisposed()) {
+            return false;
+        }
+        return ComponentSubtabFilePresentation.computeForDocument(project, document).modified();
+    }
+
+    static boolean isUncommittedVcsStatus(@Nullable FileStatus status) {
+        return status != null && status != FileStatus.NOT_CHANGED && status != FileStatus.IGNORED;
     }
 
     static @NotNull Color foreground(boolean modified, boolean grayed) {
@@ -59,7 +73,17 @@ final class ComponentSubtabModifiedUi {
             boolean modified,
             boolean grayed
     ) {
-        label.applyPresentation(plainLabel, modified, grayed);
+        applyToLabel(label, plainLabel, modified, grayed, false);
+    }
+
+    static void applyToLabel(
+            @NotNull ComponentSubtabModifiedLabel label,
+            @NotNull String plainLabel,
+            boolean modified,
+            boolean grayed,
+            boolean hasErrors
+    ) {
+        label.applyPresentation(plainLabel, modified, grayed, hasErrors);
     }
 
     static @NotNull String plainLabel(@NotNull JToggleButton button) {
@@ -84,12 +108,20 @@ final class ComponentSubtabModifiedUi {
         return html.replaceAll("<[^>]+>", "");
     }
 
-    private static boolean isModifiedInReadAction(@NotNull VirtualFile file) {
+    static boolean isModifiedInReadAction(@NotNull Project project, @NotNull VirtualFile file) {
         FileDocumentManager manager = FileDocumentManager.getInstance();
-        Document document = manager.getDocument(file);
-        if (document == null) {
+        Document document = manager.getCachedDocument(file);
+        if (document != null && document.getModificationStamp() != file.getModificationStamp()) {
+            return true;
+        }
+        return hasUncommittedVcsChanges(project, file);
+    }
+
+    static boolean hasUncommittedVcsChanges(@NotNull Project project, @NotNull VirtualFile file) {
+        if (project.isDefault()) {
             return false;
         }
-        return manager.isDocumentUnsaved(document);
+        FileStatus status = FileStatusManager.getInstance(project).getStatus(file);
+        return isUncommittedVcsStatus(status);
     }
 }

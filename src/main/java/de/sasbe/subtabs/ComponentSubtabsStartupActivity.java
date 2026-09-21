@@ -13,11 +13,18 @@ final class ComponentSubtabsStartupActivity implements ProjectActivity {
             @NotNull Project project,
             @NotNull Continuation<? super Unit> continuation
     ) {
+        if (!SubtabsSettings.getInstance().isFamiliaEnabled()) {
+            return Unit.INSTANCE;
+        }
         ComponentSubtabsFileEditorListener.attachToAlreadyOpenFiles(project);
-        ComponentSubtabsDocumentListener.install(project);
         ComponentSubtabMainTabSelectPopup.installOn(project);
+        ComponentSubtabMainTabColors.refresh(project);
         SubtabGroupTreeControl.installOn(project);
         ComponentSubtabProjectViewEditorHover.installOn(project);
+        SubtabsProjectViewGroupingOverlay.installOn(project);
+        if (SubtabColorDiagnostic.isEnabled()) {
+            SubtabColorDiagnostic.schedule(project);
+        }
         return Unit.INSTANCE;
     }
 }

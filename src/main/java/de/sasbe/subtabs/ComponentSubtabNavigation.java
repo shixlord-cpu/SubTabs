@@ -36,7 +36,8 @@ final class ComponentSubtabNavigation {
     }
 
     static boolean canSwitchAdjacent(@NotNull Project project, int direction) {
-        if (!SubtabsSettings.getInstance().isSubtabsActive()) {
+        if (!SubtabsSettings.getInstance().isFamiliaEnabled()
+                || !SubtabsSettings.getInstance().isSubtabsActive()) {
             return false;
         }
 
@@ -52,7 +53,7 @@ final class ComponentSubtabNavigation {
 
         VirtualFile targetFile = adjacentSubtabFile(currentFile, direction);
         if (targetFile != null) {
-            switchInSelectedEditor(project, currentFile, targetFile, true);
+            switchInTabOf(project, currentFile, targetFile, true);
         }
     }
 
@@ -82,7 +83,7 @@ final class ComponentSubtabNavigation {
             @NotNull VirtualFile currentFile,
             @NotNull VirtualFile targetFile
     ) {
-        switchInSelectedEditor(project, currentFile, targetFile, true);
+        switchInTabOf(project, currentFile, targetFile, true);
     }
 
     static void focusExistingFile(
@@ -102,7 +103,14 @@ final class ComponentSubtabNavigation {
         }
     }
 
-    static void switchInSelectedEditor(
+    /**
+     * Replaces the file of the main tab that currently shows {@code anchorFile} and focuses it.
+     *
+     * <p>The anchor is not necessarily the focused tab: the hover select box of a background main tab
+     * switches that tab, so its editor pane has to become the current one before the swap. Otherwise
+     * the platform would replace the tab of whichever pane happens to be focused.
+     */
+    static void switchInTabOf(
             @NotNull Project project,
             @NotNull VirtualFile anchorFile,
             @NotNull VirtualFile targetFile,
@@ -112,16 +120,16 @@ final class ComponentSubtabNavigation {
             return;
         }
 
-        runWithSwitchGuard(project, () -> switchInSelectedEditorImpl(project, anchorFile, targetFile, requestFocus));
+        runWithSwitchGuard(project, () -> switchInTabOfImpl(project, anchorFile, targetFile, requestFocus));
     }
 
-    private static void switchInSelectedEditorImpl(
+    private static void switchInTabOfImpl(
             @NotNull Project project,
             @NotNull VirtualFile anchorFile,
             @NotNull VirtualFile targetFile,
             boolean requestFocus
     ) {
-        FileEditorManager manager = FileEditorManager.getInstance(project);
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         if (manager.isFileOpen(targetFile)) {
             focusExistingFileImpl(project, targetFile, requestFocus);
             return;
@@ -133,6 +141,12 @@ final class ComponentSubtabNavigation {
             return;
         }
 
+        EditorWindow anchorWindow = ComponentSubtabEditorLookup.findWindowWithFile(manager, anchorFile);
+        if (anchorWindow != null) {
+            manager.setCurrentWindow(anchorWindow);
+            anchorWindow.setSelectedComposite(anchorFile, false);
+        }
+
         FileEditor anchorEditor = editorForFile(manager, anchorFile);
         if (anchorEditor != null) {
             ComponentSubtabsManager.prepareTransfer(project, anchorEditor, targetFile);
@@ -141,6 +155,10 @@ final class ComponentSubtabNavigation {
         FileEditorManagerImplKt.reopenVirtualFileEditor(project, anchorFile, targetFile, requestFocus);
         ComponentSubtabsManager.attachIfNeeded(project, targetFile);
         ComponentSubtabsManager.syncSelectionForFile(project, targetFile);
+
+        if (requestFocus) {
+            focusExistingFileImpl(project, targetFile, true);
+        }
     }
 
     private static void focusExistingFileImpl(
@@ -167,7 +185,7 @@ final class ComponentSubtabNavigation {
         if (selected != null && file.equals(selected.getFile())) {
             return selected;
         }
-        FileEditor[] editors = manager.getEditors(file);
+        FileEditor[] editors = ComponentSubtabsManager.editorsFor(manager, file);
         return editors.length == 0 ? null : editors[0];
     }
 

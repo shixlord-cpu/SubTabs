@@ -39,12 +39,17 @@ final class ComponentSubtabMainTabSelectPopup {
     private static final String SHOW_TIMER_KEY = "componentSubtabs.mainTabSelectPopup.timer";
     private static final String POPUP_KEY = "componentSubtabs.mainTabSelectPopup.popup";
     private static final String POPUP_PANEL_KEY = "componentSubtabs.mainTabSelectPopup.panel";
+    private static final String EXIT_TIMER_KEY = "componentSubtabs.mainTabSelectPopup.exitTimer";
 
     private ComponentSubtabMainTabSelectPopup() {
     }
 
     static void installOn(@NotNull Project project) {
-        if (project.isDisposed() || !SubtabsSettings.getInstance().isSubtabsActive()) {
+        if (project.isDisposed() || !SubtabsSettings.getInstance().isFamiliaEnabled()) {
+            hideAllPopups(project);
+            return;
+        }
+        if (!SubtabsSettings.getInstance().isSubtabsActive()) {
             return;
         }
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
@@ -76,10 +81,6 @@ final class ComponentSubtabMainTabSelectPopup {
             @NotNull TabLabel label,
             @NotNull VirtualFile tabFile
     ) {
-        ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(tabFile);
-        if (match == null || match.relatedFiles().size() < 2) {
-            return;
-        }
         if (Boolean.TRUE.equals(label.getClientProperty(INSTALLED))) {
             label.putClientProperty(TAB_FILE_KEY, tabFile);
             return;
@@ -90,31 +91,48 @@ final class ComponentSubtabMainTabSelectPopup {
         label.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent event) {
-                schedulePopup(project, label, tabFile, match);
+                cancelExitTimer(label);
+                VirtualFile currentTabFile = resolveTabFile(project, label);
+                if (currentTabFile == null) {
+                    return;
+                }
+                if (hasSubtabGroup(currentTabFile)) {
+                    schedulePopup(project, label);
+                    ComponentSubtabProjectViewHover.onEnterRelatedGroup(project, currentTabFile, label);
+                } else if (SubtabHoverView.isEnabled()) {
+                    ComponentSubtabProjectViewHover.onEnter(project, currentTabFile, label);
+                }
             }
 
             @Override
             public void mouseExited(MouseEvent event) {
-                scheduleExitCheck(label);
+                scheduleHoverAreaExit(label);
             }
         });
         label.addMouseMotionListener(new MouseAdapter() {
             @Override
             public void mouseMoved(MouseEvent event) {
+                if (!hasSubtabGroup(resolveTabFile(project, label))) {
+                    return;
+                }
                 Point screenPoint = event.getLocationOnScreen();
                 if (isMouseOverPopup(label, screenPoint)) {
                     cancelShowTimer(label);
+                    cancelExitTimer(label);
                 }
             }
         });
     }
 
-    private static void schedulePopup(
-            @NotNull Project project,
-            @NotNull TabLabel label,
-            @NotNull VirtualFile tabFile,
-            @NotNull ComponentRelatedFiles.Match match
-    ) {
+    private static boolean hasSubtabGroup(@Nullable VirtualFile tabFile) {
+        if (tabFile == null) {
+            return false;
+        }
+        ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(tabFile);
+        return match != null && match.relatedFiles().size() >= 2;
+    }
+
+    private static void schedulePopup(@NotNull Project project, @NotNull TabLabel label) {
         Point screenPoint = MouseInfo.getPointerInfo().getLocation();
         if (isMouseOverPopup(label, screenPoint)) {
             cancelShowTimer(label);
@@ -130,19 +148,23 @@ final class ComponentSubtabMainTabSelectPopup {
             if (!isPointerOver(label)) {
                 return;
             }
-            showPopup(project, label, tabFile, match);
+            showPopup(project, label);
         });
         showTimer.setRepeats(false);
         label.putClientProperty(SHOW_TIMER_KEY, showTimer);
         showTimer.start();
     }
 
-    private static void showPopup(
-            @NotNull Project project,
-            @NotNull TabLabel label,
-            @NotNull VirtualFile tabFile,
-            @NotNull ComponentRelatedFiles.Match match
-    ) {
+    private static void showPopup(@NotNull Project project, @NotNull TabLabel label) {
+        VirtualFile tabFile = resolveTabFile(project, label);
+        if (tabFile == null) {
+            return;
+        }
+        ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(tabFile);
+        if (match == null || match.relatedFiles().size() < 2) {
+            return;
+        }
+
         hidePopup(label);
 
         List<VirtualFile> files = match.relatedFiles().stream()
@@ -150,16 +172,25 @@ final class ComponentSubtabMainTabSelectPopup {
                 .sorted(Comparator.comparing(VirtualFile::getName))
                 .toList();
         int fixedWidth = label.getWidth();
+        SubtabGroupPopupPresentation.Context presentationContext =
+                SubtabGroupPopupPresentation.forMainTab(project, tabFile);
 
         SubtabGroupFilePopupPanel panel = new SubtabGroupFilePopupPanel(
                 project,
                 files,
                 fixedWidth,
+                presentationContext,
                 file -> {
                     openFromPopup(project, tabFile, file);
                     hidePopup(label);
                 },
-                () -> hidePopup(label)
+                () -> scheduleHoverAreaExit(label),
+                new SubtabGroupFilePopupPanel.MainTabProjectViewHover(
+                        project,
+                        tabFile,
+                        label,
+                        () -> ComponentSubtabProjectViewHover.onEnterRelatedGroup(project, tabFile, label)
+                )
         );
         label.putClientProperty(POPUP_PANEL_KEY, panel);
 
@@ -182,6 +213,9 @@ final class ComponentSubtabMainTabSelectPopup {
                 label.putClientProperty(POPUP_PANEL_KEY, null);
                 ComponentSubtabBarHover.onExit(panel);
                 ComponentSubtabMainTabHover.onExit(panel);
+                if (!isInHoverArea(label)) {
+                    ComponentSubtabProjectViewHover.onExit(label);
+                }
             }
         });
 
@@ -189,16 +223,21 @@ final class ComponentSubtabMainTabSelectPopup {
         popup.show(new RelativePoint(label, showPoint));
     }
 
-    private static void openFromPopup(
+    /**
+     * Handles a click inside the select box of the main tab that shows {@code anchorFile}. The box can
+     * belong to a background tab, so the result always has to be that very tab, focused and showing
+     * the picked file.
+     */
+    static void openFromPopup(
             @NotNull Project project,
             @NotNull VirtualFile anchorFile,
             @NotNull VirtualFile targetFile
     ) {
         if (anchorFile.equals(targetFile)) {
-            FileEditorManager.getInstance(project).openFile(targetFile, true);
+            ComponentSubtabNavigation.focusExistingFile(project, targetFile, true);
             return;
         }
-        ComponentSubtabNavigation.switchInSelectedEditor(project, anchorFile, targetFile, true);
+        ComponentSubtabNavigation.switchInTabOf(project, anchorFile, targetFile, true);
     }
 
     private static @NotNull Point popupShowPoint(@NotNull TabLabel label, @NotNull SubtabGroupFilePopupPanel panel) {
@@ -229,9 +268,66 @@ final class ComponentSubtabMainTabSelectPopup {
                 if (panel == null || !panel.isShowing()) {
                     continue;
                 }
-                panel.refreshPresentation(project);
+                if (!(tabInfo.getObject() instanceof VirtualFile tabFile)) {
+                    continue;
+                }
+                panel.refreshPresentation(project, SubtabGroupPopupPresentation.forMainTab(project, tabFile));
             }
         }
+    }
+
+    static void refreshModifiedStateForFile(
+            @NotNull Project project,
+            @NotNull VirtualFile file,
+            boolean modified,
+            boolean hasErrors
+    ) {
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        for (EditorWindow window : manager.getWindows()) {
+            JBTabs tabs = window.getTabbedPane().getTabs();
+            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
+                continue;
+            }
+            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+                TabLabel label = tabsImpl.getTabLabel(tabInfo);
+                if (label == null) {
+                    continue;
+                }
+                SubtabGroupFilePopupPanel panel = getPopupPanel(label);
+                if (panel != null) {
+                    panel.refreshModifiedStateForFile(project, file, modified, hasErrors);
+                }
+            }
+        }
+    }
+
+    /**
+     * Resolves the file a tab label currently stands for. The label is asked for its own
+     * {@link TabInfo} first, because that is the only source that stays correct when several main
+     * tabs of one subtab group are open and their files change through subtab switches.
+     */
+    private static @Nullable VirtualFile resolveTabFile(@NotNull Project project, @NotNull TabLabel label) {
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        for (EditorWindow window : manager.getWindows()) {
+            JBTabs tabs = window.getTabbedPane().getTabs();
+            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
+                continue;
+            }
+            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+                if (tabsImpl.getTabLabel(tabInfo) != label) {
+                    continue;
+                }
+                if (tabInfo.getObject() instanceof VirtualFile file) {
+                    return file;
+                }
+            }
+        }
+        return getTabFile(label);
+    }
+
+    private static @Nullable VirtualFile getTabFile(@NotNull TabLabel label) {
+        Object value = label.getClientProperty(TAB_FILE_KEY);
+        return value instanceof VirtualFile file ? file : null;
     }
 
     static void hideAllPopups(@NotNull Project project) {
@@ -246,25 +342,63 @@ final class ComponentSubtabMainTabSelectPopup {
                 if (label != null) {
                     hidePopup(label);
                     cancelShowTimer(label);
+                    cancelExitTimer(label);
                 }
             }
         }
     }
 
-    private static void scheduleExitCheck(@NotNull TabLabel label) {
+    private static void scheduleHoverAreaExit(@NotNull TabLabel label) {
+        cancelExitTimer(label);
         Timer timer = new Timer(100, event -> {
-            Point pointer = MouseInfo.getPointerInfo().getLocation();
-            if (isMouseOverPopup(label, pointer) || isPointerOver(label)) {
+            if (isInHoverArea(label)) {
                 return;
             }
+            clearHoverAreaEffects(label);
             hidePopup(label);
             cancelShowTimer(label);
         });
         timer.setRepeats(false);
+        label.putClientProperty(EXIT_TIMER_KEY, timer);
         timer.start();
     }
 
+    private static void clearHoverAreaEffects(@NotNull TabLabel label) {
+        ComponentSubtabProjectViewHover.onExit(label);
+        SubtabGroupFilePopupPanel panel = getPopupPanel(label);
+        if (panel != null) {
+            ComponentSubtabBarHover.onExit(panel);
+            ComponentSubtabMainTabHover.onExit(panel);
+            for (Component component : panel.getComponents()) {
+                if (component instanceof javax.swing.JComponent item) {
+                    ComponentSubtabProjectViewHover.onExit(item);
+                    ComponentSubtabBarHover.onExit(item);
+                    ComponentSubtabMainTabHover.onExit(item);
+                }
+            }
+        }
+    }
+
+    private static void cancelExitTimer(@NotNull TabLabel label) {
+        Timer timer = getExitTimer(label);
+        if (timer != null) {
+            timer.stop();
+            label.putClientProperty(EXIT_TIMER_KEY, null);
+        }
+    }
+
+    private static boolean isInHoverArea(@NotNull TabLabel label) {
+        Point pointer = MouseInfo.getPointerInfo().getLocation();
+        return isPointerOver(label) || isMouseOverPopup(label, pointer);
+    }
+
+    private static @Nullable Timer getExitTimer(@NotNull TabLabel label) {
+        Object value = label.getClientProperty(EXIT_TIMER_KEY);
+        return value instanceof Timer timer ? timer : null;
+    }
+
     private static void hidePopup(@NotNull TabLabel label) {
+        cancelExitTimer(label);
         JBPopup popup = getPopup(label);
         if (popup != null && popup.isVisible()) {
             popup.cancel();

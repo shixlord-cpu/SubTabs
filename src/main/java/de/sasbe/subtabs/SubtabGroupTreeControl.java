@@ -33,6 +33,8 @@ import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.RoundRectangle2D;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 final class SubtabGroupTreeControl {
@@ -45,28 +47,37 @@ final class SubtabGroupTreeControl {
     }
 
     static void installOn(@NotNull Project project) {
-        if (project.isDisposed()) {
+        if (project.isDisposed() || !SubtabsSettings.getInstance().isFamiliaEnabled()) {
             return;
         }
         AbstractProjectViewPane pane = ProjectView.getInstance(project).getCurrentProjectViewPane();
         if (pane != null && pane.getTree() != null) {
-            refresh(pane.getTree());
+            refresh(project, pane.getTree());
             ComponentSubtabProjectViewEditorHover.installOn(project);
         }
         ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow(ToolWindowId.PROJECT_VIEW);
         if (toolWindow != null) {
             for (JTree tree : UIUtil.findComponentsOfType(toolWindow.getComponent(), JTree.class)) {
-                refresh(tree);
+                refresh(project, tree);
             }
+        }
+        if (!SubtabProjectViewGrouping.isEnabled()) {
+            return;
         }
         if (!SubtabsSettings.getInstance().getGroupTreeControlStyle().allowsGroupExpansion()) {
             collapseExpandedSubtabGroups(project);
         }
+        expandAutoExpandedGroups(project);
     }
 
     static void refresh(@NotNull JTree tree) {
         attach(tree);
         tree.repaint();
+    }
+
+    static void refresh(@NotNull Project project, @NotNull JTree tree) {
+        refresh(tree);
+        SubtabsProjectViewGroupingOverlay.installOnTree(project, tree);
     }
 
     static void attach(@NotNull JTree tree) {
@@ -100,6 +111,10 @@ final class SubtabGroupTreeControl {
     }
 
     private static void collapseExpandedSubtabGroups(@NotNull JTree tree, @NotNull TreePath path) {
+        if (isAutoExpandedGroupPath(path)) {
+            expandPath(tree, path);
+            return;
+        }
         if (isSubtabGroupPath(path) && tree.isExpanded(path)) {
             tree.collapsePath(path);
         }
@@ -119,7 +134,8 @@ final class SubtabGroupTreeControl {
             @Override
             public void treeExpanded(TreeExpansionEvent event) {
                 if (!SubtabsSettings.getInstance().getGroupTreeControlStyle().allowsGroupExpansion()
-                        && isSubtabGroupPath(event.getPath())) {
+                        && isSubtabGroupPath(event.getPath())
+                        && !isAutoExpandedGroupPath(event.getPath())) {
                     SwingUtilities.invokeLater(() -> tree.collapsePath(event.getPath()));
                 }
             }
@@ -135,12 +151,59 @@ final class SubtabGroupTreeControl {
         return path != null && TreeUtil.getLastUserObject(path) instanceof SubtabGroupProjectViewNode;
     }
 
+    static boolean isAutoExpandedGroupPath(@Nullable TreePath path) {
+        if (path == null) {
+            return false;
+        }
+        Object userObject = TreeUtil.getLastUserObject(path);
+        return userObject instanceof SubtabGroupProjectViewNode groupNode && groupNode.shouldAutoExpand();
+    }
+
+    static void expandAutoExpandedGroups(@NotNull Project project) {
+        AbstractProjectViewPane pane = ProjectView.getInstance(project).getCurrentProjectViewPane();
+        if (pane != null && pane.getTree() != null) {
+            expandAutoExpandedGroups(pane.getTree());
+        }
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow(ToolWindowId.PROJECT_VIEW);
+        if (toolWindow != null) {
+            for (JTree tree : UIUtil.findComponentsOfType(toolWindow.getComponent(), JTree.class)) {
+                expandAutoExpandedGroups(tree);
+            }
+        }
+    }
+
+    private static void expandAutoExpandedGroups(@NotNull JTree tree) {
+        Object root = tree.getModel().getRoot();
+        if (root == null) {
+            return;
+        }
+        expandAutoExpandedGroups(tree, new TreePath(root));
+    }
+
+    private static void expandAutoExpandedGroups(@NotNull JTree tree, @NotNull TreePath path) {
+        if (isAutoExpandedGroupPath(path)) {
+            expandPath(tree, path);
+        }
+        Object node = path.getLastPathComponent();
+        int childCount = tree.getModel().getChildCount(node);
+        for (int i = 0; i < childCount; i++) {
+            Object child = tree.getModel().getChild(node, i);
+            expandAutoExpandedGroups(tree, path.pathByAddingChild(child));
+        }
+    }
+
+    private static void expandPath(@NotNull JTree tree, @NotNull TreePath path) {
+        if (!tree.isExpanded(path)) {
+            tree.expandPath(path);
+        }
+    }
+
     static @Nullable Control controlFor(@NotNull SubtabGroupTreeControlStyle style) {
         return switch (style) {
             case DEFAULT -> null;
             case CUBES -> ShapeControl.CUBES;
             case CIRCLES -> ShapeControl.CIRCLES;
-            case BLUE_ARROWS -> BlueArrowControl.INSTANCE;
+            case BLUE_ARROWS, COLORED_ARROWS -> ArrowControl.blue();
             case NONE -> NoneControl.INSTANCE;
         };
     }
@@ -149,7 +212,31 @@ final class SubtabGroupTreeControl {
         if (!isSubtabGroupPath(path)) {
             return null;
         }
-        return controlFor(SubtabsSettings.getInstance().getGroupTreeControlStyle());
+        SubtabGroupTreeControlStyle style = SubtabsSettings.getInstance().getGroupTreeControlStyle();
+        if (style == SubtabGroupTreeControlStyle.COLORED_ARROWS) {
+            Object userObject = TreeUtil.getLastUserObject(path);
+            if (userObject instanceof SubtabGroupProjectViewNode groupNode) {
+                return resolveColoredArrowControl(
+                        SubtabGroupColors.isEnabled(),
+                        SubtabGroupColors.colorForGroupNode(groupNode)
+                );
+            }
+            return null;
+        }
+        return controlFor(style);
+    }
+
+    static @Nullable Control resolveColoredArrowControl(
+            boolean groupColorsEnabled,
+            @Nullable Color groupColor
+    ) {
+        if (!groupColorsEnabled) {
+            return ArrowControl.blue();
+        }
+        if (groupColor == null) {
+            return null;
+        }
+        return ArrowControl.forColor(groupColor);
     }
 
     static boolean shapeFilled(boolean expanded, boolean invertFill) {
@@ -310,21 +397,31 @@ final class SubtabGroupTreeControl {
         }
     }
 
-    private static final class BlueArrowControl implements Control {
-        private static final BlueArrowControl INSTANCE = new BlueArrowControl();
+    private static final class ArrowControl implements Control {
+        private static final Control BLUE = new ArrowControl(FILL);
+        private static final Map<Integer, Control> COLORED = new ConcurrentHashMap<>();
+
+        static @NotNull Control blue() {
+            return BLUE;
+        }
+
+        static @NotNull Control forColor(@NotNull Color color) {
+            return COLORED.computeIfAbsent(color.getRGB(), rgb -> new ArrowControl(new Color(rgb, true)));
+        }
+
         private final DefaultControl delegate;
 
-        private BlueArrowControl() {
+        private ArrowControl(@NotNull Color tintColor) {
             delegate = new DefaultControl(
-                    tint(UIUtil.getTreeExpandedIcon()),
-                    tint(UIUtil.getTreeCollapsedIcon()),
-                    tint(UIUtil.getTreeSelectedExpandedIcon()),
-                    tint(UIUtil.getTreeSelectedCollapsedIcon())
+                    tint(UIUtil.getTreeExpandedIcon(), tintColor),
+                    tint(UIUtil.getTreeCollapsedIcon(), tintColor),
+                    tint(UIUtil.getTreeSelectedExpandedIcon(), tintColor),
+                    tint(UIUtil.getTreeSelectedCollapsedIcon(), tintColor)
             );
         }
 
-        private static @NotNull Icon tint(@NotNull Icon icon) {
-            return IconUtil.colorize(icon, FILL);
+        private static @NotNull Icon tint(@NotNull Icon icon, @NotNull Color color) {
+            return IconUtil.colorize(icon, color);
         }
 
         @Override

@@ -10,12 +10,13 @@ public final class SubtabRulesDefaults {
     }
 
     public static @NotNull List<CustomSubtabRule> createDefaults() {
-        List<CustomSubtabRule> rules = new ArrayList<>(8);
+        List<CustomSubtabRule> rules = new ArrayList<>(9);
         rules.add(npmRule());
         rules.add(tsconfigRule());
         rules.add(envRule());
         rules.add(stateRule());
         rules.add(modelRule());
+        rules.add(htmlRule());
         rules.add(componentRule());
         rules.add(userGroupsRule());
         rules.add(folderRule());
@@ -105,6 +106,19 @@ public final class SubtabRulesDefaults {
         rule.labels = "Test, Test, TS, HTML, Style, Style, Style, Style";
         rule.slotKeys = ".spec.ts, .test.ts, .ts, .html, style, style, style, style";
         rule.stripComponentSuffix = true;
+        return rule;
+    }
+
+    static @NotNull CustomSubtabRule htmlRule() {
+        CustomSubtabRule rule = new CustomSubtabRule();
+        rule.name = "HTML";
+        rule.type = CustomSubtabRule.Type.STEM;
+        rule.patterns = ".html, .htm, .xhtml, .css, .js";
+        rule.labels = "HTML, HTML, HTML, Style, Script";
+        rule.slotKeys = ".html, .htm, .xhtml, style, script";
+        rule.excludeStemSuffixes = ".component";
+        rule.enabled = true;
+        rule.builtin = true;
         return rule;
     }
 }

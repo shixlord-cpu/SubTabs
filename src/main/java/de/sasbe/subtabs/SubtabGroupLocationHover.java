@@ -33,6 +33,7 @@ final class SubtabGroupLocationHover {
     private static final int LOCATION_SHOW_DELAY_MS = 0;
     private static final int GROUP_ROW_SHOW_DELAY_MS = 250;
     private static final String HOVERED_LOCATION_ROW_KEY = "componentSubtabs.locationHoveredRow";
+    private static final String HOVERED_LOCATION_MODE_KEY = "componentSubtabs.locationHoveredMode";
     private static final String SHOW_TIMER_KEY = "componentSubtabs.locationShowTimer";
     private static final String POPUP_KEY = "componentSubtabs.locationPopup";
     private static final String POPUP_PANEL_KEY = "componentSubtabs.locationPopupPanel";
@@ -77,7 +78,7 @@ final class SubtabGroupLocationHover {
         if (isMouseOverLocationString(tree, row, event.getX())) {
             ComponentSubtabBarHover.onExit(tree);
             ComponentSubtabMainTabHover.onExit(tree);
-            setHoveredLocationRow(tree, row);
+            setHoveredLocationRow(tree, row, PopupMode.LOCATION);
             schedulePopup(project, tree, row, PopupMode.LOCATION);
             return true;
         }
@@ -85,8 +86,12 @@ final class SubtabGroupLocationHover {
         SubtabGroupProjectViewNode groupNode = groupNodeAt(tree, row);
         if (groupNode != null && isNoneStyle() && isMouseOverGroupRow(tree, row, event.getX())) {
             ComponentSubtabBarHover.onExit(tree);
-            ComponentSubtabMainTabHover.onEnterGroup(project, groupNode.groupKey(), tree);
-            setHoveredLocationRow(tree, row);
+            if (SubtabHoverView.isEnabled()) {
+                ComponentSubtabMainTabHover.onEnterGroup(project, groupNode.groupKey(), tree);
+            } else {
+                ComponentSubtabMainTabHover.onExit(tree);
+            }
+            setHoveredLocationRow(tree, row, PopupMode.GROUP_ROW);
             schedulePopup(project, tree, row, PopupMode.GROUP_ROW);
             return true;
         }
@@ -201,6 +206,7 @@ final class SubtabGroupLocationHover {
                 project,
                 files,
                 fixedWidth,
+                SubtabGroupPopupPresentation.Context.projectView(),
                 file -> {
                     ComponentSubtabProjectViewNavigation.openFromGroupFilePopup(project, file);
                     hidePopup(tree);
@@ -299,7 +305,7 @@ final class SubtabGroupLocationHover {
         if (panel == null || !panel.isShowing()) {
             return;
         }
-        panel.refreshPresentation(project);
+        panel.refreshPresentation(project, SubtabGroupPopupPresentation.Context.projectView());
     }
 
     private static boolean isMouseOverAnyPopupTrigger(@NotNull JTree tree, @NotNull Point screenPoint) {
@@ -362,12 +368,14 @@ final class SubtabGroupLocationHover {
         }
     }
 
-    private static void setHoveredLocationRow(@NotNull JTree tree, int row) {
+    private static void setHoveredLocationRow(@NotNull JTree tree, int row, @NotNull PopupMode mode) {
         Integer previous = getHoveredLocationRow(tree);
-        if (previous != null && previous == row) {
+        PopupMode previousMode = getHoveredLocationMode(tree);
+        if (previous != null && previous == row && previousMode == mode) {
             return;
         }
         tree.putClientProperty(HOVERED_LOCATION_ROW_KEY, row);
+        tree.putClientProperty(HOVERED_LOCATION_MODE_KEY, mode);
         tree.repaint();
     }
 
@@ -376,12 +384,25 @@ final class SubtabGroupLocationHover {
             return;
         }
         tree.putClientProperty(HOVERED_LOCATION_ROW_KEY, null);
+        tree.putClientProperty(HOVERED_LOCATION_MODE_KEY, null);
         tree.repaint();
     }
 
     static @Nullable Integer getHoveredLocationRow(@NotNull JTree tree) {
         Object value = tree.getClientProperty(HOVERED_LOCATION_ROW_KEY);
         return value instanceof Integer row ? row : null;
+    }
+
+    static boolean isLocationFragmentHovered(@NotNull JTree tree, int row) {
+        if (!Integer.valueOf(row).equals(getHoveredLocationRow(tree))) {
+            return false;
+        }
+        return getHoveredLocationMode(tree) == PopupMode.LOCATION;
+    }
+
+    private static @Nullable PopupMode getHoveredLocationMode(@NotNull JTree tree) {
+        Object value = tree.getClientProperty(HOVERED_LOCATION_MODE_KEY);
+        return value instanceof PopupMode mode ? mode : null;
     }
 
     static void brightenLocationFragment(@NotNull SimpleColoredComponent colored) {

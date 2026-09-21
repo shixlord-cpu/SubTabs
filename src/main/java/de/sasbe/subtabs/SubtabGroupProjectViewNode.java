@@ -13,7 +13,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjectViewNode.GroupValue> {
+final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjectViewNode.GroupValue>
+        implements ComponentSubtabProjectViewHover.GroupNode {
     record GroupValue(@NotNull String displayName, @NotNull VirtualFile primaryFile) {
     }
 
@@ -26,16 +27,17 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
             @NotNull List<PsiFileNode> fileNodes,
             @NotNull ViewSettings settings
     ) {
-        super(
-                project,
-                new GroupValue(
-                        ComponentFileNaming.displayName(groupKey),
-                        primaryFile(fileNodes)
-                ),
-                settings
-        );
+        super(project, createGroupValue(groupKey, fileNodes), settings);
         this.groupKey = groupKey;
         this.fileNodes = List.copyOf(fileNodes);
+    }
+
+    private static @NotNull GroupValue createGroupValue(
+            @NotNull String groupKey,
+            @NotNull List<PsiFileNode> fileNodes
+    ) {
+        VirtualFile primary = primaryFile(fileNodes);
+        return new GroupValue(ComponentFileNaming.displayName(groupKey, primary), primary);
     }
 
     @NotNull String groupKey() {
@@ -44,6 +46,10 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
 
     @NotNull List<PsiFileNode> members() {
         return fileNodes;
+    }
+
+    boolean shouldAutoExpand() {
+        return !ComponentFileNaming.createsSubtabs(groupKey);
     }
 
     @Override

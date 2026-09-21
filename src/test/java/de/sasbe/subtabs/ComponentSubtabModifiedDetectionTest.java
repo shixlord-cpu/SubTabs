@@ -18,5 +18,6 @@ public class ComponentSubtabModifiedDetectionTest extends BasePlatformTestCase {
         WriteAction.run(() -> document.setText("public class Main { int x; }"));
 
         assertTrue(ComponentSubtabModifiedUi.isModified(getProject(), file));
+        assertTrue(ComponentSubtabModifiedUi.isModifiedForDocument(getProject(), document));
     }
 }

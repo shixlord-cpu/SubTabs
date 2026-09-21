@@ -27,7 +27,8 @@ final class SubtabGroupColors {
     }
 
     static boolean isEnabled() {
-        return SubtabsSettings.getInstance().isGroupColorsEnabled();
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        return settings.isFamiliaEnabled() && settings.isGroupColorsEnabled();
     }
 
     static void setEnabled(boolean enabled) {
@@ -55,8 +56,20 @@ final class SubtabGroupColors {
     }
 
     static @Nullable String colorKey(@NotNull VirtualFile file) {
+        String baseName = ComponentFileNaming.componentBaseName(file.getName());
+        VirtualFile parent = file.getParent();
+        if (baseName == null || parent == null) {
+            return null;
+        }
+        if (!ComponentFileNaming.searchNeighbors(baseName)
+                && !CustomSubtabRuleMatcher.isFolderGroupKey(baseName)
+                && !CustomSubtabRuleMatcher.isUserGroupKey(baseName)
+                && !CustomSubtabRuleMatcher.isExtensionFolderGroupKey(baseName)) {
+            return ComponentSubtabGroupRegistry.componentKey(parent, baseName);
+        }
+
         ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(file);
-        return match == null ? null : match.key();
+        return match != null ? match.key() : ComponentSubtabGroupRegistry.componentKey(parent, baseName);
     }
 
     static @Nullable Color colorForKey(@Nullable String key) {

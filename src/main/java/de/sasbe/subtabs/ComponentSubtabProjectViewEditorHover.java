@@ -30,7 +30,7 @@ final class ComponentSubtabProjectViewEditorHover {
     }
 
     static void installOn(@NotNull Project project) {
-        if (project.isDisposed() || !SubtabsSettings.getInstance().isSubtabsActive()) {
+        if (project.isDisposed() || !SubtabsSettings.getInstance().isFamiliaEnabled()) {
             return;
         }
 
@@ -52,8 +52,8 @@ final class ComponentSubtabProjectViewEditorHover {
             return;
         }
         tree.putClientProperty(INSTALLED, Boolean.TRUE);
+        ComponentSubtabProjectViewTreeUI.install(tree);
         SubtabGroupLocationHover.installRenderer(tree);
-        SubtabGroupProjectViewPopup.installOn(project, tree);
 
         tree.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -109,6 +109,11 @@ final class ComponentSubtabProjectViewEditorHover {
     }
 
     private static void handleRow(@NotNull Project project, @NotNull JTree tree, int row) {
+        if (SubtabHoverView.isDisabled()) {
+            clearHover(tree);
+            return;
+        }
+
         Integer lastRow = (Integer) tree.getClientProperty(LAST_ROW_KEY);
         if (lastRow != null && lastRow == row) {
             return;

@@ -20,6 +20,7 @@ repositories {
 dependencies {
     intellijPlatform {
         intellijIdea("2025.3")
+        bundledModule("intellij.platform.vcs.impl")
         testFramework(TestFrameworkType.Platform)
     }
 
@@ -59,7 +60,7 @@ tasks {
 
 intellijPlatform {
     pluginConfiguration {
-        name = "SubTabs"
+        name = "Familia"
         version = project.version.toString()
     }
 }

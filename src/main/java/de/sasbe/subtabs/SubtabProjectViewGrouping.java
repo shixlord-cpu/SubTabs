@@ -13,7 +13,7 @@ final class SubtabProjectViewGrouping {
 
     static boolean isEnabled() {
         SubtabsSettings settings = SubtabsSettings.getInstance();
-        return settings.isGroupRelatedFilesInProjectView() && settings.isSubtabsActive();
+        return settings.isFamiliaEnabled() && settings.isGroupRelatedFilesInProjectView();
     }
 
     static boolean shouldReplaceFolder(@NotNull List<String> visibleFileNames, int visibleDirectoryCount) {

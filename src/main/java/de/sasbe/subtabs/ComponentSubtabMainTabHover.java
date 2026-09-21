@@ -4,27 +4,43 @@ import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.fileEditor.impl.EditorWindow;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.ui.ColorUtil;
 import com.intellij.ui.tabs.JBTabs;
 import com.intellij.ui.tabs.TabInfo;
 import com.intellij.ui.tabs.impl.JBTabsImpl;
-import com.intellij.ui.tabs.impl.TabLabel;
+import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.awt.IllegalComponentStateException;
-import java.awt.MouseInfo;
-import java.awt.Point;
-import java.awt.Rectangle;
+import javax.swing.JComponent;
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import javax.swing.JComponent;
+import java.util.function.Predicate;
 
+/**
+ * Marks the main tabs that belong to a hovered subtab or subtab group.
+ *
+ * <p>The platform keeps a single hovered tab per tab strip, so {@code JBTabsImpl.setHovered} can only
+ * ever mark one tab and the remaining tabs of a group would stay untouched. The marking therefore
+ * goes through {@link TabInfo#setTabColor}, the same channel the group colors use, and the previous
+ * color is restored on exit.
+ *
+ * <p>Only tabs that are not the visible tab of their editor pane are marked: highlighting a tab whose
+ * content is already on screen would just look like a glitch.
+ */
 final class ComponentSubtabMainTabHover {
     private static final String ACTIVE_HOVERS_KEY = "componentSubtabs.mainTabHovers";
+    private static final double MIN_HOVER_WEIGHT = 0.45;
 
-    private record Handle(@NotNull JBTabsImpl tabs, @NotNull TabLabel label) {
+    private record Handle(
+            @NotNull JBTabsImpl tabs,
+            @NotNull TabInfo info,
+            @Nullable Color previousColor
+    ) {
     }
 
     private ComponentSubtabMainTabHover() {
@@ -35,21 +51,11 @@ final class ComponentSubtabMainTabHover {
             @NotNull VirtualFile file,
             @NotNull JComponent source
     ) {
-        onEnterAny(project, List.of(file), source);
-    }
-
-    static void onEnterAny(
-            @NotNull Project project,
-            @NotNull Iterable<VirtualFile> files,
-            @NotNull JComponent source
-    ) {
-        onExit(source);
-
-        List<Handle> handles = new ArrayList<>();
-        for (VirtualFile file : files) {
-            handles.addAll(findVisibleTabHandles(project, file));
+        if (SubtabHoverView.isDisabled()) {
+            return;
         }
-        applyHandles(source, handles);
+        onExit(source);
+        applyHandles(source, collectHandles(project, tabFile -> tabFile.equals(file)));
     }
 
     static void onEnterGroup(
@@ -57,8 +63,26 @@ final class ComponentSubtabMainTabHover {
             @NotNull String groupKey,
             @NotNull JComponent source
     ) {
+        if (SubtabHoverView.isDisabled()) {
+            return;
+        }
         onExit(source);
-        applyHandles(source, findVisibleTabHandlesForGroup(project, groupKey));
+        String targetMergeKey = SubtabProjectViewGrouping.mergeKey(groupKey);
+        applyHandles(source, collectHandles(project, file -> belongsToMergeGroup(file, targetMergeKey)));
+    }
+
+    static void onExit(@NotNull JComponent source) {
+        @SuppressWarnings("unchecked")
+        List<Handle> handles = (List<Handle>) source.getClientProperty(ACTIVE_HOVERS_KEY);
+        source.putClientProperty(ACTIVE_HOVERS_KEY, null);
+        if (handles == null || handles.isEmpty()) {
+            return;
+        }
+
+        for (Handle handle : handles) {
+            handle.info().setTabColor(handle.previousColor());
+        }
+        repaint(handles);
     }
 
     private static void applyHandles(@NotNull JComponent source, @NotNull List<Handle> handles) {
@@ -68,37 +92,38 @@ final class ComponentSubtabMainTabHover {
 
         source.putClientProperty(ACTIVE_HOVERS_KEY, handles);
         for (Handle handle : handles) {
-            handle.tabs().setHovered(handle.label());
+            handle.info().setTabColor(hoverTint(handle.previousColor()));
         }
+        repaint(handles);
     }
 
-    static void onExit(@NotNull JComponent source) {
-        @SuppressWarnings("unchecked")
-        List<Handle> handles = (List<Handle>) source.getClientProperty(ACTIVE_HOVERS_KEY);
-        if (handles == null || handles.isEmpty()) {
-            return;
-        }
+    private static @NotNull Color hoverTint(@Nullable Color previousColor) {
+        Color base = previousColor != null ? previousColor : UIUtil.getPanelBackground();
+        Color hover = JBUI.CurrentTheme.EditorTabs.hoverBackground();
+        // A tab color has to be opaque, so a translucent theme hover color is composited onto the color
+        // the tab would show without the hover. The lower bound keeps the marking visible even with a
+        // very transparent theme color, and it leaves a group-colored tab recognizable as such.
+        double weight = Math.max(hover.getAlpha() / 255.0, MIN_HOVER_WEIGHT);
+        return ColorUtil.mix(base, ColorUtil.withAlpha(hover, 1.0), weight);
+    }
 
-        Point pointer = MouseInfo.getPointerInfo().getLocation();
+    private static void repaint(@NotNull List<Handle> handles) {
+        Set<JBTabsImpl> touched = new LinkedHashSet<>();
         for (Handle handle : handles) {
-            if (isPointerOver(handle.label(), pointer)) {
-                source.putClientProperty(ACTIVE_HOVERS_KEY, null);
-                return;
-            }
+            touched.add(handle.tabs());
         }
-
-        clear(handles);
-        source.putClientProperty(ACTIVE_HOVERS_KEY, null);
+        for (JBTabsImpl tabs : touched) {
+            tabs.revalidateAndRepaint(false);
+        }
     }
 
-    private static @NotNull List<Handle> findVisibleTabHandlesForGroup(
+    private static @NotNull List<Handle> collectHandles(
             @NotNull Project project,
-            @NotNull String groupKey
+            @NotNull Predicate<VirtualFile> filter
     ) {
-        String targetMergeKey = SubtabProjectViewGrouping.mergeKey(groupKey);
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         List<Handle> handles = new ArrayList<>();
-        Set<TabLabel> seenLabels = new LinkedHashSet<>();
+        Set<TabInfo> seen = new LinkedHashSet<>();
 
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
@@ -106,23 +131,18 @@ final class ComponentSubtabMainTabHover {
                 continue;
             }
 
+            TabInfo selected = tabsImpl.getSelectedInfo();
             for (TabInfo tabInfo : tabsImpl.getTabs()) {
-                if (tabInfo.isHidden()) {
+                if (tabInfo.isHidden() || tabInfo == selected) {
                     continue;
                 }
-                Object tabObject = tabInfo.getObject();
-                if (!(tabObject instanceof VirtualFile file)) {
+                if (!(tabInfo.getObject() instanceof VirtualFile file) || !filter.test(file)) {
                     continue;
                 }
-                if (!belongsToMergeGroup(file, targetMergeKey)) {
+                if (!seen.add(tabInfo)) {
                     continue;
                 }
-
-                TabLabel label = tabsImpl.getTabLabel(tabInfo);
-                if (label == null || !label.isVisible() || !seenLabels.add(label)) {
-                    continue;
-                }
-                handles.add(new Handle(tabsImpl, label));
+                handles.add(new Handle(tabsImpl, tabInfo, tabInfo.getTabColor()));
             }
         }
         return handles;
@@ -137,62 +157,5 @@ final class ComponentSubtabMainTabHover {
             return false;
         }
         return targetMergeKey.equals(SubtabProjectViewGrouping.mergeKey(match.baseName()));
-    }
-
-    private static @NotNull List<Handle> findVisibleTabHandles(
-            @NotNull Project project,
-            @NotNull VirtualFile file
-    ) {
-        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
-        List<Handle> handles = new ArrayList<>();
-
-        for (EditorWindow window : manager.getWindows()) {
-            if (!window.isFileOpen(file)) {
-                continue;
-            }
-
-            JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-
-            TabInfo tabInfo = findTabInfo(tabsImpl, file);
-            if (tabInfo == null || tabInfo.isHidden()) {
-                continue;
-            }
-
-            TabLabel label = tabsImpl.getTabLabel(tabInfo);
-            if (label != null && label.isVisible()) {
-                handles.add(new Handle(tabsImpl, label));
-            }
-        }
-        return handles;
-    }
-
-    private static void clear(@NotNull List<Handle> handles) {
-        for (Handle handle : handles) {
-            handle.tabs().unHover(handle.label());
-        }
-    }
-
-    private static boolean isPointerOver(@NotNull TabLabel label, @NotNull Point pointerOnScreen) {
-        if (!label.isShowing()) {
-            return false;
-        }
-        try {
-            Point origin = label.getLocationOnScreen();
-            return new Rectangle(origin, label.getSize()).contains(pointerOnScreen);
-        } catch (IllegalComponentStateException ignored) {
-            return false;
-        }
-    }
-
-    private static @Nullable TabInfo findTabInfo(@NotNull JBTabsImpl tabs, @NotNull VirtualFile file) {
-        for (TabInfo info : tabs.getTabs()) {
-            if (file.equals(info.getObject())) {
-                return info;
-            }
-        }
-        return null;
     }
 }

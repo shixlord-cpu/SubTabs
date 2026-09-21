@@ -10,6 +10,9 @@ import org.jetbrains.annotations.Nullable;
 public final class ComponentEditorTabTitleProvider implements EditorTabTitleProvider, DumbAware {
     @Override
     public @Nullable String getEditorTabTitle(@NotNull Project project, @NotNull VirtualFile file) {
+        if (!SubtabsSettings.getInstance().isFamiliaEnabled()) {
+            return null;
+        }
         return ComponentTabTitles.mainTabTitle(
                 SubtabsCollapseState.getInstance(project).isCollapsed(),
                 file
@@ -18,6 +21,9 @@ public final class ComponentEditorTabTitleProvider implements EditorTabTitleProv
 
     @Override
     public @Nullable String getEditorTabTooltipText(@NotNull Project project, @NotNull VirtualFile file) {
+        if (!SubtabsSettings.getInstance().isFamiliaEnabled()) {
+            return null;
+        }
         String baseName = ComponentFileNaming.componentBaseName(file.getName());
         if (baseName == null) {
             return null;

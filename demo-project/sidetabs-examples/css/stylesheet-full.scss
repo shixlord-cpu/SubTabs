@@ -1,0 +1,129 @@
+@charset "UTF-8";
+@use 'sass:color';
+@use 'tokens' as *;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+@mixin focus-ring($color: $focus-color) {
+  outline: 2px solid $color;
+  outline-offset: 2px;
+}
+
+@mixin card-surface {
+  border-radius: $radius-md;
+  background: $surface-color;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+:root {
+  --catalog-gap: 1rem;
+  --catalog-accent: #2563eb;
+}
+
+.layout {
+  display: grid;
+  gap: var(--catalog-gap);
+  padding: 1.5rem;
+}
+
+.card {
+  @include card-surface;
+  color: $text-color;
+
+  &:hover {
+    background: color.adjust($surface-color, $lightness: 2%);
+  }
+}
+
+.card__title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+}
+
+.card__price {
+  font-variant-numeric: tabular-nums;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--catalog-accent);
+  color: #fff;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+}
+
+.grid__item {
+  min-height: 8rem;
+}
+
+@supports (container-type: inline-size) {
+  .card {
+    container-type: inline-size;
+  }
+
+  @container (min-width: 24rem) {
+    .card__title {
+      font-size: 1.25rem;
+    }
+  }
+}
+@media (max-width: 768px) {
+  .layout {
+    padding: 1rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media print {
+  .badge {
+    border: 1px solid #000;
+    background: transparent;
+    color: #000;
+  }
+}
+
+@keyframes catalog-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes catalog-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.65;
+  }
+}
+
+.card--animated {
+  animation: catalog-fade-in 240ms ease-out;
+}
+
+.card--loading {
+  animation: catalog-pulse 1.2s ease-in-out infinite;
+}

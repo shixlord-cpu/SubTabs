@@ -6,6 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,8 +16,9 @@ class ComponentFileNamingTest {
     private static final String ENV_GROUP = "rule:2:@files";
     private static final String STATE_GROUP = "rule:3:cart";
     private static final String MODEL_GROUP = "rule:4:user";
-    private static final String COMPONENT_GROUP = "rule:5:user-card.component";
-    private static final String FOLDER_GROUP = "rule:7:@folder";
+    private static final String HTML_GROUP = "rule:5:catalog-page";
+    private static final String COMPONENT_GROUP = "rule:6:user-card.component";
+    private static final String FOLDER_GROUP = "rule:8:@folder";
 
     @Test
     void findsTheSameBaseForEveryComponentPart() {
@@ -45,7 +47,7 @@ class ComponentFileNamingTest {
         CustomSubtabRule folderRule = SubtabRulesDefaults.folderRule();
         folderRule.enabled = false;
         List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
-        rules.set(7, folderRule);
+        rules.set(8, folderRule);
 
         assertNull(CustomSubtabRuleMatcher.match("README.md", rules));
     }
@@ -147,8 +149,36 @@ class ComponentFileNamingTest {
     }
 
     @Test
+    void groupsPlainHtmlPagesByStemWithoutComponentSuffix() {
+        assertEquals(HTML_GROUP, ComponentFileNaming.componentBaseName("catalog-page.html"));
+        assertEquals(HTML_GROUP, ComponentFileNaming.componentBaseName("catalog-page.css"));
+        assertEquals(HTML_GROUP, ComponentFileNaming.componentBaseName("catalog-page.js"));
+        assertEquals("catalog-page", ComponentFileNaming.displayName(HTML_GROUP));
+    }
+
+    @Test
+    void keepsComponentHtmlOnComponentRule() {
+        assertEquals(COMPONENT_GROUP, ComponentFileNaming.componentBaseName("user-card.component.html"));
+        assertEquals(COMPONENT_GROUP, ComponentFileNaming.componentBaseName("user-card.component.css"));
+        assertEquals("user-card", ComponentFileNaming.displayName(COMPONENT_GROUP));
+    }
+
+    @Test
+    void plainHtmlDoesNotInheritComponentNaming() {
+        assertEquals("catalog-page", ComponentFileNaming.displayName(HTML_GROUP));
+        assertEquals("landing-page", ComponentFileNaming.displayName("rule:5:landing-page"));
+        assertNotEquals(
+                "landing-page-component",
+                CustomSubtabRuleMatcher.displayNameWithSuffix(
+                        "landing-page",
+                        SubtabRulesDefaults.createDefaults().get(6)
+                )
+        );
+    }
+
+    @Test
     void createsCandidatesInVisibleTabOrder() {
-        List<SubtabCandidate> candidates = ComponentFileNaming.candidates("rule:5:app.component");
+        List<SubtabCandidate> candidates = ComponentFileNaming.candidates("rule:6:app.component");
 
         assertEquals(".spec.ts", candidates.get(0).slotId());
         assertEquals("app.component.spec.ts", candidates.get(0).fileName());
@@ -160,9 +190,17 @@ class ComponentFileNamingTest {
     }
 
     @Test
+    void folderGroupRulesCreateSubtabsButUserGroupsDoNot() {
+        assertTrue(ComponentFileNaming.createsSubtabs(FOLDER_GROUP));
+        assertFalse(ComponentFileNaming.createsSubtabs("rule:6:@nesting:package.json"));
+        assertTrue(ComponentFileNaming.createsSubtabs(COMPONENT_GROUP));
+        assertTrue(ComponentFileNaming.createsSubtabs(NPM_GROUP));
+    }
+
+    @Test
     void usesShortComponentNameForTabTitle() {
-        assertEquals("user-card-components", ComponentFileNaming.displayName(COMPONENT_GROUP));
-        assertEquals("app-components", ComponentFileNaming.displayName("rule:5:app.component"));
-        assertEquals("header-components", ComponentFileNaming.displayName("rule:5:header"));
+        assertEquals("user-card", ComponentFileNaming.displayName(COMPONENT_GROUP));
+        assertEquals("app", ComponentFileNaming.displayName("rule:6:app.component"));
+        assertEquals("landing-page", ComponentFileNaming.displayName("rule:5:landing-page"));
     }
 }

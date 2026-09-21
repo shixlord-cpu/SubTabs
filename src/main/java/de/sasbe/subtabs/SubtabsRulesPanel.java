@@ -147,6 +147,7 @@ final class SubtabsRulesPanel {
                     || !left.labels.equals(right.labels)
                     || !left.slotKeys.equals(right.slotKeys)
                     || !left.groupSuffix.equals(right.groupSuffix)
+                    || !left.excludeStemSuffixes.equals(right.excludeStemSuffixes)
                     || left.searchNeighbors != right.searchNeighbors
                     || left.stripComponentSuffix != right.stripComponentSuffix
                     || left.enabled != right.enabled

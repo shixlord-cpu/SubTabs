@@ -8,6 +8,8 @@ import javax.swing.Icon;
 public final class SubtabsIcons {
     public static final @NotNull Icon ACTIVE = IconLoader.getIcon("/icons/subtabs.png", SubtabsIcons.class);
     public static final @NotNull Icon INACTIVE = IconLoader.getIcon("/icons/subtabsInactive.png", SubtabsIcons.class);
+    public static final @NotNull Icon SIDE_ACTIVE = new RotatedIcon(ACTIVE, 90);
+    public static final @NotNull Icon SIDE_INACTIVE = new RotatedIcon(INACTIVE, 90);
 
     private SubtabsIcons() {
     }

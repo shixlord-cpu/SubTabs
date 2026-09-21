@@ -178,7 +178,7 @@ final class RulesTableDragSupport {
         return table.getCellRect(dropRow, 0, false).y;
     }
 
-    static void moveRowsTo(@NotNull List<CustomSubtabRule> rules, @NotNull int[] selectedRows, int targetRow) {
+    static <T> void moveRowsTo(@NotNull List<T> rules, @NotNull int[] selectedRows, int targetRow) {
         if (selectedRows.length == 0) {
             return;
         }
@@ -186,7 +186,7 @@ final class RulesTableDragSupport {
         int[] sorted = Arrays.copyOf(selectedRows, selectedRows.length);
         Arrays.sort(sorted);
 
-        List<CustomSubtabRule> moving = new ArrayList<>(sorted.length);
+        List<T> moving = new ArrayList<>(sorted.length);
         for (int index = sorted.length - 1; index >= 0; index--) {
             moving.add(0, rules.remove(sorted[index]));
         }
@@ -215,7 +215,7 @@ final class RulesTableDragSupport {
         return true;
     }
 
-    static void moveSelectedBlock(@NotNull List<CustomSubtabRule> rules, @NotNull int[] selectedRows, int direction) {
+    static <T> void moveSelectedBlock(@NotNull List<T> rules, @NotNull int[] selectedRows, int direction) {
         if (selectedRows.length == 0) {
             return;
         }
@@ -229,7 +229,7 @@ final class RulesTableDragSupport {
             if (min <= 0) {
                 return;
             }
-            CustomSubtabRule above = rules.remove(min - 1);
+            T above = rules.remove(min - 1);
             rules.add(max, above);
             return;
         }
@@ -237,7 +237,7 @@ final class RulesTableDragSupport {
         if (max >= rules.size() - 1) {
             return;
         }
-        CustomSubtabRule below = rules.remove(max + 1);
+        T below = rules.remove(max + 1);
         rules.add(min, below);
     }
 
