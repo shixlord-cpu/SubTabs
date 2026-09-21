@@ -16,7 +16,7 @@ import java.util.Map;
 @Service(Service.Level.APP)
 @State(name = "ComponentSubtabsSettings", storages = @Storage("componentSubtabs.xml"))
 public final class SubtabsSettings implements PersistentStateComponent<SubtabsSettings.State> {
-    private static final int CURRENT_RULES_VERSION = 6;
+    private static final int CURRENT_RULES_VERSION = 15;
 
     private State state = new State();
 
@@ -161,6 +161,7 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
     }
 
     public @NotNull List<CustomSubtabRule> getRules() {
+        ensureSubtabRulesCurrent();
         return state.rules;
     }
 
@@ -280,20 +281,7 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
     }
 
     private void migrateRulesIfNeeded() {
-        if (state.rules.isEmpty()) {
-            state.rules = SubtabRulesDefaults.createDefaults();
-            state.rulesVersion = CURRENT_RULES_VERSION;
-        } else if (state.rulesVersion < CURRENT_RULES_VERSION) {
-            normalizeRuleFields(state.rules);
-            applyDefaultGroupSuffixes(state.rules);
-            removeLegacyCustomGroupRules(state.rules);
-            ensureHtmlRule(state.rules);
-            ensureSpecialRules(state.rules);
-            state.rulesVersion = CURRENT_RULES_VERSION;
-        } else {
-            ensureHtmlRule(state.rules);
-            ensureSpecialRules(state.rules);
-        }
+        ensureSubtabRulesCurrent();
         if (state.barHeightPercent < 25) {
             state.barHeightPercent = 75;
         }
@@ -399,91 +387,40 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         return null;
     }
 
-    private static void normalizeRuleFields(@NotNull List<CustomSubtabRule> rules) {
-        for (CustomSubtabRule rule : rules) {
-            if (rule.groupSuffix == null) {
-                rule.groupSuffix = "";
-            }
-            if (rule.excludeStemSuffixes == null) {
-                rule.excludeStemSuffixes = "";
-            }
+    private void ensureSubtabRulesCurrent() {
+        if (state.rules == null || state.rules.isEmpty()) {
+            resetSubtabRulesToDefaults();
+            return;
+        }
+        if (state.rulesVersion != CURRENT_RULES_VERSION || containsLegacySubtabRules(state.rules)) {
+            resetSubtabRulesToDefaults();
         }
     }
 
-    private static void ensureHtmlRule(@NotNull List<CustomSubtabRule> rules) {
-        for (CustomSubtabRule rule : rules) {
-            if ("HTML".equalsIgnoreCase(rule.name) && rule.type == CustomSubtabRule.Type.STEM) {
-                rule.builtin = true;
-                if (rule.excludeStemSuffixes == null || rule.excludeStemSuffixes.isBlank()) {
-                    rule.excludeStemSuffixes = ".component";
-                }
-                return;
-            }
-        }
-
-        int componentIndex = -1;
-        for (int index = 0; index < rules.size(); index++) {
-            if ("Komponente".equalsIgnoreCase(rules.get(index).name)) {
-                componentIndex = index;
-                break;
-            }
-        }
-        if (componentIndex >= 0) {
-            rules.add(componentIndex, SubtabRulesDefaults.htmlRule());
-        } else {
-            int folderIndex = rules.size();
-            for (int index = 0; index < rules.size(); index++) {
-                if (rules.get(index).type == CustomSubtabRule.Type.FOLDER) {
-                    folderIndex = index;
-                    break;
-                }
-            }
-            rules.add(Math.max(0, folderIndex), SubtabRulesDefaults.htmlRule());
-        }
+    private void resetSubtabRulesToDefaults() {
+        state.rules = copyDefaultSubtabRules();
+        state.rulesVersion = CURRENT_RULES_VERSION;
+        rulesGeneration++;
     }
 
-    private static void ensureSpecialRules(@NotNull List<CustomSubtabRule> rules) {
-        boolean hasUserGroupsRule = false;
-        boolean hasFolderRule = false;
-        for (CustomSubtabRule rule : rules) {
-            if (rule.type == CustomSubtabRule.Type.USER_GROUPS) {
-                hasUserGroupsRule = true;
-                rule.builtin = true;
-                if (rule.name.isBlank()) {
-                    rule.name = "Eigene Gruppen";
-                }
-            } else if (rule.type == CustomSubtabRule.Type.FOLDER) {
-                hasFolderRule = true;
-                rule.builtin = true;
-                if (rule.name.isBlank()) {
-                    rule.name = "Ordner";
-                }
-            }
+    private static @NotNull List<CustomSubtabRule> copyDefaultSubtabRules() {
+        List<CustomSubtabRule> defaults = new ArrayList<>(SubtabRulesDefaults.createDefaults().size());
+        for (CustomSubtabRule rule : SubtabRulesDefaults.createDefaults()) {
+            defaults.add(rule.copy());
         }
-        if (!hasUserGroupsRule) {
-            int insertIndex = hasFolderRule ? Math.max(0, rules.size() - 1) : rules.size();
-            rules.add(insertIndex, SubtabRulesDefaults.userGroupsRule());
-        }
-        if (!hasFolderRule) {
-            rules.add(SubtabRulesDefaults.folderRule());
-        }
+        return defaults;
     }
 
-    private static void removeLegacyCustomGroupRules(@NotNull List<CustomSubtabRule> rules) {
-        rules.removeIf(rule -> "CUSTOM_GROUPS".equals(String.valueOf(rule.type)));
-    }
-
-    private static void applyDefaultGroupSuffixes(@NotNull List<CustomSubtabRule> rules) {
+    private static boolean containsLegacySubtabRules(@NotNull List<CustomSubtabRule> rules) {
         for (CustomSubtabRule rule : rules) {
-            if (rule.groupSuffix != null && !rule.groupSuffix.isBlank()) {
-                continue;
+            if (rule.type == CustomSubtabRule.Type.STEM || rule.type == CustomSubtabRule.Type.FILES) {
+                return true;
             }
-            if ("State".equalsIgnoreCase(rule.name)) {
-                rule.groupSuffix = "state";
-            } else if ("Komponente".equalsIgnoreCase(rule.name)) {
-                rule.groupSuffix = "component";
+            if ("State Typ".equalsIgnoreCase(rule.name) || "State Ordner".equalsIgnoreCase(rule.name)) {
+                return true;
             }
         }
+        return false;
     }
 
     private static int clamp(int value, int min, int max) {

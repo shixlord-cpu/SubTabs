@@ -4,16 +4,16 @@ import org.jetbrains.annotations.NotNull;
 
 public final class SubtabCandidate {
     private final @NotNull String slotId;
-    private final @NotNull String label;
+    private final int nameSegment;
     private final @NotNull String fileName;
 
     public SubtabCandidate(
             @NotNull String slotId,
-            @NotNull String label,
+            int nameSegment,
             @NotNull String fileName
     ) {
         this.slotId = slotId;
-        this.label = label;
+        this.nameSegment = nameSegment;
         this.fileName = fileName;
     }
 
@@ -21,22 +21,15 @@ public final class SubtabCandidate {
         return slotId;
     }
 
-    public @NotNull String label() {
-        return label;
+    public int nameSegment() {
+        return nameSegment;
     }
 
     public @NotNull String fileName() {
         return fileName;
     }
 
-    public @NotNull String displayLabel(@NotNull String matchedFileName) {
-        if (!"STYLE".equals(slotId)) {
-            return label;
-        }
-        int dot = matchedFileName.lastIndexOf('.');
-        if (dot < 0 || dot == matchedFileName.length() - 1) {
-            return label;
-        }
-        return matchedFileName.substring(dot + 1).toUpperCase();
+    public @NotNull String resolveLabel(@NotNull String matchedFileName) {
+        return SubtabNameSegment.resolve(matchedFileName, nameSegment);
     }
 }

@@ -71,44 +71,63 @@ final class ComponentRelatedFiles {
         if (CustomSubtabRuleMatcher.isExtensionFolderGroupKey(baseName)) {
             return findExtensionFolderGroup(currentFile, parent, baseName);
         }
+        return findGroupNamePeers(currentFile, parent, baseName, rules);
+    }
 
-        Map<String, VirtualFile> foldersByPath = indexSearchFolders(parent, baseName);
-        Map<String, Set<String>> filesByDirectory = new LinkedHashMap<>();
-        Map<String, VirtualFile> filesByLocation = new LinkedHashMap<>();
+    private static @Nullable Match findGroupNamePeers(
+            @NotNull VirtualFile currentFile,
+            @NotNull VirtualFile parent,
+            @NotNull String groupKey,
+            @NotNull List<CustomSubtabRule> rules
+    ) {
+        CustomSubtabRuleMatcher.ParsedGroupKey parsed = CustomSubtabRuleMatcher.parseGroupKey(groupKey);
+        if (parsed == null || parsed.ruleIndex() < 0 || parsed.ruleIndex() >= rules.size()) {
+            return null;
+        }
+
+        CustomSubtabRule activeRule = rules.get(parsed.ruleIndex());
+        Map<String, VirtualFile> foldersByPath = indexSearchFolders(parent, groupKey);
+        List<Entry> relatedFiles = new ArrayList<>();
+        Set<String> seenLocations = new LinkedHashSet<>();
+        List<SubtabCandidateResolver.Located> locatedFiles = new ArrayList<>();
 
         for (Map.Entry<String, VirtualFile> folder : foldersByPath.entrySet()) {
-            Set<String> names = new LinkedHashSet<>();
+            String directory = folder.getKey();
             for (VirtualFile child : folder.getValue().getChildren()) {
                 if (child.isDirectory()) {
                     continue;
                 }
-                names.add(child.getName());
-                filesByLocation.put(locationKey(folder.getKey(), child.getName()), child);
+                if (CustomSubtabRuleMatcher.isFileExcluded(child.getName(), activeRule)) {
+                    continue;
+                }
+
+                CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.matchAtIndex(
+                        child.getName(),
+                        rules,
+                        parsed.ruleIndex()
+                );
+                if (match == null || !CustomSubtabRuleMatcher.sameGroupIdentity(groupKey, match.groupKey())) {
+                    continue;
+                }
+
+                String location = locationKey(directory, child.getName());
+                if (!seenLocations.add(location)) {
+                    continue;
+                }
+
+                relatedFiles.add(new Entry(
+                        CustomSubtabRuleMatcher.resolveTabName(activeRule, child.getName()),
+                        child
+                ));
+                locatedFiles.add(new SubtabCandidateResolver.Located(
+                        "",
+                        0,
+                        directory,
+                        child.getName()
+                ));
             }
-            filesByDirectory.put(folder.getKey(), names);
         }
 
-        List<SubtabCandidateResolver.Located> locatedFiles = SubtabCandidateResolver.resolve(
-                baseName,
-                pathKey(parent),
-                currentFile.getName(),
-                filesByDirectory
-        );
-        if (locatedFiles.size() < 2) {
-            return null;
-        }
-
-        List<Entry> relatedFiles = new ArrayList<>();
-        for (SubtabCandidateResolver.Located located : locatedFiles) {
-            VirtualFile file = filesByLocation.get(locationKey(located.directory(), located.fileName()));
-            if (file != null) {
-                String label = "Style".equalsIgnoreCase(located.label())
-                        ? new SubtabCandidate(located.slotId(), located.label(), located.fileName())
-                                .displayLabel(located.fileName())
-                        : located.label();
-                relatedFiles.add(new Entry(label, file));
-            }
-        }
         if (relatedFiles.size() < 2) {
             return null;
         }
@@ -120,7 +139,7 @@ final class ComponentRelatedFiles {
         if (anchor == null) {
             anchor = parent;
         }
-        return new Match(anchor, baseName, List.copyOf(relatedFiles));
+        return new Match(anchor, groupKey, List.copyOf(relatedFiles));
     }
 
     private static @Nullable Match findFolderGroup(
@@ -128,6 +147,10 @@ final class ComponentRelatedFiles {
             @NotNull String groupKey,
             @NotNull List<CustomSubtabRule> rules
     ) {
+        CustomSubtabRuleMatcher.ParsedGroupKey parsed = CustomSubtabRuleMatcher.parseGroupKey(groupKey);
+        CustomSubtabRule folderRule = parsed != null && parsed.ruleIndex() >= 0 && parsed.ruleIndex() < rules.size()
+                ? rules.get(parsed.ruleIndex())
+                : null;
         List<Entry> relatedFiles = new ArrayList<>();
         for (VirtualFile child : parent.getChildren()) {
             if (child.isDirectory()) {
@@ -135,25 +158,18 @@ final class ComponentRelatedFiles {
             }
             CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(child.getName(), rules);
             if (match != null && groupKey.equals(match.groupKey())) {
-                relatedFiles.add(new Entry(
-                        CustomSubtabRuleMatcher.labelFromFileName(child.getName()),
-                        child
-                ));
+                String label = folderRule != null
+                        ? CustomSubtabRuleMatcher.resolveTabName(folderRule, child.getName())
+                        : SubtabNameSegment.resolve(child.getName(), 1);
+                relatedFiles.add(new Entry(label, child));
             }
         }
 
-        relatedFiles.sort(FILE_NAME_ORDER);
+        sortByFileName(relatedFiles);
         if (relatedFiles.size() < 2) {
             return null;
         }
         return new Match(parent, groupKey, List.copyOf(relatedFiles));
-    }
-
-    private static final Comparator<Entry> FILE_NAME_ORDER =
-            Comparator.comparing(entry -> entry.file().getName());
-
-    private static void sortByFileName(@NotNull List<Entry> relatedFiles) {
-        relatedFiles.sort(FILE_NAME_ORDER);
     }
 
     private static @Nullable Match findUserGroup(
@@ -161,7 +177,7 @@ final class ComponentRelatedFiles {
             @NotNull String groupKey
     ) {
         String parentFileName = SubtabFileNestingGroups.parentFileName(
-                parsedStem(groupKey)
+                parsedGroupName(groupKey)
         );
         if (parentFileName == null || parentFileName.isBlank()) {
             return null;
@@ -184,7 +200,7 @@ final class ComponentRelatedFiles {
             VirtualFile file = parent.findChild(fileName);
             if (file != null && !file.isDirectory()) {
                 relatedFiles.add(new Entry(
-                        CustomSubtabRuleMatcher.labelFromFileName(fileName),
+                        SubtabNameSegment.resolve(fileName, 1),
                         file
                 ));
             }
@@ -192,13 +208,12 @@ final class ComponentRelatedFiles {
         if (relatedFiles.size() < 2) {
             return null;
         }
-        sortByFileName(relatedFiles);
         return new Match(parent, groupKey, List.copyOf(relatedFiles));
     }
 
-    private static @NotNull String parsedStem(@NotNull String groupKey) {
+    private static @NotNull String parsedGroupName(@NotNull String groupKey) {
         CustomSubtabRuleMatcher.ParsedGroupKey parsed = CustomSubtabRuleMatcher.parseGroupKey(groupKey);
-        return parsed == null ? "" : parsed.stem();
+        return parsed == null ? "" : parsed.groupName();
     }
 
     private static @Nullable Match findExtensionFolderGroup(
@@ -219,8 +234,11 @@ final class ComponentRelatedFiles {
             if (child.isDirectory() || !spec.matches(child.getName())) {
                 continue;
             }
+            if (CustomSubtabRuleMatcher.isFileExcluded(child.getName(), spec.rule())) {
+                continue;
+            }
             relatedFiles.add(new Entry(
-                    CustomSubtabRuleMatcher.labelFromFileName(child.getName()),
+                    CustomSubtabRuleMatcher.resolveTabName(spec.rule(), child.getName()),
                     child
             ));
         }
@@ -230,6 +248,13 @@ final class ComponentRelatedFiles {
             return null;
         }
         return new Match(parent, baseName, List.copyOf(relatedFiles));
+    }
+
+    private static final Comparator<Entry> FILE_NAME_ORDER =
+            Comparator.comparing(entry -> entry.file().getName());
+
+    private static void sortByFileName(@NotNull List<Entry> relatedFiles) {
+        relatedFiles.sort(FILE_NAME_ORDER);
     }
 
     private static @NotNull Map<String, VirtualFile> indexSearchFolders(
@@ -267,4 +292,16 @@ final class ComponentRelatedFiles {
     private static @NotNull String locationKey(@NotNull String directory, @NotNull String fileName) {
         return directory + "/" + fileName;
     }
+
+    private static @Nullable CustomSubtabRule ruleForGroupKey(
+            @NotNull String groupKey,
+            @NotNull List<CustomSubtabRule> rules
+    ) {
+        CustomSubtabRuleMatcher.ParsedGroupKey parsed = CustomSubtabRuleMatcher.parseGroupKey(groupKey);
+        if (parsed == null || parsed.ruleIndex() < 0 || parsed.ruleIndex() >= rules.size()) {
+            return null;
+        }
+        return rules.get(parsed.ruleIndex());
+    }
+
 }

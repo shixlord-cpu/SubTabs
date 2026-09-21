@@ -118,7 +118,7 @@ class SubtabsSettingsTest {
         assertTrue(rules.get(3).sectionsSummary().contains("Header"));
         assertTrue(rules.get(3).sectionsSummary().contains("Main"));
         assertTrue(rules.get(3).sectionsSummary().contains("Body"));
-        assertEquals("Imports, Rules, Media, Keyframes", rules.get(4).sectionsSummary());
+        assertEquals("Imports, Selectors, Media, Keyframes", rules.get(4).sectionsSummary());
     }
 
     @Test
@@ -231,17 +231,26 @@ class SubtabsSettingsTest {
 
     @Test
     void shipsWithBuiltInRules() {
-        assertEquals(9, new SubtabsSettings.State().rules.size());
+        assertEquals(10, new SubtabsSettings.State().rules.size());
         assertEquals("npm", new SubtabsSettings.State().rules.get(0).name);
         assertEquals("tsconfig", new SubtabsSettings.State().rules.get(1).name);
-        assertEquals("HTML", new SubtabsSettings.State().rules.get(5).name);
-        assertEquals(".component", new SubtabsSettings.State().rules.get(5).excludeStemSuffixes);
-        assertEquals("Komponente", new SubtabsSettings.State().rules.get(6).name);
-        assertEquals("Eigene Gruppen", new SubtabsSettings.State().rules.get(7).name);
-        assertTrue(new SubtabsSettings.State().rules.get(7).enabled);
-        assertTrue(new SubtabsSettings.State().rules.get(7).builtin);
-        assertEquals("Ordner", new SubtabsSettings.State().rules.get(8).name);
+        assertEquals("State Folder", new SubtabsSettings.State().rules.get(4).name);
+        assertEquals("1", new SubtabsSettings.State().rules.get(3).groupNameSegments);
+        assertEquals("1", new SubtabsSettings.State().rules.get(4).groupNameSegments);
+        assertFalse(new SubtabsSettings.State().rules.get(4).searchNeighbors);
+        assertEquals("state", new SubtabsSettings.State().rules.get(4).groupSuffix);
+        assertFalse(new SubtabsSettings.State().rules.get(4).builtin);
+        assertEquals("state", new SubtabsSettings.State().rules.get(3).groupSuffix);
+        assertEquals("HTML", new SubtabsSettings.State().rules.get(6).name);
+        assertFalse(new SubtabsSettings.State().rules.get(6).builtin);
+        assertTrue(new SubtabsSettings.State().rules.get(6).excludePatterns.contains(".component.html"));
+        assertEquals("Komponente", new SubtabsSettings.State().rules.get(7).name);
+        assertTrue(new SubtabsSettings.State().rules.get(7).excludePatterns.contains(".actions.ts"));
+        assertEquals("Eigene Gruppen", new SubtabsSettings.State().rules.get(8).name);
         assertTrue(new SubtabsSettings.State().rules.get(8).enabled);
         assertTrue(new SubtabsSettings.State().rules.get(8).builtin);
+        assertEquals("Ordner", new SubtabsSettings.State().rules.get(9).name);
+        assertTrue(new SubtabsSettings.State().rules.get(9).enabled);
+        assertTrue(new SubtabsSettings.State().rules.get(9).builtin);
     }
 }

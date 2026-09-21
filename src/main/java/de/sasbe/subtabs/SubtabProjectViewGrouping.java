@@ -86,9 +86,10 @@ final class SubtabProjectViewGrouping {
         }
 
         CustomSubtabRuleMatcher.ParsedGroupKey parsed = CustomSubtabRuleMatcher.parseGroupKey(groupKey);
-        if (parsed == null) {
+        if (parsed == null || parsed.ruleIndex() < 0 || parsed.ruleIndex() >= ComponentFileNaming.rules().size()) {
             return groupKey;
         }
-        return "merge:rule:" + parsed.ruleIndex() + ":" + parsed.stem();
+
+        return "merge:rule:" + parsed.ruleIndex() + ":" + parsed.groupName();
     }
 }

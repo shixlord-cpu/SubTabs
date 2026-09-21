@@ -27,6 +27,10 @@ final class ComponentSubtabsManager {
     private ComponentSubtabsManager() {
     }
 
+    private static boolean needsRuleSwitchBar(@NotNull VirtualFile file) {
+        return SubtabRuleRotation.hasMultipleMatches(file.getName(), ComponentFileNaming.rules());
+    }
+
     static void attachIfNeeded(@NotNull Project project, @NotNull VirtualFile file) {
         SubtabsSettings settings = SubtabsSettings.getInstance();
         if (!settings.isFamiliaEnabled()) {
@@ -38,9 +42,12 @@ final class ComponentSubtabsManager {
 
         ComponentSubtabGroupRegistry registry = ComponentSubtabGroupRegistry.getInstance(project);
         ComponentSubtabGroup group = registry.getOrCreateGroup(file);
-        if (group == null) {
+        if (group == null && !needsRuleSwitchBar(file)) {
             refreshMainTabPresentation(project, file);
             return;
+        }
+        if (group == null) {
+            group = new ComponentSubtabGroup(List.of());
         }
 
         FileEditorManager manager = FileEditorManager.getInstance(project);
@@ -192,7 +199,9 @@ final class ComponentSubtabsManager {
             ComponentSubtabBarPanel panel = editor.getUserData(SUBTAB_BAR_KEY);
             if (panel == null) {
                 SubtabsExpandOverlay.hide(editor);
+                continue;
             }
+            panel.refreshRuleSwitchButton();
         }
 
         updateTabPresentations(manager);
@@ -391,7 +400,19 @@ final class ComponentSubtabsManager {
 
         panel.setCollapseButtonVisible(showCollapseButton && !reserveTopRightCollapseIcons);
 
+        panel.refreshRuleSwitchButton();
         if (!active) {
+            panel.setCollapseButtonVisible(false);
+            if (panel.isRuleSwitchVisible()) {
+                SubtabsExpandOverlay.hide(editor);
+                SubtabsCollapseOverlay.hide(editor);
+                if (panel.getParent() == null) {
+                    manager.addTopComponent(editor, panel);
+                }
+                relayoutCollapseIcons(editor);
+                SidetabBarOverlay.relayout(editor);
+                return;
+            }
             detachFromSwing(panel);
             manager.removeTopComponent(editor, panel);
             SubtabsCollapseOverlay.hide(editor);
@@ -411,9 +432,9 @@ final class ComponentSubtabsManager {
         } else {
             SubtabsCollapseOverlay.hide(editor);
         }
-        detachFromSwing(panel);
-        manager.removeTopComponent(editor, panel);
-        manager.addTopComponent(editor, panel);
+        if (panel.getParent() == null) {
+            manager.addTopComponent(editor, panel);
+        }
         ensureCollapseIconRelayoutOnBarResize(editor, panel);
         relayoutCollapseIcons(editor);
         SidetabBarOverlay.relayout(editor);

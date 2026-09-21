@@ -29,7 +29,7 @@ final class CustomSubtabRuleMatcher {
     ) {
     }
 
-    record ParsedGroupKey(int ruleIndex, @NotNull String stem) {
+    record ParsedGroupKey(int ruleIndex, @NotNull String groupName, @NotNull String matchPrefix) {
     }
 
     record ExtensionGroupSpec(
@@ -54,14 +54,23 @@ final class CustomSubtabRuleMatcher {
         return null;
     }
 
-    static @NotNull List<Match> matchAll(@NotNull String fileName, @NotNull List<CustomSubtabRule> rules) {
-        List<Match> matches = new ArrayList<>();
+    static int firstMatchingRuleIndex(@NotNull String fileName, @NotNull List<CustomSubtabRule> rules) {
         for (int index = 0; index < rules.size(); index++) {
             CustomSubtabRule rule = rules.get(index);
             if (!rule.enabled) {
                 continue;
             }
-            Match match = matchRule(fileName, rule, index);
+            if (matchRule(fileName, rule, index) != null) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    static @NotNull List<Match> matchAll(@NotNull String fileName, @NotNull List<CustomSubtabRule> rules) {
+        List<Match> matches = new ArrayList<>();
+        for (int index = 0; index < rules.size(); index++) {
+            Match match = matchAtIndex(fileName, rules, index);
             if (match != null) {
                 matches.add(match);
             }
@@ -69,12 +78,47 @@ final class CustomSubtabRuleMatcher {
         return List.copyOf(matches);
     }
 
+    static @Nullable Match matchAtIndex(
+            @NotNull String fileName,
+            @NotNull List<CustomSubtabRule> rules,
+            int index
+    ) {
+        if (index < 0 || index >= rules.size()) {
+            return null;
+        }
+        CustomSubtabRule rule = rules.get(index);
+        if (!rule.enabled) {
+            return null;
+        }
+        return matchRule(fileName, rule, index);
+    }
+
+    static boolean matchesRuleIndex(
+            @NotNull String fileName,
+            @NotNull List<CustomSubtabRule> rules,
+            int index
+    ) {
+        return matchAtIndex(fileName, rules, index) != null;
+    }
+
     static @Nullable ParsedGroupKey parseGroupKey(@NotNull String groupKey) {
         Matcher matcher = GROUP_KEY.matcher(groupKey);
         if (!matcher.matches()) {
             return null;
         }
-        return new ParsedGroupKey(Integer.parseInt(matcher.group(1)), matcher.group(2));
+        return parseGroupKeySuffix(Integer.parseInt(matcher.group(1)), matcher.group(2));
+    }
+
+    private static @NotNull ParsedGroupKey parseGroupKeySuffix(int ruleIndex, @NotNull String suffix) {
+        int separator = suffix.indexOf('#');
+        if (separator < 0) {
+            return new ParsedGroupKey(ruleIndex, suffix, suffix);
+        }
+        return new ParsedGroupKey(
+                ruleIndex,
+                suffix.substring(0, separator),
+                suffix.substring(separator + 1)
+        );
     }
 
     static @Nullable ExtensionGroupSpec parseExtensionGroup(
@@ -111,12 +155,24 @@ final class CustomSubtabRuleMatcher {
         }
 
         CustomSubtabRule rule = rules.get(parsed.ruleIndex());
-        return switch (rule.type) {
-            case FILES -> buildFilesMatch(rule, parsed.ruleIndex());
-            case USER_GROUPS -> buildUserGroupMatch(rule, parsed.ruleIndex(), parsed.stem());
-            case FOLDER -> buildFolderMatch(rule, parsed.ruleIndex());
-            case STEM -> buildStemMatch(rule, parsed.ruleIndex(), parsed.stem());
-        };
+        if (rule.isSpecial()) {
+            return switch (rule.type) {
+                case USER_GROUPS -> buildUserGroupMatch(rule, parsed.ruleIndex(), parsed.matchPrefix());
+                case FOLDER -> buildFolderMatch(rule, parsed.ruleIndex());
+                default -> null;
+            };
+        }
+
+        List<String> patterns = parseCsv(rule.patterns);
+        if (isExactNameOnlyRule(patterns)) {
+            return buildExactNameMatch(rule, parsed.ruleIndex(), parsed.groupName());
+        }
+        return buildSuffixPatternMatch(
+                rule,
+                parsed.ruleIndex(),
+                parsed.matchPrefix(),
+                probeFileNameForPrefix(rule, parsed.matchPrefix())
+        );
     }
 
     static boolean isExtensionFolderGroupKey(@NotNull String groupKey) {
@@ -125,12 +181,16 @@ final class CustomSubtabRuleMatcher {
 
     static boolean isFolderGroupKey(@NotNull String groupKey) {
         ParsedGroupKey parsed = parseGroupKey(groupKey);
-        return parsed != null && FOLDER_GROUP_MARKER.equals(parsed.stem());
+        return parsed != null && FOLDER_GROUP_MARKER.equals(parsed.matchPrefix());
     }
 
     static boolean isUserGroupKey(@NotNull String groupKey) {
         ParsedGroupKey parsed = parseGroupKey(groupKey);
-        return parsed != null && parsed.stem().startsWith(NESTING_GROUP_MARKER);
+        return parsed != null && parsed.matchPrefix().startsWith(NESTING_GROUP_MARKER);
+    }
+
+    static boolean usesSuffixMatching(@NotNull String pattern) {
+        return pattern.startsWith(".") && !isStandaloneDotFile(pattern);
     }
 
     private static @Nullable Match matchRule(
@@ -138,11 +198,14 @@ final class CustomSubtabRuleMatcher {
             @NotNull CustomSubtabRule rule,
             int index
     ) {
-        return switch (rule.type) {
-            case STEM, FILES -> matchPatternRule(fileName, rule, index);
-            case USER_GROUPS -> matchUserGroups(fileName, rule, index);
-            case FOLDER -> buildFolderMatch(rule, index);
-        };
+        if (rule.isSpecial()) {
+            return switch (rule.type) {
+                case USER_GROUPS -> matchUserGroups(fileName, rule, index);
+                case FOLDER -> buildFolderMatch(rule, index);
+                default -> null;
+            };
+        }
+        return matchPatternRule(fileName, rule, index);
     }
 
     private static @Nullable Match matchUserGroups(
@@ -160,14 +223,14 @@ final class CustomSubtabRuleMatcher {
     private static @NotNull Match buildUserGroupMatch(
             @NotNull CustomSubtabRule rule,
             int index,
-            @NotNull String stem
+            @NotNull String nestingKey
     ) {
-        String parentFileName = SubtabFileNestingGroups.parentFileName(stem);
+        String parentFileName = SubtabFileNestingGroups.parentFileName(nestingKey);
         String displayName = parentFileName != null && !parentFileName.isBlank()
                 ? parentFileName
                 : (!rule.name.isBlank() ? rule.name : "Eigene Gruppen");
         return new Match(
-                groupKey(index, stem),
+                groupKey(index, nestingKey),
                 displayName,
                 List.of(),
                 false
@@ -179,16 +242,28 @@ final class CustomSubtabRuleMatcher {
             @NotNull CustomSubtabRule rule,
             int index
     ) {
+        if (isFileExcluded(fileName, rule)) {
+            return null;
+        }
+
         List<String> patterns = parseCsv(rule.patterns);
         if (patterns.isEmpty()) {
             return null;
         }
 
-        return switch (rule.type) {
-            case STEM -> matchStem(fileName, rule, index, patterns);
-            case FILES -> matchFiles(fileName, rule, index, patterns);
-            default -> null;
-        };
+        if (isExtensionFolderRule(patterns)) {
+            return matchExtensionFolder(fileName, rule, index, patterns);
+        }
+
+        Match suffixMatch = matchSuffixPattern(fileName, rule, index, patterns);
+        if (suffixMatch != null) {
+            return suffixMatch;
+        }
+
+        if (matchesExactFilePattern(fileName, patterns)) {
+            return buildExactNameMatch(rule, index, fileName);
+        }
+        return null;
     }
 
     private static @NotNull Match buildFolderMatch(@NotNull CustomSubtabRule rule, int index) {
@@ -201,13 +276,14 @@ final class CustomSubtabRuleMatcher {
         );
     }
 
-    private static @Nullable Match matchStem(
+    private static @Nullable Match matchSuffixPattern(
             @NotNull String fileName,
             @NotNull CustomSubtabRule rule,
             int index,
             @NotNull List<String> patterns
     ) {
         List<String> suffixes = patterns.stream()
+                .filter(CustomSubtabRuleMatcher::usesSuffixMatching)
                 .map(CustomSubtabRuleMatcher::normalizeSuffix)
                 .sorted(Comparator.comparingInt(String::length).reversed())
                 .toList();
@@ -217,57 +293,85 @@ final class CustomSubtabRuleMatcher {
                 continue;
             }
 
-            String stem = fileName.substring(0, fileName.length() - suffix.length());
-            if (stem.isEmpty() || isStemExcluded(stem, rule)) {
+            String matchPrefix = fileName.substring(0, fileName.length() - suffix.length());
+            if (matchPrefix.isEmpty()) {
                 continue;
             }
-            return buildStemMatch(rule, index, stem);
+            return buildSuffixPatternMatch(rule, index, matchPrefix, fileName);
         }
         return null;
     }
 
-    private static @NotNull Match buildStemMatch(
+    private static @NotNull Match buildSuffixPatternMatch(
             @NotNull CustomSubtabRule rule,
             int index,
-            @NotNull String stem
+            @NotNull String matchPrefix,
+            @NotNull String fileName
     ) {
+        String groupName = resolveGroupName(rule, fileName);
         return new Match(
-                groupKey(index, stem),
-                displayNameForStem(rule, stem),
-                buildCandidates(rule, stem),
+                groupKey(index, encodeGroupKeySuffix(groupName, matchPrefix)),
+                groupName,
+                buildPatternSlots(rule, matchPrefix),
                 rule.searchNeighbors
         );
     }
 
-    private static @Nullable Match matchFiles(
+    private static @NotNull String probeFileNameForPrefix(
+            @NotNull CustomSubtabRule rule,
+            @NotNull String matchPrefix
+    ) {
+        List<String> patterns = parseCsv(rule.patterns);
+        for (String pattern : patterns) {
+            if (usesSuffixMatching(pattern)) {
+                return matchPrefix + normalizeSuffix(pattern);
+            }
+        }
+        return matchPrefix;
+    }
+
+    private static @NotNull String encodeGroupKeySuffix(@NotNull String groupName, @NotNull String matchPrefix) {
+        return groupName.equals(matchPrefix) ? groupName : groupName + "#" + matchPrefix;
+    }
+
+    private static @Nullable Match matchExtensionFolder(
             @NotNull String fileName,
             @NotNull CustomSubtabRule rule,
             int index,
             @NotNull List<String> patterns
     ) {
-        if (isExtensionFolderRule(patterns)) {
-            List<String> extensions = patterns.stream()
-                    .map(CustomSubtabRuleMatcher::normalizeSuffix)
-                    .toList();
-            for (String extension : extensions) {
-                if (fileName.endsWith(extension) && fileName.length() >= extension.length()) {
-                    return buildExtensionFolderMatch(rule, index, extensions);
-                }
+        List<String> extensions = patterns.stream()
+                .map(CustomSubtabRuleMatcher::normalizeSuffix)
+                .toList();
+        for (String extension : extensions) {
+            if (fileName.endsWith(extension) && fileName.length() >= extension.length()) {
+                return buildExtensionFolderMatch(rule, index, extensions);
             }
-            return null;
         }
-
-        if (!patterns.contains(fileName)) {
-            return null;
-        }
-        return buildFilesMatch(rule, index);
+        return null;
     }
 
-    private static @NotNull Match buildFilesMatch(@NotNull CustomSubtabRule rule, int index) {
+    private static boolean matchesExactFilePattern(
+            @NotNull String fileName,
+            @NotNull List<String> patterns
+    ) {
+        return patterns.contains(fileName);
+    }
+
+    private static boolean isExactNameOnlyRule(@NotNull List<String> patterns) {
+        return !patterns.isEmpty() && patterns.stream().noneMatch(CustomSubtabRuleMatcher::usesSuffixMatching);
+    }
+
+    private static @NotNull Match buildExactNameMatch(
+            @NotNull CustomSubtabRule rule,
+            int index,
+            @NotNull String fileName
+    ) {
+        String groupName = resolveGroupName(rule, fileName);
         return new Match(
-                groupKey(index, "@files"),
-                !rule.name.isBlank() ? rule.name : "Dateien",
-                buildCandidates(rule, ""),
+                groupKey(index, groupName),
+                groupName,
+                buildPatternSlots(rule, null),
                 rule.searchNeighbors
         );
     }
@@ -291,12 +395,34 @@ final class CustomSubtabRuleMatcher {
         return groupKey.startsWith(GROUP_PREFIX);
     }
 
+    static boolean sameGroupIdentity(@NotNull String leftGroupKey, @NotNull String rightGroupKey) {
+        if (leftGroupKey.equals(rightGroupKey)) {
+            return true;
+        }
+
+        ParsedGroupKey left = parseGroupKey(leftGroupKey);
+        ParsedGroupKey right = parseGroupKey(rightGroupKey);
+        if (left == null || right == null || left.ruleIndex() != right.ruleIndex()) {
+            return false;
+        }
+        if (!left.groupName().equals(right.groupName())) {
+            return false;
+        }
+
+        boolean leftDisambiguated = !left.groupName().equals(left.matchPrefix());
+        boolean rightDisambiguated = !right.groupName().equals(right.matchPrefix());
+        if (leftDisambiguated || rightDisambiguated) {
+            return left.matchPrefix().equals(right.matchPrefix());
+        }
+        return true;
+    }
+
     private static @NotNull String groupKey(int index, @NotNull String suffix) {
         return GROUP_PREFIX + index + ":" + suffix;
     }
 
     private static boolean isExtensionFolderRule(@NotNull List<String> patterns) {
-        return !patterns.isEmpty() && patterns.stream().allMatch(CustomSubtabRuleMatcher::isExtensionOnlyPattern);
+        return patterns.size() == 1 && isExtensionOnlyPattern(patterns.get(0));
     }
 
     private static boolean isExtensionOnlyPattern(@NotNull String pattern) {
@@ -306,54 +432,164 @@ final class CustomSubtabRuleMatcher {
         return pattern.indexOf('.', 1) < 0;
     }
 
-    private static boolean isStemExcluded(@NotNull String stem, @NotNull CustomSubtabRule rule) {
-        if (rule.excludeStemSuffixes == null || rule.excludeStemSuffixes.isBlank()) {
+    static boolean isFileExcluded(@NotNull String fileName, @NotNull CustomSubtabRule rule) {
+        if (rule.excludePatterns == null || rule.excludePatterns.isBlank()) {
             return false;
         }
-        for (String suffix : parseCsv(rule.excludeStemSuffixes)) {
-            String normalized = normalizeSuffix(suffix);
-            if (stem.endsWith(normalized)) {
+        for (String pattern : parseCsv(rule.excludePatterns)) {
+            if (matchesExcludePattern(fileName, pattern)) {
                 return true;
             }
         }
         return false;
     }
 
-    private static @NotNull List<SubtabCandidate> buildCandidates(
+    private static boolean matchesExcludePattern(@NotNull String fileName, @NotNull String pattern) {
+        if (pattern.startsWith(".")) {
+            String normalized = normalizeSuffix(pattern);
+            return fileName.endsWith(normalized) && fileName.length() > normalized.length();
+        }
+        return fileName.equals(pattern);
+    }
+
+    static @NotNull String resolveTabName(@NotNull CustomSubtabRule rule, @NotNull String fileName) {
+        if (rule.isSpecial()) {
+            return SubtabNameSegment.resolve(fileName, defaultNameSegment(rule));
+        }
+        int patternIndex = matchingPatternIndex(rule, fileName);
+        return SubtabNameSegment.resolve(fileName, nameSegmentAt(rule, patternIndex));
+    }
+
+    private static int defaultNameSegment(@NotNull CustomSubtabRule rule) {
+        List<Integer> segments = parseNameSegments(rule.nameSegments);
+        return segments.isEmpty() ? 1 : segments.get(0);
+    }
+
+    private static int nameSegmentAt(@NotNull CustomSubtabRule rule, int patternIndex) {
+        List<String> patterns = parseCsv(rule.patterns);
+        int fallback = 1;
+        if (patternIndex >= 0 && patternIndex < patterns.size()) {
+            fallback = usesSuffixMatching(patterns.get(patternIndex)) ? 2 : 1;
+        }
+        return segmentAt(rule.nameSegments, patternIndex, fallback);
+    }
+
+    static int groupSegmentAt(@NotNull CustomSubtabRule rule, int patternIndex) {
+        return segmentAt(rule.groupNameSegments, rule, patternIndex, 1);
+    }
+
+    static @NotNull String resolveGroupName(@NotNull CustomSubtabRule rule, @NotNull String fileName) {
+        List<String> patterns = parseCsv(rule.patterns);
+        if (isExactNameOnlyRule(patterns) && !rule.name.isBlank()) {
+            return rule.name.trim();
+        }
+        int patternIndex = matchingPatternIndex(rule, fileName);
+        return SubtabNameSegment.resolve(fileName, groupSegmentAt(rule, patternIndex));
+    }
+
+    private static boolean isStandaloneDotFile(@NotNull String pattern) {
+        if (pattern.startsWith(".env")) {
+            return true;
+        }
+        return pattern.equals(".npmrc") || pattern.equals(".nvmrc") || pattern.equals(".node-version");
+    }
+
+    private static int segmentAt(
+            @NotNull String raw,
+            int patternIndex,
+            int fallback
+    ) {
+        List<Integer> segments = parseNameSegments(raw);
+        if (segments.isEmpty()) {
+            return fallback;
+        }
+        if (segments.size() == 1) {
+            return segments.get(0);
+        }
+        if (patternIndex >= 0 && patternIndex < segments.size()) {
+            return segments.get(patternIndex);
+        }
+        return fallback;
+    }
+
+    private static int segmentAt(
+            @NotNull String raw,
             @NotNull CustomSubtabRule rule,
-            @NotNull String stem
+            int patternIndex,
+            int fallback
+    ) {
+        return segmentAt(raw, patternIndex, fallback);
+    }
+
+    static int matchingPatternIndex(@NotNull CustomSubtabRule rule, @NotNull String fileName) {
+        List<String> patterns = parseCsv(rule.patterns);
+        if (patterns.isEmpty()) {
+            return 0;
+        }
+
+        if (isExtensionFolderRule(patterns)) {
+            List<String> extensions = patterns.stream()
+                    .map(CustomSubtabRuleMatcher::normalizeSuffix)
+                    .toList();
+            for (int index = 0; index < extensions.size(); index++) {
+                String extension = extensions.get(index);
+                if (fileName.endsWith(extension) && fileName.length() >= extension.length()) {
+                    return index;
+                }
+            }
+            return 0;
+        }
+
+        List<String> suffixes = patterns.stream()
+                .filter(CustomSubtabRuleMatcher::usesSuffixMatching)
+                .map(CustomSubtabRuleMatcher::normalizeSuffix)
+                .sorted(Comparator.comparingInt(String::length).reversed())
+                .toList();
+        for (String suffix : suffixes) {
+            if (!fileName.endsWith(suffix) || fileName.length() <= suffix.length()) {
+                continue;
+            }
+            for (int index = 0; index < patterns.size(); index++) {
+                if (usesSuffixMatching(patterns.get(index))
+                        && normalizeSuffix(patterns.get(index)).equals(suffix)) {
+                    return index;
+                }
+            }
+        }
+
+        for (int index = 0; index < patterns.size(); index++) {
+            if (fileName.equals(patterns.get(index))) {
+                return index;
+            }
+        }
+        return 0;
+    }
+
+    private static @NotNull List<SubtabCandidate> buildPatternSlots(
+            @NotNull CustomSubtabRule rule,
+            @Nullable String matchPrefix
     ) {
         List<String> patterns = parseCsv(rule.patterns);
-        List<String> labels = parseCsv(rule.labels);
         List<String> slotKeys = parseCsv(rule.slotKeys);
         List<SubtabCandidate> candidates = new ArrayList<>();
 
         for (int index = 0; index < patterns.size(); index++) {
             String pattern = patterns.get(index);
-            String normalized = rule.type == CustomSubtabRule.Type.STEM
-                    ? normalizeSuffix(pattern)
-                    : pattern;
-            String fileName = rule.type == CustomSubtabRule.Type.STEM
-                    ? stem + normalized
-                    : pattern;
+            String fileName;
+            if (usesSuffixMatching(pattern)) {
+                if (matchPrefix == null || matchPrefix.isBlank()) {
+                    continue;
+                }
+                fileName = matchPrefix + normalizeSuffix(pattern);
+            } else {
+                fileName = pattern;
+            }
             String slotId = index < slotKeys.size() && !slotKeys.get(index).isBlank()
                     ? slotKeys.get(index)
-                    : normalized;
-            String label = index < labels.size() && !labels.get(index).isBlank()
-                    ? labels.get(index)
-                    : rule.type == CustomSubtabRule.Type.STEM
-                            ? labelFromPattern(normalized)
-                            : labelFromFileName(pattern);
-            candidates.add(new SubtabCandidate(slotId, label, fileName));
+                    : (usesSuffixMatching(pattern) ? normalizeSuffix(pattern) : pattern);
+            candidates.add(new SubtabCandidate(slotId, nameSegmentAt(rule, index), fileName));
         }
         return List.copyOf(candidates);
-    }
-
-    private static @NotNull String displayNameForStem(@NotNull CustomSubtabRule rule, @NotNull String stem) {
-        if (rule.stripComponentSuffix && stem.endsWith(".component") && stem.length() > ".component".length()) {
-            return stem.substring(0, stem.length() - ".component".length());
-        }
-        return stem;
     }
 
     static @NotNull String displayNameWithSuffix(@NotNull String base, @NotNull CustomSubtabRule rule) {
@@ -386,35 +622,22 @@ final class CustomSubtabRuleMatcher {
         return pattern.startsWith(".") ? pattern : "." + pattern;
     }
 
-    static @NotNull String labelFromPattern(@NotNull String pattern) {
-        String normalized = pattern.startsWith(".") ? pattern.substring(1) : pattern;
-        int lastDot = normalized.lastIndexOf('.');
-        String core = lastDot > 0 ? normalized.substring(0, lastDot) : normalized;
-        return capitalize(core);
-    }
+    static @NotNull List<Integer> parseNameSegments(@NotNull String raw) {
+        if (raw.isBlank()) {
+            return List.of();
+        }
 
-    static @NotNull String labelFromFileName(@NotNull String fileName) {
-        if (fileName.startsWith(".")) {
-            int nextDot = fileName.indexOf('.', 1);
-            if (nextDot > 0) {
-                return fileName.substring(1, nextDot);
+        List<Integer> values = new ArrayList<>();
+        for (String part : raw.split(",")) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty()) {
+                continue;
             }
-            return fileName.substring(1);
+            try {
+                values.add(Integer.parseInt(trimmed));
+            } catch (NumberFormatException ignored) {
+            }
         }
-        int dot = fileName.indexOf('.');
-        if (dot > 0) {
-            return capitalize(fileName.substring(0, dot));
-        }
-        return fileName;
-    }
-
-    private static @NotNull String capitalize(@NotNull String value) {
-        if (value.isEmpty()) {
-            return value;
-        }
-        if (value.length() == 1) {
-            return value.toUpperCase();
-        }
-        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
+        return List.copyOf(values);
     }
 }

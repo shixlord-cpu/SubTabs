@@ -9,14 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class ComponentTabTitlesTest {
     @Test
     void usesComponentNameWhileSubtabsAreVisible() {
-        assertEquals("header", ComponentTabTitles.displayGroupedTitle("header.component.scss"));
-        assertEquals("user-card", ComponentTabTitles.displayGroupedTitle("user-card.component.ts"));
+        assertEquals("header-component", ComponentTabTitles.displayGroupedTitle("header.component.scss"));
+        assertEquals("user-card-component", ComponentTabTitles.displayGroupedTitle("user-card.component.ts"));
     }
 
     @Test
     void usesGroupedNameForVirtualFileWithoutRelatedFilesLookup() {
         LightVirtualFile file = new LightVirtualFile("header.component.html");
-        assertEquals("header", ComponentTabTitles.displayGroupedTitle(file));
+        assertEquals("header-component", ComponentTabTitles.displayGroupedTitle(file));
     }
 
     @Test
