@@ -56,6 +56,12 @@ final class SubtabBarScrolling {
         return new ViewportSnapshot(viewport.getViewPosition().x, viewportWidth, viewWidth);
     }
 
+    static @NotNull VerticalViewportSnapshot snapshotVertical(@NotNull JViewport viewport, int contentHeight) {
+        int viewportHeight = Math.max(viewport.getExtentSize().height, viewport.getHeight());
+        int viewHeight = Math.max(contentHeight, viewport.getViewSize().height);
+        return new VerticalViewportSnapshot(viewport.getViewPosition().y, viewportHeight, viewHeight);
+    }
+
     static @NotNull ViewportSnapshot applyHorizontalScroll(
             @NotNull JViewport viewport,
             @Nullable JScrollBar bar,
@@ -78,6 +84,45 @@ final class SubtabBarScrolling {
             viewport.setViewPosition(new Point(nextX, current.y));
         }
         return new ViewportSnapshot(viewport.getViewPosition().x, snapshot.viewportWidth(), snapshot.viewWidth());
+    }
+
+    static @NotNull VerticalViewportSnapshot applyVerticalScroll(
+            @NotNull JViewport viewport,
+            @Nullable JScrollBar bar,
+            int contentHeight,
+            int delta
+    ) {
+        VerticalViewportSnapshot snapshot = snapshotVertical(viewport, contentHeight);
+        if (snapshot.viewportHeight() <= 0 || snapshot.viewHeight() <= 0) {
+            return snapshot;
+        }
+
+        int nextY = snapshot.scrolledBy(delta);
+        syncViewHeight(viewport, snapshot.viewHeight(), snapshot.viewportHeight());
+        if (bar != null) {
+            int maximum = Math.max(snapshot.viewHeight(), snapshot.viewportHeight());
+            bar.setValues(nextY, snapshot.viewportHeight(), 0, maximum);
+        }
+        java.awt.Point current = viewport.getViewPosition();
+        if (current.y != nextY) {
+            viewport.setViewPosition(new java.awt.Point(current.x, nextY));
+        }
+        return snapshotVertical(viewport, contentHeight);
+    }
+
+    static void syncViewHeight(@NotNull JViewport viewport, int contentHeight, int viewportHeight) {
+        int height = Math.max(Math.max(contentHeight, viewportHeight), 1);
+        Dimension size = viewport.getViewSize();
+        int width = Math.max(size.width, 1);
+        if (viewport.getView() != null) {
+            width = Math.max(width, Math.max(viewport.getView().getPreferredSize().width, 1));
+        }
+        if (size.width != width || size.height != height) {
+            viewport.setViewSize(new Dimension(width, height));
+        }
+        if (viewport.getView() != null && (viewport.getView().getHeight() < height || viewport.getView().getWidth() < 1)) {
+            viewport.getView().setSize(width, height);
+        }
     }
 
     static void syncViewWidth(@NotNull JViewport viewport, int contentWidth, int viewportWidth) {
@@ -106,6 +151,20 @@ final class SubtabBarScrolling {
 
         int scrolledBy(int delta) {
             return nextViewX(x, delta, viewportWidth, viewWidth);
+        }
+    }
+
+    record VerticalViewportSnapshot(int y, int viewportHeight, int viewHeight) {
+        boolean canScrollUp() {
+            return SubtabBarScrolling.canScrollLeft(y, 0);
+        }
+
+        boolean canScrollDown() {
+            return SubtabBarScrolling.canScrollRight(y, viewportHeight, viewHeight);
+        }
+
+        int scrolledBy(int delta) {
+            return clampValue(y + delta, 0, viewportHeight, viewHeight);
         }
     }
 }

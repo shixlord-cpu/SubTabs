@@ -1,0 +1,30 @@
+---
+description: TESTE! runs failing tests until green; TESTE_HART! also verifies the real UI with screenshots.
+alwaysApply: true
+---
+
+# TESTE! and TESTE_HART!
+
+When the user writes **TESTE!** or **TESTE_HART!**, that instruction is mandatory. Do not claim the work is done without following it. Do not treat painted unit-test widgets as a substitute for the real UI.
+
+## TESTE!
+
+After implementing or changing behavior:
+
+1. Run automated tests that exercise the changed behavior through the real production path (editor, subtab bar, listeners), not only isolated helpers.
+2. If a test fails, fix the code and re-run. Repeat until the tests pass or you can state a concrete blocker.
+3. Do not report success while relevant tests are failing.
+
+## TESTE_HART!
+
+Do everything from TESTE!, then also verify the **actual on-screen result**:
+
+1. Drive the real UI (sandbox IDE, heavy editor-window tests, or an equivalent rendered product component — not a stub button created only for a color assert).
+2. Capture screenshots of the exact UI the user cares about (for example selected subtab + main tab).
+3. Inspect those screenshots. If the pixels do not match the request, treat it as a failure: change the code and screenshot again.
+4. Never say you verified with screenshots if you only rendered a detached test widget, guessed from code, or skipped inspecting the image.
+
+## Honesty
+
+- Isolated `paint()` tests are extra evidence, not TESTE_HART! verification.
+- If you cannot open or screenshot the real UI, say that plainly. Do not imply you did.

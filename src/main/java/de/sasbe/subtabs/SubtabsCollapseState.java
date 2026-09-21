@@ -21,10 +21,12 @@ public final class SubtabsCollapseState {
         }
         SubtabsSettings.getInstance().setSubtabsActive(active);
         ComponentSubtabsManager.refreshAllOpenProjects();
-        SubtabsPresentation.refreshProjectViews();
     }
 
     public void toggle(@NotNull Project project) {
+        if (!SubtabsSettings.getInstance().isFamiliaEnabled()) {
+            return;
+        }
         setCollapsed(project, !isCollapsed());
     }
 }

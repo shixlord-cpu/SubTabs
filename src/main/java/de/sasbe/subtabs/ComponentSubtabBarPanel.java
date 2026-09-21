@@ -1,5 +1,10 @@
 package de.sasbe.subtabs;
 
+import com.intellij.icons.AllIcons;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.event.DocumentEvent;
+import com.intellij.openapi.editor.event.DocumentListener;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -10,7 +15,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JToggleButton;
@@ -18,10 +25,10 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.Scrollable;
 import java.awt.AWTEvent;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.Insets;
 import java.awt.LayoutManager;
 import java.awt.Rectangle;
@@ -31,7 +38,10 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 final class ComponentSubtabBarPanel extends JPanel {
@@ -40,7 +50,12 @@ final class ComponentSubtabBarPanel extends JPanel {
     private final JBScrollPane scrollPane;
     private final SubtabOverflowStrip overflowStrip;
     private final ComponentSubtabIconButton collapseButton;
+    private final ComponentSubtabIconButton closeSideButton;
+    private final ComponentSubtabIconButton ruleSwitchButton;
+    private final JPanel ruleSwitchPanel;
+    private final JPanel trailingPanel;
     private final Map<VirtualFile, JToggleButton> buttonsByFile = new HashMap<>();
+    private final Set<VirtualFile> watchedDocuments = new HashSet<>();
     private final AtomicBoolean ignoreNextClick = new AtomicBoolean();
     private boolean dragInstalled;
 
@@ -48,6 +63,7 @@ final class ComponentSubtabBarPanel extends JPanel {
     private VirtualFile displayedFile;
     private SubtabFitScale.Result fit = SubtabFitScale.Result.FULL;
     private int naturalStripWidth;
+    private int topSpacerHeight;
 
     ComponentSubtabBarPanel(
             @NotNull Project project,
@@ -81,9 +97,29 @@ final class ComponentSubtabBarPanel extends JPanel {
         overflowStrip = new SubtabOverflowStrip(scrollPane, () -> tabsHost.getPreferredSize().width);
 
         collapseButton = createCollapseButton();
+        closeSideButton = createCloseSideButton();
+        closeSideButton.setVisible(false);
+        ruleSwitchButton = createRuleSwitchButton();
+        ruleSwitchPanel = new JPanel();
+        ruleSwitchPanel.setLayout(new BoxLayout(ruleSwitchPanel, BoxLayout.X_AXIS));
+        ruleSwitchPanel.setOpaque(false);
+        ruleSwitchPanel.add(ruleSwitchButton);
+        ruleSwitchPanel.setVisible(false);
+
+        trailingPanel = new JPanel();
+        trailingPanel.setLayout(new BoxLayout(trailingPanel, BoxLayout.X_AXIS));
+        trailingPanel.setOpaque(false);
+        trailingPanel.add(collapseButton);
+        trailingPanel.add(closeSideButton);
+
+        JPanel eastPanel = new JPanel(new BorderLayout(0, 0));
+        eastPanel.setOpaque(false);
+        eastPanel.add(ruleSwitchPanel, BorderLayout.WEST);
+        eastPanel.add(trailingPanel, BorderLayout.EAST);
+
         applyChrome();
         add(overflowStrip, BorderLayout.CENTER);
-        add(collapseButton, BorderLayout.EAST);
+        add(eastPanel, BorderLayout.EAST);
 
         addComponentListener(new ComponentAdapter() {
             @Override
@@ -110,8 +146,26 @@ final class ComponentSubtabBarPanel extends JPanel {
                 ComponentSubtabUi.verticalGap()
         ));
         collapseButton.updateSize();
+        closeSideButton.updateSize();
+        ruleSwitchButton.updateSize();
         applyChrome();
-        applyGroupColors();
+        revalidate();
+        updateFitToEditorWidth();
+        repaint();
+    }
+
+    /**
+     * Aligns this bar with the neighbouring split pane and shows the button that closes this side.
+     * The spacer compensates the main tab strip, which only exists above the primary pane.
+     */
+    void applySplitLayout(int topSpacerHeight, boolean splitActive) {
+        boolean spacerChanged = this.topSpacerHeight != topSpacerHeight;
+        this.topSpacerHeight = topSpacerHeight;
+        closeSideButton.setVisible(splitActive);
+        if (spacerChanged) {
+            applyChrome();
+        }
+        updateTrailingPanelVisibility();
         revalidate();
         updateFitToEditorWidth();
         repaint();
@@ -119,43 +173,222 @@ final class ComponentSubtabBarPanel extends JPanel {
 
     void setCollapseButtonVisible(boolean visible) {
         collapseButton.setVisible(visible);
+        updateTrailingPanelVisibility();
         revalidate();
         updateFitToEditorWidth();
         repaint();
     }
 
+    private void updateTrailingPanelVisibility() {
+        trailingPanel.setVisible(collapseButton.isVisible() || closeSideButton.isVisible());
+    }
+
+    void refreshRuleSwitchButton() {
+        if (displayedFile == null) {
+            ruleSwitchPanel.setVisible(false);
+            return;
+        }
+        boolean visible = SubtabRuleRotation.hasMultipleMatches(
+                displayedFile.getName(),
+                ComponentFileNaming.rules()
+        );
+        ruleSwitchPanel.setVisible(visible);
+        if (visible) {
+            List<Integer> indices = SubtabRuleRotation.matchingRuleIndices(
+                    displayedFile.getName(),
+                    ComponentFileNaming.rules()
+            );
+            if (!indices.isEmpty()) {
+                List<CustomSubtabRule> rules = ComponentFileNaming.rules();
+                int activeIndex = indices.get(0);
+                String ruleName = activeIndex >= 0 && activeIndex < rules.size()
+                        ? rules.get(activeIndex).name
+                        : "Regel";
+                ruleSwitchButton.setToolTipText(
+                        "Regel wechseln (aktiv: " + ruleName + ", " + indices.size() + " Treffer)"
+                );
+                ruleSwitchButton.getAccessibleContext().setAccessibleName("Regel wechseln");
+            }
+        }
+        revalidate();
+        repaint();
+    }
+
+    private static boolean sameRelatedFiles(
+            @NotNull ComponentSubtabGroup left,
+            @NotNull ComponentSubtabGroup right
+    ) {
+        List<ComponentRelatedFiles.Entry> leftFiles = left.relatedFiles();
+        List<ComponentRelatedFiles.Entry> rightFiles = right.relatedFiles();
+        if (leftFiles.size() != rightFiles.size()) {
+            return false;
+        }
+        for (int index = 0; index < leftFiles.size(); index++) {
+            if (!leftFiles.get(index).file().getPath().equals(rightFiles.get(index).file().getPath())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void clearButtons() {
+        tabsHost.removeAll();
+        buttonsByFile.clear();
+        naturalStripWidth = 0;
+    }
+
+    @Nullable JComponent collapseButtonIfShowing() {
+        return collapseButton.isVisible() && collapseButton.isShowing() ? collapseButton : null;
+    }
+
     void bind(@NotNull ComponentSubtabGroup group, @NotNull VirtualFile displayedFile) {
+        boolean groupChanged = this.group != null && !sameRelatedFiles(this.group, group);
         this.group = group;
         this.displayedFile = displayedFile;
+        if (groupChanged) {
+            clearButtons();
+        }
         rebuildButtonsIfNeeded();
         updateSelection(displayedFile);
         refreshOpenStates();
-        applyGroupColors();
+        refreshRuleSwitchButton();
+        watchAllDocuments();
     }
 
     void setDisplayedFile(@NotNull VirtualFile displayedFile) {
         this.displayedFile = displayedFile;
         updateSelection(displayedFile);
         refreshOpenStates();
+        refreshRuleSwitchButton();
+    }
+
+    @NotNull VirtualFile displayedFile() {
+        return displayedFile;
+    }
+
+    int topSpacerHeight() {
+        return topSpacerHeight;
+    }
+
+    boolean isCloseSideButtonVisible() {
+        return closeSideButton.isVisible();
+    }
+
+    boolean isRuleSwitchVisible() {
+        return ruleSwitchPanel.isVisible();
+    }
+
+    @NotNull ComponentSubtabIconButton ruleSwitchButton() {
+        return ruleSwitchButton;
+    }
+
+    void switchRuleForDisplayedFile() {
+        ComponentSubtabsManager.rotateSubtabRuleForFile(project, displayedFile);
     }
 
     void refreshOpenStates() {
         FileEditorManager manager = FileEditorManager.getInstance(project);
+        ComponentSubtabGroupSplitRegistry.SplitState splitState = findActiveSplitState();
+
         for (var entry : buttonsByFile.entrySet()) {
             VirtualFile file = entry.getKey();
-            boolean openElsewhere = manager.isFileOpen(file) && !file.equals(displayedFile);
-            ComponentSubtabUi.setOpenElsewhere(entry.getValue(), openElsewhere);
-            ComponentSubtabUi.setModified(entry.getValue(), ComponentSubtabModifiedUi.isModified(project, file));
+            JToggleButton button = entry.getValue();
+
+            boolean own = file.equals(displayedFile);
+            boolean partner = splitState != null && !own && splitState.covers(file);
+
+            ComponentSubtabUi.setSplitPartner(button, partner);
+            ComponentSubtabUi.setOpenElsewhere(button, manager.isFileOpen(file) && !own && !partner);
+            refreshModifiedStateForFile(file);
+
+            if (button.isSelected() != own) {
+                button.setSelected(own);
+            }
+        }
+
+        // Panels are recycled between editors, so a bar that no longer belongs to a split has to
+        // drop the split chrome it may still carry.
+        if (splitState == null && (topSpacerHeight != 0 || closeSideButton.isVisible())) {
+            applySplitLayout(0, false);
         }
     }
 
+    void refreshModifiedStateForFile(@NotNull VirtualFile file) {
+        JToggleButton button = buttonsByFile.get(file);
+        if (button == null) {
+            return;
+        }
+        ComponentSubtabFilePresentation presentation = ComponentSubtabFilePresentation.compute(project, file);
+        ComponentSubtabUi.setPresentation(button, presentation.modified(), presentation.hasErrors());
+    }
+
+    /**
+     * A bar only takes part in a split when its own pane is one of the two split panes. Falling back to
+     * the group key would make every other main tab of the same group look like a split participant.
+     */
+    private @Nullable ComponentSubtabGroupSplitRegistry.SplitState findActiveSplitState() {
+        return ComponentSubtabGroupSplitRegistry.getInstance(project).findByFile(displayedFile);
+    }
+
     @Nullable JToggleButton buttonFor(@NotNull VirtualFile file) {
-        return buttonsByFile.get(file);
+        JToggleButton button = buttonsByFile.get(file);
+        if (button != null) {
+            return button;
+        }
+        String path = file.getPath();
+        for (var entry : buttonsByFile.entrySet()) {
+            if (path.equals(entry.getKey().getPath())) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    void refreshModifiedStateForDocument(@NotNull com.intellij.openapi.editor.Document document) {
+        com.intellij.openapi.fileEditor.FileDocumentManager manager =
+                com.intellij.openapi.fileEditor.FileDocumentManager.getInstance();
+        for (var entry : buttonsByFile.entrySet()) {
+            if (document.equals(manager.getCachedDocument(entry.getKey()))) {
+                ComponentSubtabFilePresentation presentation = ComponentSubtabFilePresentation.computeForDocument(
+                        project,
+                        document,
+                        entry.getKey()
+                );
+                ComponentSubtabUi.setPresentation(
+                        entry.getValue(),
+                        presentation.modified(),
+                        presentation.hasErrors()
+                );
+            }
+        }
+    }
+
+    private void watchAllDocuments() {
+        for (VirtualFile file : buttonsByFile.keySet()) {
+            watchDocument(file);
+        }
+    }
+
+    private void watchDocument(@NotNull VirtualFile file) {
+        if (watchedDocuments.contains(file)) {
+            return;
+        }
+        Document document = FileDocumentManager.getInstance().getDocument(file);
+        if (document == null) {
+            return;
+        }
+        watchedDocuments.add(file);
+        document.addDocumentListener(new DocumentListener() {
+            @Override
+            public void documentChanged(@NotNull DocumentEvent event) {
+                ComponentSubtabsManager.refreshModifiedStateForDocument(project, event.getDocument());
+            }
+        }, project);
     }
 
     private void applyChrome() {
         setBorder(JBUI.Borders.empty(
-                ComponentSubtabUi.compactVertical(1),
+                ComponentSubtabUi.compactVertical(1) + topSpacerHeight,
                 6,
                 ComponentSubtabUi.compactVertical(1),
                 0
@@ -192,6 +425,18 @@ final class ComponentSubtabBarPanel extends JPanel {
                 if (displayedFile.equals(target)) {
                     return;
                 }
+                ComponentSubtabGroupSplitRegistry.SplitState splitState = findActiveSplitState();
+                if (splitState != null) {
+                    // A split holds exactly two subtabs: the partner swaps sides, anything else
+                    // replaces this pane's file so the split never grows beyond two panes.
+                    if (splitState.covers(target)) {
+                        ComponentSubtabGroupSplitNavigation.swapSides(project, splitState);
+                    } else {
+                        ComponentSubtabGroupSplitNavigation.replacePaneFile(
+                                project, splitState, displayedFile, target);
+                    }
+                    return;
+                }
                 ComponentSubtabNavigation.switchToRelatedFile(project, displayedFile, target);
                 updateSelection(displayedFile);
             });
@@ -199,17 +444,21 @@ final class ComponentSubtabBarPanel extends JPanel {
                 @Override
                 public void mouseEntered(MouseEvent event) {
                     VirtualFile target = relatedFile.file();
-                    ComponentSubtabProjectViewHover.onEnter(project, target, button);
-                    FileEditorManager manager = FileEditorManager.getInstance(project);
-                    if (manager.isFileOpen(target) && !displayedFile.equals(target)) {
-                        ComponentSubtabMainTabHover.onEnter(project, target, button);
+                    if (SubtabHoverView.isEnabled()) {
+                        ComponentSubtabProjectViewHover.onEnter(project, target, button);
+                        FileEditorManager manager = FileEditorManager.getInstance(project);
+                        if (manager.isFileOpen(target) && !displayedFile.equals(target)) {
+                            ComponentSubtabMainTabHover.onEnter(project, target, button);
+                        }
                     }
                 }
 
                 @Override
                 public void mouseExited(MouseEvent event) {
-                    ComponentSubtabProjectViewHover.onExit(button);
-                    ComponentSubtabMainTabHover.onExit(button);
+                    if (SubtabHoverView.isEnabled()) {
+                        ComponentSubtabProjectViewHover.onExit(button);
+                        ComponentSubtabMainTabHover.onExit(button);
+                    }
                 }
             });
             ComponentSubtabBarPopup.install(project, button, relatedFile.file(), () -> displayedFile);
@@ -218,6 +467,7 @@ final class ComponentSubtabBarPanel extends JPanel {
             buttonGroup.add(button);
             tabsHost.add(button);
             buttonsByFile.put(relatedFile.file(), button);
+            watchDocument(relatedFile.file());
         }
 
         refreshOpenStates();
@@ -227,35 +477,7 @@ final class ComponentSubtabBarPanel extends JPanel {
             dragInstalled = true;
         }
         naturalStripWidth = 0;
-        applyGroupColors();
         updateFitToEditorWidth();
-    }
-
-    private void applyGroupColors() {
-        if (!SubtabGroupColors.isEnabled() || displayedFile == null) {
-            tabsHost.setBorder(BorderFactory.createEmptyBorder());
-            for (JToggleButton button : buttonsByFile.values()) {
-                ComponentSubtabUi.setGroupColor(button, null);
-            }
-            return;
-        }
-
-        Color groupColor = SubtabGroupColors.colorForFile(displayedFile);
-        if (groupColor == null) {
-            String key = SubtabGroupColors.colorKey(displayedFile);
-            if (key != null) {
-                groupColor = SubtabGroupColors.ensureColor(key);
-            }
-        }
-
-        for (JToggleButton button : buttonsByFile.values()) {
-            ComponentSubtabUi.setGroupColor(button, groupColor);
-        }
-        if (groupColor != null) {
-            tabsHost.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, groupColor));
-        } else {
-            tabsHost.setBorder(BorderFactory.createEmptyBorder());
-        }
     }
 
     private void updateSelection(@NotNull VirtualFile currentFile) {
@@ -297,8 +519,9 @@ final class ComponentSubtabBarPanel extends JPanel {
             width = overflowStrip.getWidth();
         }
         if (width <= 0) {
-            int collapseWidth = collapseButton.isVisible() ? collapseButton.getPreferredSize().width : 0;
-            width = Math.max(0, getWidth() - collapseWidth - getInsets().left - getInsets().right);
+            Container parent = getParent();
+            int eastWidth = ruleSwitchPanel.getPreferredSize().width + trailingPanel.getPreferredSize().width;
+            width = Math.max(0, (parent != null ? parent.getWidth() : getWidth()) - eastWidth - getInsets().left - getInsets().right);
         }
         return width;
     }
@@ -327,6 +550,27 @@ final class ComponentSubtabBarPanel extends JPanel {
         button.setToolTipText("SubTabs einklappen");
         button.getAccessibleContext().setAccessibleName("SubTabs einklappen");
         button.addActionListener(event -> SubtabsCollapseState.getInstance(project).toggle(project));
+        return button;
+    }
+
+    private @NotNull ComponentSubtabIconButton createRuleSwitchButton() {
+        ComponentSubtabIconButton button = new ComponentSubtabIconButton(AllIcons.Actions.SwapPanels);
+        button.setToolTipText("Regel wechseln");
+        button.getAccessibleContext().setAccessibleName("Regel wechseln");
+        button.addActionListener(event -> ComponentSubtabsManager.rotateSubtabRuleForFile(project, displayedFile));
+        return button;
+    }
+
+    private @NotNull ComponentSubtabIconButton createCloseSideButton() {
+        ComponentSubtabIconButton button = new ComponentSubtabIconButton(AllIcons.Actions.Close);
+        button.setToolTipText("Diese Split-Seite schließen");
+        button.getAccessibleContext().setAccessibleName("Diese Split-Seite schließen");
+        button.addActionListener(event -> {
+            ComponentSubtabGroupSplitRegistry.SplitState splitState = findActiveSplitState();
+            if (splitState != null) {
+                ComponentSubtabGroupSplitNavigation.closeSide(project, splitState, displayedFile);
+            }
+        });
         return button;
     }
 

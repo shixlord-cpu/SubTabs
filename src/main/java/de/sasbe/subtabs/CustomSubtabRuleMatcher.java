@@ -48,6 +48,14 @@ final class CustomSubtabRuleMatcher {
     }
 
     static @Nullable Match match(@NotNull String fileName, @NotNull List<CustomSubtabRule> rules) {
+        for (Match match : matchAll(fileName, rules)) {
+            return match;
+        }
+        return null;
+    }
+
+    static @NotNull List<Match> matchAll(@NotNull String fileName, @NotNull List<CustomSubtabRule> rules) {
+        List<Match> matches = new ArrayList<>();
         for (int index = 0; index < rules.size(); index++) {
             CustomSubtabRule rule = rules.get(index);
             if (!rule.enabled) {
@@ -55,10 +63,10 @@ final class CustomSubtabRuleMatcher {
             }
             Match match = matchRule(fileName, rule, index);
             if (match != null) {
-                return match;
+                matches.add(match);
             }
         }
-        return null;
+        return List.copyOf(matches);
     }
 
     static @Nullable ParsedGroupKey parseGroupKey(@NotNull String groupKey) {
@@ -210,7 +218,7 @@ final class CustomSubtabRuleMatcher {
             }
 
             String stem = fileName.substring(0, fileName.length() - suffix.length());
-            if (stem.isEmpty()) {
+            if (stem.isEmpty() || isStemExcluded(stem, rule)) {
                 continue;
             }
             return buildStemMatch(rule, index, stem);
@@ -296,6 +304,19 @@ final class CustomSubtabRuleMatcher {
             return false;
         }
         return pattern.indexOf('.', 1) < 0;
+    }
+
+    private static boolean isStemExcluded(@NotNull String stem, @NotNull CustomSubtabRule rule) {
+        if (rule.excludeStemSuffixes == null || rule.excludeStemSuffixes.isBlank()) {
+            return false;
+        }
+        for (String suffix : parseCsv(rule.excludeStemSuffixes)) {
+            String normalized = normalizeSuffix(suffix);
+            if (stem.endsWith(normalized)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static @NotNull List<SubtabCandidate> buildCandidates(

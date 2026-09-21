@@ -5,12 +5,12 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.SimpleColoredComponent;
 import com.intellij.ui.SimpleTextAttributes;
+import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
 import com.intellij.util.ui.tree.TreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.swing.BorderFactory;
-import javax.swing.JPanel;
 import javax.swing.JTree;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
@@ -18,8 +18,8 @@ import java.awt.Color;
 import java.awt.Component;
 
 final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
+    private static final float LOCATION_COLOR_OPACITY = 0.5f;
     private final TreeCellRenderer delegate;
-    private final JPanel colorWrapper = new JPanel(new java.awt.BorderLayout());
 
     SubtabGroupTreeCellRenderer(@NotNull TreeCellRenderer delegate) {
         this.delegate = delegate;
@@ -50,11 +50,6 @@ final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
             return component;
         }
 
-        Integer hoveredRow = SubtabGroupLocationHover.getHoveredLocationRow(tree);
-        if (hoveredRow != null && hoveredRow == row) {
-            SubtabGroupLocationHover.brightenLocationFragment(colored);
-        }
-
         Project project = projectFor(tree, row);
         if (project == null) {
             return component;
@@ -71,19 +66,22 @@ final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
                 applyModifiedMainText(colored, ComponentSubtabModifiedUi.foreground(true, false));
             }
             Color groupColor = SubtabGroupColors.colorForGroupNode(groupNode);
-            if (groupColor != null) {
-                colorWrapper.removeAll();
-                colorWrapper.setOpaque(false);
-                colorWrapper.setBorder(BorderFactory.createMatteBorder(1, 2, 1, 2, groupColor));
-                colorWrapper.add(component, java.awt.BorderLayout.CENTER);
-                return colorWrapper;
+            if (groupColor != null && groupNode.members().size() > 1) {
+                boolean locationHovered = SubtabGroupLocationHover.isLocationFragmentHovered(tree, row);
+                applyGroupColorToLocationFragment(colored, groupColor, locationHovered);
+            } else if (SubtabGroupLocationHover.isLocationFragmentHovered(tree, row)) {
+                SubtabGroupLocationHover.brightenLocationFragment(colored);
             }
             return component;
         }
 
+        if (SubtabGroupLocationHover.isLocationFragmentHovered(tree, row)) {
+            SubtabGroupLocationHover.brightenLocationFragment(colored);
+        }
+
         VirtualFile file = ComponentSubtabProjectViewHover.virtualFileOf(path);
         if (file != null
-                && ComponentRelatedFiles.find(file) != null
+                && ComponentFileNaming.componentBaseName(file.getName()) != null
                 && ComponentSubtabModifiedUi.isModified(project, file)) {
             applyModifiedMainText(colored, ComponentSubtabModifiedUi.foreground(true, false));
         }
@@ -100,6 +98,27 @@ final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
                 return;
             }
         }
+    }
+
+    static void applyGroupColorToLocationFragment(
+            @NotNull SimpleColoredComponent colored,
+            @NotNull Color groupColor,
+            boolean hovered
+    ) {
+        Color textColor = hovered ? groupColor : withOpacity(groupColor, LOCATION_COLOR_OPACITY);
+        SimpleTextAttributes attributes = new SimpleTextAttributes(SimpleTextAttributes.STYLE_PLAIN, textColor);
+        for (SimpleColoredComponent.ColoredIterator iterator = colored.iterator(); iterator.hasNext(); ) {
+            String fragment = iterator.next();
+            if (fragment.contains("Dateien")) {
+                iterator.setTextAttributes(attributes);
+                return;
+            }
+        }
+    }
+
+    private static @NotNull Color withOpacity(@NotNull Color color, float opacity) {
+        int alpha = Math.max(0, Math.min(255, Math.round(255f * opacity)));
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
     }
 
     private static @Nullable Project projectFor(@NotNull JTree tree, int row) {

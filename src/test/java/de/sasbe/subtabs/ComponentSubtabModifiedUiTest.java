@@ -1,5 +1,6 @@
 package de.sasbe.subtabs;
 
+import com.intellij.openapi.vcs.FileStatus;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ui.UIUtil;
 import org.junit.jupiter.api.Test;
@@ -7,12 +8,23 @@ import org.junit.jupiter.api.Test;
 import java.awt.Color;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ComponentSubtabModifiedUiTest {
     @Test
     void foregroundUsesRegularColorsWhenNotModified() {
         assertEquals(UIUtil.getLabelForeground(), ComponentSubtabModifiedUi.foreground(false, false));
         assertEquals(UIUtil.getInactiveTextColor(), ComponentSubtabModifiedUi.foreground(false, true));
+    }
+
+    @Test
+    void uncommittedVcsStatusTreatsModifiedAndAddedAsChanged() {
+        assertFalse(ComponentSubtabModifiedUi.isUncommittedVcsStatus(FileStatus.NOT_CHANGED));
+        assertFalse(ComponentSubtabModifiedUi.isUncommittedVcsStatus(FileStatus.IGNORED));
+        assertTrue(ComponentSubtabModifiedUi.isUncommittedVcsStatus(FileStatus.MODIFIED));
+        assertTrue(ComponentSubtabModifiedUi.isUncommittedVcsStatus(FileStatus.ADDED));
+        assertTrue(ComponentSubtabModifiedUi.isUncommittedVcsStatus(FileStatus.UNKNOWN));
     }
 
     @Test

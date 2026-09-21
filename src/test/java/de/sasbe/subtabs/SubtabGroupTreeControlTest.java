@@ -3,12 +3,14 @@ package de.sasbe.subtabs;
 import org.junit.jupiter.api.Test;
 
 import java.awt.Graphics2D;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SubtabGroupTreeControlTest {
@@ -39,7 +41,26 @@ class SubtabGroupTreeControlTest {
         assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.CUBES));
         assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.CIRCLES));
         assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.BLUE_ARROWS));
+        assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.COLORED_ARROWS));
         assertNotNull(SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.NONE));
+    }
+
+    @Test
+    void coloredArrowsUseGroupColorWhenAvailable() {
+        assertNotNull(SubtabGroupTreeControl.resolveColoredArrowControl(true, new Color(0xE11D48)));
+    }
+
+    @Test
+    void coloredArrowsFallBackToPlatformArrowsWithoutGroupColor() {
+        assertNull(SubtabGroupTreeControl.resolveColoredArrowControl(true, null));
+    }
+
+    @Test
+    void coloredArrowsUseBlueWhenGroupColorsDisabled() {
+        assertSame(
+                SubtabGroupTreeControl.controlFor(SubtabGroupTreeControlStyle.BLUE_ARROWS),
+                SubtabGroupTreeControl.resolveColoredArrowControl(false, new Color(0xE11D48))
+        );
     }
 
     @Test

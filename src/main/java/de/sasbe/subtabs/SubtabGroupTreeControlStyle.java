@@ -8,6 +8,7 @@ enum SubtabGroupTreeControlStyle {
     CUBES,
     CIRCLES,
     BLUE_ARROWS,
+    COLORED_ARROWS,
     NONE;
 
     static @NotNull SubtabGroupTreeControlStyle fromPersisted(@Nullable String value) {
@@ -27,7 +28,8 @@ enum SubtabGroupTreeControlStyle {
             case DEFAULT -> "Default";
             case CUBES -> "Cubes";
             case CIRCLES -> "Circles";
-            case BLUE_ARROWS -> "Blue-Arrows";
+            case BLUE_ARROWS -> "Blue Arrows";
+            case COLORED_ARROWS -> "Colored Arrows";
             case NONE -> "None";
         };
     }

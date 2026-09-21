@@ -11,6 +11,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CustomSubtabRuleMatcherTest {
     @Test
+    void matchAllCollectsEveryEnabledRuleMatch() {
+        CustomSubtabRule state = SubtabRulesDefaults.createDefaults().stream()
+                .filter(rule -> "State".equals(rule.name))
+                .findFirst()
+                .orElseThrow();
+        CustomSubtabRule neighbor = state.copy();
+        neighbor.name = "State Nachbar";
+        neighbor.searchNeighbors = true;
+        List<CustomSubtabRule> rules = List.of(state, neighbor);
+
+        List<CustomSubtabRuleMatcher.Match> matches = CustomSubtabRuleMatcher.matchAll("cart.actions.ts", rules);
+        assertEquals(2, matches.size());
+        assertEquals("rule:0:cart", matches.get(0).groupKey());
+        assertEquals("rule:1:cart", matches.get(1).groupKey());
+    }
+
+    @Test
     void matchesStemRuleBeforeBuiltIns() {
         CustomSubtabRule rule = new CustomSubtabRule();
         rule.name = "Stories";
@@ -110,7 +127,7 @@ class CustomSubtabRuleMatcherTest {
         rule.type = CustomSubtabRule.Type.STEM;
         rule.patterns = ".ts, .html";
         rule.stripComponentSuffix = true;
-        rule.groupSuffix = "components";
+        rule.groupSuffix = "component";
 
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
                 "rule:0:products.component",
@@ -120,7 +137,7 @@ class CustomSubtabRuleMatcherTest {
         assertNotNull(match);
         assertEquals("products", match.displayName());
         assertEquals(
-                "products-components",
+                "products-component",
                 CustomSubtabRuleMatcher.displayNameWithSuffix(match.displayName(), rule)
         );
     }
@@ -170,6 +187,26 @@ class CustomSubtabRuleMatcherTest {
         disabled.patterns = ".ts";
 
         assertNull(CustomSubtabRuleMatcher.match("user.ts", List.of(disabled)));
+    }
+
+    @Test
+    void skipsStemRuleWhenStemEndsWithExcludedSuffix() {
+        CustomSubtabRule htmlRule = SubtabRulesDefaults.htmlRule();
+        CustomSubtabRule componentRule = SubtabRulesDefaults.createDefaults().stream()
+                .filter(rule -> "Komponente".equals(rule.name))
+                .findFirst()
+                .orElseThrow();
+        List<CustomSubtabRule> rules = List.of(htmlRule, componentRule);
+
+        assertNull(CustomSubtabRuleMatcher.match("header.component.html", List.of(htmlRule)));
+        assertEquals(
+                "rule:1:header.component",
+                CustomSubtabRuleMatcher.match("header.component.html", rules).groupKey()
+        );
+        assertEquals(
+                "rule:0:catalog-page",
+                CustomSubtabRuleMatcher.match("catalog-page.html", rules).groupKey()
+        );
     }
 
     @Test

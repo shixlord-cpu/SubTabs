@@ -16,20 +16,12 @@ import java.util.Map;
 @Service(Service.Level.APP)
 @State(name = "ComponentSubtabsSettings", storages = @Storage("componentSubtabs.xml"))
 public final class SubtabsSettings implements PersistentStateComponent<SubtabsSettings.State> {
-    private static final int CURRENT_RULES_VERSION = 5;
+    private static final int CURRENT_RULES_VERSION = 6;
 
     private State state = new State();
 
     public static @NotNull SubtabsSettings getInstance() {
         return ApplicationManager.getApplication().getService(SubtabsSettings.class);
-    }
-
-    public boolean isScrollProjectViewOnSubtabHover() {
-        return state.scrollProjectViewOnSubtabHover;
-    }
-
-    public void setScrollProjectViewOnSubtabHover(boolean scroll) {
-        state.scrollProjectViewOnSubtabHover = scroll;
     }
 
     public boolean isSubtabsActive() {
@@ -38,6 +30,15 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
 
     public void setSubtabsActive(boolean active) {
         state.subtabsActive = active;
+    }
+
+    public boolean isFamiliaEnabled() {
+        return state.familiaEnabled;
+    }
+
+    public void setFamiliaEnabled(boolean enabled) {
+        state.familiaEnabled = enabled;
+        state.familiaEnabledKnown = true;
     }
 
     public boolean isShowCollapseButton() {
@@ -62,6 +63,14 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
 
     public void setTextSizePercent(int percent) {
         state.textSizePercent = clamp(percent, 50, 100);
+    }
+
+    public @NotNull TabFontStyle getTabFontStyle() {
+        return TabFontStyle.fromPersisted(state.tabFontStyle);
+    }
+
+    public void setTabFontStyle(@NotNull TabFontStyle style) {
+        state.tabFontStyle = style.name();
     }
 
     public boolean isGroupRelatedFilesInProjectView() {
@@ -112,6 +121,22 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         state.groupColorsEnabled = enabled;
     }
 
+    public boolean isHoverViewEnabled() {
+        return state.hoverViewEnabled;
+    }
+
+    public void setHoverViewEnabled(boolean enabled) {
+        state.hoverViewEnabled = enabled;
+    }
+
+    public boolean isShowSubtabNameInMainTab() {
+        return state.showSubtabNameInMainTab;
+    }
+
+    public void setShowSubtabNameInMainTab(boolean show) {
+        state.showSubtabNameInMainTab = show;
+    }
+
     public @NotNull Map<String, String> getGroupColorHexes() {
         if (state.groupColorHexes == null) {
             state.groupColorHexes = new LinkedHashMap<>();
@@ -139,8 +164,94 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         return state.rules;
     }
 
+    private transient int rulesGeneration;
+
+    public int getRulesGeneration() {
+        return rulesGeneration;
+    }
+
     public void setRules(@NotNull List<CustomSubtabRule> rules) {
         state.rules = new ArrayList<>(rules);
+        rulesGeneration++;
+    }
+
+    public boolean rotateMatchingSubtabRules(@NotNull String fileName) {
+        List<CustomSubtabRule> rules = new ArrayList<>(getRules());
+        if (!SubtabRuleRotation.rotateMatchingRules(fileName, rules)) {
+            return false;
+        }
+        setRules(rules);
+        return true;
+    }
+
+    public boolean isSidetabsActive() {
+        return state.sidetabsActive;
+    }
+
+    public void setSidetabsActive(boolean active) {
+        state.sidetabsActive = active;
+    }
+
+    public boolean isSidetabsExpanded() {
+        return state.sidetabsExpanded;
+    }
+
+    public void setSidetabsExpanded(boolean expanded) {
+        state.sidetabsExpanded = expanded;
+    }
+
+    public boolean isSidetabsOnRight() {
+        return state.sidetabsOnRight;
+    }
+
+    public void setSidetabsOnRight(boolean onRight) {
+        state.sidetabsOnRight = onRight;
+    }
+
+    public @NotNull SidetabLayoutMode getSidetabLayoutMode() {
+        return SidetabLayoutMode.fromPersisted(state.sidetabLayoutMode);
+    }
+
+    public void setSidetabLayoutMode(@NotNull SidetabLayoutMode mode) {
+        state.sidetabLayoutMode = mode.name();
+    }
+
+    public boolean isSidetabsCombineComments() {
+        CustomSidetabRule family = SidetabRulesDefaults.findTopRule(getSidetabRules());
+        return family != null && family.familyMode == TopCommentMode.COMBINE;
+    }
+
+    public void setSidetabsCombineComments(boolean combine) {
+        CustomSidetabRule family = SidetabRulesDefaults.findTopRule(getSidetabRules());
+        if (family != null) {
+            family.familyMode = combine ? TopCommentMode.COMBINE : TopCommentMode.OVERRIDE;
+        }
+    }
+
+    public @NotNull List<CustomSidetabRule> getSidetabRules() {
+        if (state.sidetabRules == null) {
+            state.sidetabRules = new ArrayList<>();
+        }
+        return state.sidetabRules;
+    }
+
+    private transient int sidetabRulesGeneration;
+
+    public int getSidetabRulesGeneration() {
+        return sidetabRulesGeneration;
+    }
+
+    public void setSidetabRules(@NotNull List<CustomSidetabRule> rules) {
+        state.sidetabRules = new ArrayList<>(rules);
+        sidetabRulesGeneration++;
+    }
+
+    public void resetToDefaults() {
+        state = new State();
+        state.familiaEnabledKnown = true;
+        migrateRulesIfNeeded();
+        rulesGeneration++;
+        sidetabRulesGeneration++;
     }
 
     @Override
@@ -154,7 +265,18 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         if (this.state.rules == null) {
             this.state.rules = new ArrayList<>();
         }
+        if (this.state.sidetabRules == null) {
+            this.state.sidetabRules = new ArrayList<>();
+        }
+        migrateFamiliaEnabledIfNeeded();
         migrateRulesIfNeeded();
+    }
+
+    private void migrateFamiliaEnabledIfNeeded() {
+        if (!state.familiaEnabledKnown) {
+            state.familiaEnabled = true;
+            state.familiaEnabledKnown = true;
+        }
     }
 
     private void migrateRulesIfNeeded() {
@@ -165,9 +287,11 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
             normalizeRuleFields(state.rules);
             applyDefaultGroupSuffixes(state.rules);
             removeLegacyCustomGroupRules(state.rules);
+            ensureHtmlRule(state.rules);
             ensureSpecialRules(state.rules);
             state.rulesVersion = CURRENT_RULES_VERSION;
         } else {
+            ensureHtmlRule(state.rules);
             ensureSpecialRules(state.rules);
         }
         if (state.barHeightPercent < 25) {
@@ -181,12 +305,98 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         if (state.overflowMode == null || state.overflowMode.isBlank()) {
             state.overflowMode = SubtabOverflowMode.SCROLLBAR.name();
         }
+        if (state.tabFontStyle == null || state.tabFontStyle.isBlank()) {
+            state.tabFontStyle = TabFontStyle.IDE_STANDARD.name();
+        }
         if (state.groupTreeControlStyle == null || state.groupTreeControlStyle.isBlank()) {
             state.groupTreeControlStyle = SubtabGroupTreeControlStyle.DEFAULT.name();
         }
         if (state.groupColorHexes == null) {
             state.groupColorHexes = new LinkedHashMap<>();
         }
+        if (state.sidetabLayoutMode == null || state.sidetabLayoutMode.isBlank()) {
+            migrateSidetabLayoutMode();
+        }
+        migrateSidetabRulesIfNeeded();
+    }
+
+    private void migrateSidetabRulesIfNeeded() {
+        if (state.sidetabRules == null) {
+            state.sidetabRules = new ArrayList<>();
+        }
+        if (state.sidetabRules.isEmpty()) {
+            state.sidetabRules = SidetabRulesDefaults.createDefaults();
+            state.sidetabRulesVersion = SidetabRulesDefaults.VERSION;
+            return;
+        }
+
+        boolean upgraded = state.sidetabRulesVersion < SidetabRulesDefaults.VERSION;
+        if (upgraded) {
+            SidetabRulesDefaults.applyLatestDefaults(state.sidetabRules);
+            state.sidetabRulesVersion = SidetabRulesDefaults.VERSION;
+        }
+
+        boolean filledLegacySpecs = false;
+        for (CustomSidetabRule rule : state.sidetabRules) {
+            if (!rule.isTopRule() && (rule.sectionSpecs == null || rule.sectionSpecs.isEmpty())) {
+                rule.sectionSpecs = SidetabRulesDefaults.specsFromLegacy(rule);
+                filledLegacySpecs = true;
+            }
+        }
+
+        if (upgraded || filledLegacySpecs || SidetabRulesDefaults.needsBuiltinSectionRepair(state.sidetabRules)) {
+            SidetabRulesDefaults.repairBuiltinSectionSpecs(state.sidetabRules);
+        }
+
+        SidetabRulesDefaults.ensureTopRule(state.sidetabRules);
+        CustomSidetabRule topRule = SidetabRulesDefaults.findTopRule(state.sidetabRules);
+        if (topRule != null && state.sidetabsCombineComments) {
+            topRule.familyMode = TopCommentMode.COMBINE;
+        }
+
+        if (upgraded) {
+            for (CustomSidetabRule stock : SidetabRulesDefaults.createDefaults()) {
+                CustomSidetabRule existing = findSidetabRuleByName(state.sidetabRules, stock.name);
+                if (existing == null && stock.isTopRule()) {
+                    existing = SidetabRulesDefaults.findTopRule(state.sidetabRules);
+                }
+                if (existing != null) {
+                    existing.builtin = stock.builtin;
+                    if (stock.isTopRule()) {
+                        existing.type = CustomSidetabRule.Type.TOP;
+                        if (CustomSidetabRule.LEGACY_FAMILY_RULE_NAME.equals(existing.name)) {
+                            existing.name = CustomSidetabRule.TOP_RULE_NAME;
+                        }
+                    }
+                }
+            }
+        }
+
+        state.sidetabRulesVersion = Math.max(state.sidetabRulesVersion, SidetabRulesDefaults.VERSION);
+    }
+
+    private void migrateSidetabLayoutMode() {
+        String legacy = state.sidetabPlacement;
+        if ("ABOVE".equalsIgnoreCase(legacy) || "OVERLAY".equalsIgnoreCase(legacy)) {
+            state.sidetabLayoutMode = SidetabLayoutMode.OVERLAY.name();
+        } else {
+            state.sidetabLayoutMode = SidetabLayoutMode.BESIDE.name();
+            if ("BESIDE_LEFT".equalsIgnoreCase(legacy)) {
+                state.sidetabsOnRight = false;
+            }
+        }
+    }
+
+    private static @Nullable CustomSidetabRule findSidetabRuleByName(
+            @NotNull List<CustomSidetabRule> rules,
+            @NotNull String name
+    ) {
+        for (CustomSidetabRule rule : rules) {
+            if (name.equals(rule.name)) {
+                return rule;
+            }
+        }
+        return null;
     }
 
     private static void normalizeRuleFields(@NotNull List<CustomSubtabRule> rules) {
@@ -194,6 +404,41 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
             if (rule.groupSuffix == null) {
                 rule.groupSuffix = "";
             }
+            if (rule.excludeStemSuffixes == null) {
+                rule.excludeStemSuffixes = "";
+            }
+        }
+    }
+
+    private static void ensureHtmlRule(@NotNull List<CustomSubtabRule> rules) {
+        for (CustomSubtabRule rule : rules) {
+            if ("HTML".equalsIgnoreCase(rule.name) && rule.type == CustomSubtabRule.Type.STEM) {
+                rule.builtin = true;
+                if (rule.excludeStemSuffixes == null || rule.excludeStemSuffixes.isBlank()) {
+                    rule.excludeStemSuffixes = ".component";
+                }
+                return;
+            }
+        }
+
+        int componentIndex = -1;
+        for (int index = 0; index < rules.size(); index++) {
+            if ("Komponente".equalsIgnoreCase(rules.get(index).name)) {
+                componentIndex = index;
+                break;
+            }
+        }
+        if (componentIndex >= 0) {
+            rules.add(componentIndex, SubtabRulesDefaults.htmlRule());
+        } else {
+            int folderIndex = rules.size();
+            for (int index = 0; index < rules.size(); index++) {
+                if (rules.get(index).type == CustomSubtabRule.Type.FOLDER) {
+                    folderIndex = index;
+                    break;
+                }
+            }
+            rules.add(Math.max(0, folderIndex), SubtabRulesDefaults.htmlRule());
         }
     }
 
@@ -236,7 +481,7 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
             if ("State".equalsIgnoreCase(rule.name)) {
                 rule.groupSuffix = "state";
             } else if ("Komponente".equalsIgnoreCase(rule.name)) {
-                rule.groupSuffix = "components";
+                rule.groupSuffix = "component";
             }
         }
     }
@@ -246,20 +491,32 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
     }
 
     public static final class State {
-        public boolean scrollProjectViewOnSubtabHover = false;
         public boolean subtabsActive = true;
+        public boolean familiaEnabled = true;
+        public boolean familiaEnabledKnown = false;
         public boolean showCollapseButton = true;
         public boolean groupRelatedFilesInProjectView = true;
         public boolean fitTabsToEditorWidth = true;
         public String overflowMode = "SCROLLBAR";
         public String groupTreeControlStyle = "DEFAULT";
         public boolean invertGroupTreeControlFill = false;
-        public boolean groupColorsEnabled = false;
+        public boolean groupColorsEnabled = true;
+        public boolean hoverViewEnabled = true;
+        public boolean showSubtabNameInMainTab = false;
         public Map<String, String> groupColorHexes = new LinkedHashMap<>();
         public int nextGroupColorIndex = 0;
         public int barHeightPercent = 75;
         public int textSizePercent = 75;
+        public String tabFontStyle = TabFontStyle.IDE_STANDARD.name();
         public int rulesVersion = 0;
         public List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
+        public boolean sidetabsActive = true;
+        public boolean sidetabsExpanded = true;
+        public boolean sidetabsOnRight = true;
+        public String sidetabLayoutMode = SidetabLayoutMode.BESIDE.name();
+        public String sidetabPlacement = "";
+        public boolean sidetabsCombineComments = true;
+        public int sidetabRulesVersion = SidetabRulesDefaults.VERSION;
+        public List<CustomSidetabRule> sidetabRules = SidetabRulesDefaults.createDefaults();
     }
 }

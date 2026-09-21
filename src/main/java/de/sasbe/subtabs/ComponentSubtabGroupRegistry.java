@@ -71,6 +71,14 @@ final class ComponentSubtabGroupRegistry {
         return panel;
     }
 
+    void rememberActive(@NotNull ComponentSubtabBarPanel panel) {
+        activePanels.add(panel);
+    }
+
+    @NotNull Set<ComponentSubtabBarPanel> activePanels() {
+        return Set.copyOf(activePanels);
+    }
+
     void offerTransfer(@NotNull ComponentSubtabBarPanel panel) {
         pendingTransfer = panel;
         activePanels.remove(panel);

@@ -1,0 +1,10 @@
+<header class="product-card-head">
+  <h2>{{ name }}</h2>
+  <span class="price">{{ price.toFixed(2) }} €</span>
+</header>
+<main class="product-card-body">
+  <p>{{ label() }}</p>
+  <button type="button" (click)="toggleSelected()">
+    {{ selected ? 'Selected' : 'Select' }}
+  </button>
+</main>

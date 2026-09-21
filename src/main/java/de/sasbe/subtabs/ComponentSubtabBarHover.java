@@ -29,6 +29,9 @@ final class ComponentSubtabBarHover {
             @NotNull VirtualFile file,
             @NotNull JComponent source
     ) {
+        if (SubtabHoverView.isDisabled()) {
+            return;
+        }
         onExit(source);
 
         List<Handle> handles = findVisibleSubtabButtons(project, file);

@@ -4,12 +4,13 @@ import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
 
 import javax.swing.JComponent;
 import javax.swing.JLayeredPane;
-import javax.swing.SwingUtilities;
 import java.awt.Dimension;
-import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
@@ -27,9 +28,22 @@ final class SubtabsExpandOverlay {
 
         JComponent editorComponent = editor.getComponent();
         ComponentSubtabIconButton button = createExpandButton(project);
-        Handle handle = new Handle(editorComponent, button);
+        Handle handle = new Handle(editor, editorComponent, button);
         editor.putUserData(OVERLAY_KEY, handle);
         handle.install();
+    }
+
+    static @Nullable JComponent visibleButton(@NotNull FileEditor editor) {
+        Handle handle = editor.getUserData(OVERLAY_KEY);
+        if (handle == null) {
+            return null;
+        }
+        return handle.visibleButton();
+    }
+
+    @TestOnly
+    static boolean isInstalled(@NotNull FileEditor editor) {
+        return editor.getUserData(OVERLAY_KEY) != null;
     }
 
     static void hide(@NotNull FileEditor editor) {
@@ -41,6 +55,13 @@ final class SubtabsExpandOverlay {
         editor.putUserData(OVERLAY_KEY, null);
     }
 
+    static void relayout(@NotNull FileEditor editor) {
+        Handle handle = editor.getUserData(OVERLAY_KEY);
+        if (handle != null) {
+            handle.layoutButton();
+        }
+    }
+
     private static @NotNull ComponentSubtabIconButton createExpandButton(@NotNull Project project) {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(SubtabsIcons.INACTIVE);
         button.setToolTipText("SubTabs ausklappen");
@@ -50,13 +71,19 @@ final class SubtabsExpandOverlay {
     }
 
     private static final class Handle {
+        private final FileEditor fileEditor;
         private final JComponent editorComponent;
         private final ComponentSubtabIconButton button;
         private final ComponentListener componentListener;
         private final HierarchyListener hierarchyListener;
         private JLayeredPane layeredPane;
 
-        private Handle(@NotNull JComponent editorComponent, @NotNull ComponentSubtabIconButton button) {
+        private Handle(
+                @NotNull FileEditor fileEditor,
+                @NotNull JComponent editorComponent,
+                @NotNull ComponentSubtabIconButton button
+        ) {
+            this.fileEditor = fileEditor;
             this.editorComponent = editorComponent;
             this.button = button;
             this.componentListener = new ComponentAdapter() {
@@ -82,6 +109,10 @@ final class SubtabsExpandOverlay {
                     layoutButton();
                 }
             };
+        }
+
+        private @Nullable JComponent visibleButton() {
+            return button.isShowing() ? button : null;
         }
 
         private void install() {
@@ -119,13 +150,13 @@ final class SubtabsExpandOverlay {
 
             button.setVisible(true);
             Dimension size = button.getPreferredSize();
-            Point topRight = SwingUtilities.convertPoint(
+            Rectangle bounds = SidetabIconLayout.layoutSubtabsIcon(
+                    fileEditor,
                     editorComponent,
-                    editorComponent.getWidth() - size.width,
-                    0,
-                    layeredPane
+                    layeredPane,
+                    size
             );
-            button.setBounds(topRight.x, topRight.y, size.width, size.height);
+            button.setBounds(bounds);
         }
 
         private void dispose() {

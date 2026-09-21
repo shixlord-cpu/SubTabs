@@ -1,12 +1,12 @@
 package de.sasbe.subtabs;
 
-import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.PopupHandler;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
@@ -14,7 +14,6 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.event.MouseAdapter;
@@ -24,18 +23,46 @@ import java.util.function.Consumer;
 
 final class SubtabGroupFilePopupPanel extends JPanel {
     private static final String FILE_KEY = "componentSubtabs.popupFile";
+    private static final String CONTEXT_KEY = "componentSubtabs.popupContext";
+
+    record MainTabProjectViewHover(
+            @NotNull Project project,
+            @NotNull VirtualFile tabFile,
+            @NotNull JComponent tabLabel,
+            @NotNull Runnable restoreTabGroupHover
+    ) {
+    }
+
+    private SubtabGroupPopupPresentation.Context presentationContext = SubtabGroupPopupPresentation.Context.projectView();
+    private final @Nullable MainTabProjectViewHover mainTabProjectViewHover;
 
     SubtabGroupFilePopupPanel(
             @NotNull Project project,
             @NotNull List<VirtualFile> files,
             int fixedWidth,
+            @NotNull SubtabGroupPopupPresentation.Context presentationContext,
             @NotNull Consumer<VirtualFile> onSelect,
             @NotNull Runnable onMouseLeave
     ) {
+        this(project, files, fixedWidth, presentationContext, onSelect, onMouseLeave, null);
+    }
+
+    SubtabGroupFilePopupPanel(
+            @NotNull Project project,
+            @NotNull List<VirtualFile> files,
+            int fixedWidth,
+            @NotNull SubtabGroupPopupPresentation.Context presentationContext,
+            @NotNull Consumer<VirtualFile> onSelect,
+            @NotNull Runnable onMouseLeave,
+            @Nullable MainTabProjectViewHover mainTabProjectViewHover
+    ) {
         super();
+        this.presentationContext = presentationContext;
+        this.mainTabProjectViewHover = mainTabProjectViewHover;
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(JBUI.Borders.empty(2));
         setBackground(UIUtil.getPanelBackground());
+        putClientProperty(CONTEXT_KEY, presentationContext);
 
         for (VirtualFile file : files) {
             add(createItem(project, file, fixedWidth, onSelect));
@@ -63,19 +90,62 @@ final class SubtabGroupFilePopupPanel extends JPanel {
         });
     }
 
-    void refreshPresentation(@NotNull Project project) {
+    void refreshPresentation(@NotNull Project project, @NotNull SubtabGroupPopupPresentation.Context context) {
+        presentationContext = context;
+        putClientProperty(CONTEXT_KEY, context);
         for (Component component : getComponents()) {
             if (!(component instanceof ComponentSubtabModifiedLabel label)) {
                 continue;
             }
             Object value = label.getClientProperty(FILE_KEY);
             if (value instanceof VirtualFile file) {
-                applyPresentationState(project, label, file);
+                applyPresentationState(project, label, file, context);
             }
         }
     }
 
-    private static @NotNull JComponent createItem(
+    void refreshModifiedStateForFile(
+            @NotNull Project project,
+            @NotNull VirtualFile file,
+            boolean modified,
+            boolean hasErrors
+    ) {
+        if (!isShowing()) {
+            return;
+        }
+        SubtabGroupPopupPresentation.Context context = context();
+        for (Component component : getComponents()) {
+            if (!(component instanceof ComponentSubtabModifiedLabel label)) {
+                continue;
+            }
+            Object value = label.getClientProperty(FILE_KEY);
+            if (!file.equals(value)) {
+                continue;
+            }
+            boolean highlighted = SubtabGroupPopupPresentation.isHighlighted(context, file);
+            boolean openElsewhere = SubtabGroupPopupPresentation.isOpenElsewhere(project, context, file);
+            ComponentSubtabModifiedUi.applyToLabel(
+                    label,
+                    labelFor(file),
+                    modified,
+                    openElsewhere,
+                    hasErrors
+            );
+            label.setBackground(highlighted
+                    ? ComponentSubtabUi.popupHighlightedBackground()
+                    : UIUtil.getPanelBackground());
+            return;
+        }
+    }
+
+    private @NotNull SubtabGroupPopupPresentation.Context context() {
+        Object value = getClientProperty(CONTEXT_KEY);
+        return value instanceof SubtabGroupPopupPresentation.Context context
+                ? context
+                : presentationContext;
+    }
+
+    private @NotNull JComponent createItem(
             @NotNull Project project,
             @NotNull VirtualFile file,
             int fixedWidth,
@@ -88,9 +158,8 @@ final class SubtabGroupFilePopupPanel extends JPanel {
         label.setOpaque(true);
         label.setAlignmentX(LEFT_ALIGNMENT);
         label.setToolTipText(file.getPath());
-        label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         label.getAccessibleContext().setAccessibleName(plainLabel + " öffnen: " + file.getName());
-        applyPresentationState(project, label, file);
+        applyPresentationState(project, label, file, context());
         applyItemWidth(label, fixedWidth);
 
         Color hoverBackground = JBUI.CurrentTheme.TabbedPane.HOVER_COLOR;
@@ -99,17 +168,28 @@ final class SubtabGroupFilePopupPanel extends JPanel {
             @Override
             public void mouseEntered(MouseEvent event) {
                 label.setBackground(hoverBackground);
-                ComponentSubtabBarHover.onEnter(project, file, label);
-                if (isOpen(project, file)) {
-                    ComponentSubtabMainTabHover.onEnter(project, file, label);
+                if (SubtabHoverView.isEnabled()) {
+                    ComponentSubtabBarHover.onEnter(project, file, label);
+                    if (!SubtabGroupPopupPresentation.isOpenElsewhere(project, context(), file)) {
+                        ComponentSubtabMainTabHover.onEnter(project, file, label);
+                    }
+                    if (mainTabProjectViewHover != null) {
+                        ComponentSubtabProjectViewHover.onEnter(mainTabProjectViewHover.project(), file, label);
+                    }
                 }
             }
 
             @Override
             public void mouseExited(MouseEvent event) {
-                applyPresentationState(project, label, file);
+                applyPresentationState(project, label, file, context());
                 ComponentSubtabBarHover.onExit(label);
                 ComponentSubtabMainTabHover.onExit(label);
+                if (mainTabProjectViewHover != null) {
+                    ComponentSubtabProjectViewHover.onExit(label);
+                    if (isPointerOver(mainTabProjectViewHover.tabLabel())) {
+                        mainTabProjectViewHover.restoreTabGroupHover().run();
+                    }
+                }
             }
 
             @Override
@@ -120,14 +200,18 @@ final class SubtabGroupFilePopupPanel extends JPanel {
             }
         });
 
-        if (!isOpen(project, file)) {
-            label.addMouseListener(new PopupHandler() {
-                @Override
-                public void invokePopup(@NotNull Component component, int x, int y) {
-                    ComponentSubtabBarPopup.showContextMenu(project, file, component, x, y);
-                }
-            });
-        }
+        label.addMouseListener(new PopupHandler() {
+            @Override
+            public void invokePopup(@NotNull Component component, int x, int y) {
+                VirtualFile primaryHighlight = context().primaryHighlight();
+                VirtualFile anchor = primaryHighlight != null ? primaryHighlight : file;
+                SubtabGroupPopupPresentation.Context menuContext = context();
+                boolean revealOnly = SubtabGroupPopupPresentation.isHighlighted(menuContext, file)
+                        || SubtabGroupPopupPresentation.isOpenElsewhere(project, menuContext, file);
+                ComponentSubtabBarPopup.showContextMenu(
+                        project, anchor, file, component, x, y, revealOnly);
+            }
+        });
 
         return label;
     }
@@ -143,25 +227,26 @@ final class SubtabGroupFilePopupPanel extends JPanel {
         label.setMaximumSize(size);
     }
 
-    private static boolean isOpen(@NotNull Project project, @NotNull VirtualFile file) {
-        return FileEditorManager.getInstance(project).isFileOpen(file);
-    }
-
     private static void applyPresentationState(
             @NotNull Project project,
             @NotNull ComponentSubtabModifiedLabel label,
-            @NotNull VirtualFile file
+            @NotNull VirtualFile file,
+            @NotNull SubtabGroupPopupPresentation.Context context
     ) {
-        boolean open = isOpen(project, file);
-        boolean modified = ComponentSubtabModifiedUi.isModified(project, file);
+        boolean highlighted = SubtabGroupPopupPresentation.isHighlighted(context, file);
+        boolean openElsewhere = SubtabGroupPopupPresentation.isOpenElsewhere(project, context, file);
+        ComponentSubtabFilePresentation presentation = ComponentSubtabFilePresentation.compute(project, file);
         String plainLabel = labelFor(file);
         ComponentSubtabModifiedUi.applyToLabel(
                 label,
                 plainLabel,
-                modified,
-                open
+                presentation.modified(),
+                openElsewhere,
+                presentation.hasErrors()
         );
-        label.setBackground(UIUtil.getPanelBackground());
+        label.setBackground(highlighted
+                ? ComponentSubtabUi.popupHighlightedBackground()
+                : UIUtil.getPanelBackground());
     }
 
     private static @NotNull String labelFor(@NotNull VirtualFile file) {
@@ -174,5 +259,18 @@ final class SubtabGroupFilePopupPanel extends JPanel {
             }
         }
         return file.getName();
+    }
+
+    private static boolean isPointerOver(@NotNull java.awt.Component component) {
+        if (!component.isShowing()) {
+            return false;
+        }
+        try {
+            Point origin = component.getLocationOnScreen();
+            Point pointer = java.awt.MouseInfo.getPointerInfo().getLocation();
+            return new java.awt.Rectangle(origin, component.getSize()).contains(pointer);
+        } catch (java.awt.IllegalComponentStateException ignored) {
+            return false;
+        }
     }
 }

@@ -12,10 +12,20 @@ final class ComponentTabTitles {
         if (subtabsCollapsed) {
             return null;
         }
-        if (ComponentRelatedFiles.find(file) == null) {
+
+        String groupedTitle = groupedTitleFor(file);
+        if (groupedTitle == null) {
             return null;
         }
-        return displayGroupedTitle(file);
+
+        if (SubtabsSettings.getInstance().isShowSubtabNameInMainTab()) {
+            String subtabLabel = subtabLabelFor(file);
+            if (subtabLabel != null) {
+                return groupedTitle + " (" + subtabLabel + ")";
+            }
+        }
+
+        return groupedTitle;
     }
 
     static @Nullable String displayGroupedTitle(@NotNull VirtualFile file) {
@@ -23,14 +33,7 @@ final class ComponentTabTitles {
         if (baseName == null) {
             return null;
         }
-        if (CustomSubtabRuleMatcher.isFolderGroupKey(baseName)) {
-            VirtualFile parent = file.getParent();
-            return parent != null ? parent.getName() : ComponentFileNaming.displayName(baseName);
-        }
-        if (CustomSubtabRuleMatcher.isUserGroupKey(baseName)) {
-            return ComponentFileNaming.displayName(baseName);
-        }
-        return ComponentFileNaming.displayName(baseName);
+        return ComponentFileNaming.displayName(baseName, file);
     }
 
     static @Nullable String displayGroupedTitle(@NotNull String fileName) {
@@ -39,5 +42,38 @@ final class ComponentTabTitles {
             return null;
         }
         return ComponentFileNaming.displayName(baseName);
+    }
+
+    private static @Nullable String groupedTitleFor(@NotNull VirtualFile file) {
+        return displayGroupedTitle(file);
+    }
+
+    private static @Nullable String subtabLabelFor(@NotNull VirtualFile file) {
+        ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(file);
+        if (match != null) {
+            for (ComponentRelatedFiles.Entry entry : match.relatedFiles()) {
+                if (entry.file().equals(file)) {
+                    return entry.label();
+                }
+            }
+        }
+        return subtabLabelFromRules(file);
+    }
+
+    private static @Nullable String subtabLabelFromRules(@NotNull VirtualFile file) {
+        CustomSubtabRuleMatcher.Match ruleMatch = CustomSubtabRuleMatcher.match(
+                file.getName(),
+                ComponentFileNaming.rules()
+        );
+        if (ruleMatch == null) {
+            return null;
+        }
+
+        for (SubtabCandidate candidate : ComponentFileNaming.candidates(ruleMatch.groupKey())) {
+            if (candidate.fileName().equals(file.getName())) {
+                return candidate.displayLabel(file.getName());
+            }
+        }
+        return null;
     }
 }
