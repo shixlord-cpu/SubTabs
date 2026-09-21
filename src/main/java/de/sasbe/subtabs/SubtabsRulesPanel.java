@@ -25,8 +25,6 @@ import javax.swing.table.TableCellRenderer;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
@@ -135,39 +133,7 @@ final class SubtabsRulesPanel {
                         table.getSelectedRows(), rules.size(), 1
                 ));
 
-        JComponent panel = decorator.createPanel();
-        table.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent event) {
-                resizeColumnsToFit(table.getWidth());
-            }
-        });
-        panel.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent event) {
-                resizeColumnsToFit(Math.max(table.getWidth(), panel.getWidth()));
-            }
-        });
-        resizeColumnsToFit(table.getWidth());
-        return panel;
-    }
-
-    private void resizeColumnsToFit(int availableWidth) {
-        if (availableWidth <= 0) {
-            return;
-        }
-
-        int fixedWidth = JBUI.scale(36 + 72 + 56 + 56 + 28 + 28);
-        int flexibleWidth = Math.max(JBUI.scale(240), availableWidth - fixedWidth);
-        int patternsWidth = (int) (flexibleWidth * 0.42f);
-        int tabLabelWidth = (int) (flexibleWidth * 0.16f);
-        int nameRuleWidth = (int) (flexibleWidth * 0.16f);
-        int excludeWidth = flexibleWidth - patternsWidth - tabLabelWidth - nameRuleWidth;
-
-        table.getColumnModel().getColumn(3).setPreferredWidth(patternsWidth);
-        table.getColumnModel().getColumn(4).setPreferredWidth(tabLabelWidth);
-        table.getColumnModel().getColumn(5).setPreferredWidth(nameRuleWidth);
-        table.getColumnModel().getColumn(7).setPreferredWidth(excludeWidth);
+        return decorator.createPanel();
     }
 
     void reset(@NotNull List<CustomSubtabRule> source) {

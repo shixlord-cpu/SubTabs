@@ -106,7 +106,13 @@ final class ComponentRelatedFiles {
                         rules,
                         parsed.ruleIndex()
                 );
-                if (match == null || !CustomSubtabRuleMatcher.sameGroupIdentity(groupKey, match.groupKey())) {
+                if (match == null) {
+                    continue;
+                }
+                boolean sameGroup = ComponentFileNaming.searchNeighbors(groupKey)
+                        ? CustomSubtabRuleMatcher.sameGroupIdentity(groupKey, match.groupKey())
+                        : CustomSubtabRuleMatcher.sameFolderGroupIdentity(groupKey, match.groupKey());
+                if (!sameGroup) {
                     continue;
                 }
 

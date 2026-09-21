@@ -12,29 +12,30 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StateOrdnerRuleTest {
     @Test
-    void defaultStateFolderRuleUsesSameFolderSearchOnly() {
-        CustomSubtabRule stateFolder = SubtabRulesDefaults.stateFolderRule();
+    void defaultStateFeatureRuleUsesSameFolderSearchOnly() {
+        CustomSubtabRule stateFeature = SubtabRulesDefaults.stateFeatureRule();
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match(
                 "cart.actions.ts",
-                List.of(stateFolder)
+                List.of(stateFeature)
         );
 
         assertNotNull(match);
-        assertEquals("rule:0:cart", match.groupKey());
+        assertEquals("rule:0:actions#cart", match.groupKey());
+        assertEquals("actions", match.displayName());
         assertFalse(match.searchNeighbors());
     }
 
     @Test
-    void defaultRulesIncludeStateFolderAfterState() {
+    void defaultRulesIncludeStateFeatureAfterStateCentral() {
         List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
-        assertEquals("State", rules.get(3).name);
-        assertEquals("State Folder", rules.get(4).name);
+        assertEquals("State Central", rules.get(3).name);
+        assertEquals("State Feature", rules.get(4).name);
         assertTrue(rules.get(3).searchNeighbors);
         assertFalse(rules.get(4).searchNeighbors);
     }
 
     @Test
-    void entityAndFolderStateRulesBothMatchSameFile() {
+    void centralAndFeatureStateRulesBothMatchSameFile() {
         List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
         List<CustomSubtabRuleMatcher.Match> matches = CustomSubtabRuleMatcher.matchAll(
                 "cart.actions.ts",
@@ -43,7 +44,7 @@ class StateOrdnerRuleTest {
 
         assertTrue(matches.size() >= 2);
         assertEquals("rule:3:cart", matches.get(0).groupKey());
-        assertEquals("rule:4:cart", matches.get(1).groupKey());
+        assertEquals("rule:4:actions#cart", matches.get(1).groupKey());
         assertTrue(SubtabRuleRotation.hasMultipleMatches("cart.actions.ts", rules));
     }
 
@@ -59,13 +60,13 @@ class StateOrdnerRuleTest {
         SubtabsSettings settings = new SubtabsSettings();
         settings.loadState(state);
 
-        CustomSubtabRule loadedState = settings.getRules().stream()
-                .filter(rule -> "State".equals(rule.name))
+        CustomSubtabRule loadedCentral = settings.getRules().stream()
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow();
-        assertNull(loadedState.type);
-        assertTrue(loadedState.patterns.contains(".actions.ts"));
-        assertEquals(15, settings.getState().rulesVersion);
+        assertNull(loadedCentral.type);
+        assertTrue(loadedCentral.patterns.contains(".actions.ts"));
+        assertEquals(17, settings.getState().rulesVersion);
         assertEquals(
                 "rule:3:cart",
                 CustomSubtabRuleMatcher.match("cart.actions.ts", settings.getRules()).groupKey()
@@ -76,7 +77,7 @@ class StateOrdnerRuleTest {
     @Test
     void resetsLegacyRuleNamesWithoutRestart() {
         SubtabsSettings.State state = new SubtabsSettings.State();
-        state.rulesVersion = 15;
+        state.rulesVersion = 16;
         state.rules.get(4).name = "State Typ";
         state.rules.get(4).searchNeighbors = true;
 
@@ -84,11 +85,12 @@ class StateOrdnerRuleTest {
         settings.loadState(state);
         settings.getRules();
 
-        CustomSubtabRule stateFolder = settings.getRules().stream()
-                .filter(rule -> "State Folder".equals(rule.name))
+        CustomSubtabRule stateFeature = settings.getRules().stream()
+                .filter(rule -> "State Feature".equals(rule.name))
                 .findFirst()
                 .orElseThrow();
-        assertFalse(stateFolder.searchNeighbors);
-        assertEquals("state", stateFolder.groupSuffix);
+        assertFalse(stateFeature.searchNeighbors);
+        assertEquals("state", stateFeature.groupSuffix);
+        assertEquals("2", stateFeature.groupNameSegments);
     }
 }

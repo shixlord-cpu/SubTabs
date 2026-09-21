@@ -125,6 +125,12 @@ class ComponentFileNamingTest {
     }
 
     @Test
+    void displayNameFollowsGroupNameSegmentFromGroupKey() {
+        assertEquals("reducer-state", ComponentFileNaming.displayName("rule:4:reducer#cart"));
+        assertEquals("actions-state", ComponentFileNaming.displayName("rule:4:actions#catalog"));
+    }
+
+    @Test
     void groupsStateFilesByEntityAndSearchesNeighbors() {
         assertEquals("rule:3:cart", ComponentFileNaming.componentBaseName("cart.actions.ts"));
         assertEquals("rule:3:cart", ComponentFileNaming.componentBaseName("cart.reducer.ts"));
@@ -215,15 +221,15 @@ class ComponentFileNamingTest {
     @Test
     void usesStateFolderRuleWhenItHasPriority() {
         CustomSubtabRule state = SubtabRulesDefaults.createDefaults().stream()
-                .filter(rule -> "State".equals(rule.name))
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow();
-        CustomSubtabRule stateFolder = SubtabRulesDefaults.stateFolderRule();
-        List<CustomSubtabRule> rules = List.of(stateFolder, state);
+        CustomSubtabRule stateFeature = SubtabRulesDefaults.stateFeatureRule();
+        List<CustomSubtabRule> rules = List.of(stateFeature, state);
 
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match("cart.actions.ts", rules);
         assertNotNull(match);
-        assertEquals("rule:0:cart", match.groupKey());
+        assertEquals("rule:0:actions#cart", match.groupKey());
         assertFalse(match.searchNeighbors());
     }
 }

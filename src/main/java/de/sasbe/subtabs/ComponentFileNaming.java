@@ -43,18 +43,18 @@ final class ComponentFileNaming {
             }
         }
 
+        CustomSubtabRuleMatcher.ParsedGroupKey parsed = CustomSubtabRuleMatcher.parseGroupKey(groupKey);
+        if (parsed != null && parsed.ruleIndex() >= 0 && parsed.ruleIndex() < rules().size()) {
+            return CustomSubtabRuleMatcher.displayNameWithSuffix(
+                    parsed.groupName(),
+                    rules().get(parsed.ruleIndex())
+            );
+        }
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(groupKey, rules());
         if (match == null) {
             return groupKey;
         }
-        CustomSubtabRuleMatcher.ParsedGroupKey parsed = CustomSubtabRuleMatcher.parseGroupKey(groupKey);
-        if (parsed == null || parsed.ruleIndex() < 0 || parsed.ruleIndex() >= rules().size()) {
-            return match.displayName();
-        }
-        return CustomSubtabRuleMatcher.displayNameWithSuffix(
-                match.displayName(),
-                rules().get(parsed.ruleIndex())
-        );
+        return match.displayName();
     }
 
     static @NotNull List<SubtabCandidate> candidates(@NotNull String baseName) {

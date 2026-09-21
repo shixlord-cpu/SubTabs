@@ -15,7 +15,7 @@ public final class SubtabRulesDefaults {
         rules.add(tsconfigRule());
         rules.add(envRule());
         rules.add(stateRule());
-        rules.add(stateFolderRule());
+        rules.add(stateFeatureRule());
         rules.add(modelRule());
         rules.add(htmlRule());
         rules.add(componentRule());
@@ -79,7 +79,7 @@ public final class SubtabRulesDefaults {
 
     private static @NotNull CustomSubtabRule stateRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
-        rule.name = "State";
+        rule.name = "State Central";
         rule.patterns = """
                 .actions.ts, .reducer.ts, .reducers.ts, .effects.ts, .selectors.ts, .state.ts, .store.ts, .facade.ts""".replace('\n', ' ').trim();
         rule.nameSegments = "2, 2, 2, 2, 2, 2, 2, 2";
@@ -91,13 +91,13 @@ public final class SubtabRulesDefaults {
         return rule;
     }
 
-    static @NotNull CustomSubtabRule stateFolderRule() {
+    static @NotNull CustomSubtabRule stateFeatureRule() {
         CustomSubtabRule rule = new CustomSubtabRule();
-        rule.name = "State Folder";
+        rule.name = "State Feature";
         rule.patterns = """
                 .actions.ts, .reducer.ts, .reducers.ts, .effects.ts, .selectors.ts, .state.ts, .store.ts, .facade.ts""".replace('\n', ' ').trim();
-        rule.nameSegments = "2, 2, 2, 2, 2, 2, 2, 2";
-        rule.groupNameSegments = "1";
+        rule.nameSegments = "1, 1, 1, 1, 1, 1, 1, 1";
+        rule.groupNameSegments = "2";
         rule.slotKeys = """
                 .actions.ts, .reducer.ts, .reducer.ts, .effects.ts, .selectors.ts, .state.ts, .store.ts, .facade.ts""".replace('\n', ' ').trim();
         rule.searchNeighbors = false;

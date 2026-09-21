@@ -143,29 +143,25 @@ public final class SubtabGroupTreeStructureProvider implements TreeStructureProv
             return List.copyOf(fileNodes);
         }
 
-        List<String> fileNames = new ArrayList<>(fileNodes.size());
-        for (PsiFileNode fileNode : fileNodes) {
-            VirtualFile file = fileNode.getVirtualFile();
-            fileNames.add(file == null ? "" : file.getName());
-        }
-        Set<String> nestedKeys = Set.copyOf(SubtabProjectViewGrouping.groupKeysForNesting(fileNames));
-        if (nestedKeys.isEmpty()) {
-            return List.copyOf(fileNodes);
-        }
+        List<String> fileNames = fileNames(fileNodes);
+        Map<String, PsiFileNode> nodesByName = nodesByName(fileNodes);
+        Set<String> inAnyGroup = new LinkedHashSet<>();
+        List<AbstractTreeNode<?>> result = new ArrayList<>();
 
-        Map<String, List<PsiFileNode>> grouped = new LinkedHashMap<>();
-        List<AbstractTreeNode<?>> result = new ArrayList<>(fileNodes.size());
-        for (PsiFileNode fileNode : fileNodes) {
-            VirtualFile file = fileNode.getVirtualFile();
-            String groupKey = file == null ? null : ComponentFileNaming.componentBaseName(file.getName());
-            if (groupKey == null || !nestedKeys.contains(groupKey)) {
-                result.add(fileNode);
+        for (SubtabProjectViewGrouping.ProjectViewGroup group : SubtabProjectViewGrouping.nestGroups(fileNames)) {
+            List<PsiFileNode> members = fileNodesForNames(group.fileNames(), nodesByName);
+            if (members.size() < 2) {
                 continue;
             }
-            grouped.computeIfAbsent(groupKey, key -> new ArrayList<>()).add(fileNode);
+            inAnyGroup.addAll(group.fileNames());
+            result.add(new SubtabGroupProjectViewNode(project, group.groupKey(), members, settings));
         }
-        for (Map.Entry<String, List<PsiFileNode>> entry : grouped.entrySet()) {
-            result.add(new SubtabGroupProjectViewNode(project, entry.getKey(), entry.getValue(), settings));
+
+        for (PsiFileNode fileNode : fileNodes) {
+            VirtualFile file = fileNode.getVirtualFile();
+            if (file == null || !inAnyGroup.contains(file.getName())) {
+                result.add(fileNode);
+            }
         }
         return result;
     }
@@ -181,6 +177,10 @@ public final class SubtabGroupTreeStructureProvider implements TreeStructureProv
         }
 
         PsiDirectory[] subdirectories = directory.getSubdirectories();
+        if (subdirectories.length > 0) {
+            return null;
+        }
+
         PsiFile[] files = directory.getFiles();
         List<String> fileNames = new ArrayList<>(files.length);
         for (PsiFile file : files) {
@@ -188,36 +188,76 @@ public final class SubtabGroupTreeStructureProvider implements TreeStructureProv
                 fileNames.add(file.getVirtualFile().getName());
             }
         }
-
-        List<String> groupKeys = SubtabProjectViewGrouping.groupKeysIfReplaceable(
-                fileNames,
-                subdirectories.length
-        );
-        if (groupKeys.isEmpty()) {
+        if (fileNames.size() < 2) {
             return null;
         }
 
-        Map<String, List<PsiFileNode>> nodesByGroup = new LinkedHashMap<>();
-        for (PsiFile file : files) {
-            if (file.getVirtualFile() == null) {
-                continue;
-            }
-            String groupKey = ComponentFileNaming.componentBaseName(file.getVirtualFile().getName());
-            if (groupKey == null) {
-                return null;
-            }
-            nodesByGroup.computeIfAbsent(groupKey, key -> new ArrayList<>())
-                    .add(new PsiFileNode(project, file, settings));
+        List<SubtabProjectViewGrouping.ProjectViewGroup> groups =
+                SubtabProjectViewGrouping.partitionedGroups(fileNames);
+        if (groups.isEmpty()) {
+            return null;
+        }
+        Set<String> grouped = new LinkedHashSet<>();
+        for (SubtabProjectViewGrouping.ProjectViewGroup group : groups) {
+            grouped.addAll(group.fileNames());
+        }
+        if (grouped.size() != fileNames.size()) {
+            return null;
         }
 
-        List<AbstractTreeNode<?>> replacement = new ArrayList<>(groupKeys.size());
-        for (String groupKey : groupKeys) {
-            List<PsiFileNode> nodes = nodesByGroup.get(groupKey);
-            if (nodes == null || nodes.size() < 2) {
+        Map<String, PsiFileNode> nodesByName = new LinkedHashMap<>();
+        for (PsiFile file : files) {
+            if (file.getVirtualFile() == null) {
                 return null;
             }
-            replacement.add(new SubtabGroupProjectViewNode(project, groupKey, nodes, settings));
+            nodesByName.put(
+                    file.getVirtualFile().getName(),
+                    new PsiFileNode(project, file, settings)
+            );
+        }
+
+        List<AbstractTreeNode<?>> replacement = new ArrayList<>(groups.size());
+        for (SubtabProjectViewGrouping.ProjectViewGroup group : groups) {
+            List<PsiFileNode> nodes = fileNodesForNames(group.fileNames(), nodesByName);
+            if (nodes.size() < 2) {
+                return null;
+            }
+            replacement.add(new SubtabGroupProjectViewNode(project, group.groupKey(), nodes, settings));
         }
         return replacement;
+    }
+
+    private static @NotNull List<String> fileNames(@NotNull List<PsiFileNode> fileNodes) {
+        List<String> fileNames = new ArrayList<>(fileNodes.size());
+        for (PsiFileNode fileNode : fileNodes) {
+            VirtualFile file = fileNode.getVirtualFile();
+            fileNames.add(file == null ? "" : file.getName());
+        }
+        return fileNames;
+    }
+
+    private static @NotNull Map<String, PsiFileNode> nodesByName(@NotNull List<PsiFileNode> fileNodes) {
+        Map<String, PsiFileNode> nodesByName = new LinkedHashMap<>();
+        for (PsiFileNode fileNode : fileNodes) {
+            VirtualFile file = fileNode.getVirtualFile();
+            if (file != null) {
+                nodesByName.put(file.getName(), fileNode);
+            }
+        }
+        return nodesByName;
+    }
+
+    private static @NotNull List<PsiFileNode> fileNodesForNames(
+            @NotNull List<String> fileNames,
+            @NotNull Map<String, PsiFileNode> nodesByName
+    ) {
+        List<PsiFileNode> nodes = new ArrayList<>(fileNames.size());
+        for (String fileName : fileNames) {
+            PsiFileNode fileNode = nodesByName.get(fileName);
+            if (fileNode != null) {
+                nodes.add(fileNode);
+            }
+        }
+        return nodes;
     }
 }

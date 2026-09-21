@@ -26,6 +26,7 @@ public class SubtabRuleSwitchIntegrationTest extends RealEditorWindowTestCase {
         WriteAction.run(() -> actions.setBinaryContent("export const x = 1;".getBytes(StandardCharsets.UTF_8)));
         VirtualFile reducer = WriteAction.computeAndWait(() -> dir.createChildData(this, "cart.reducer.ts"));
         WriteAction.run(() -> reducer.setBinaryContent("export const y = 1;".getBytes(StandardCharsets.UTF_8)));
+        WriteAction.computeAndWait(() -> dir.createChildData(this, "catalog.actions.ts"));
 
         openAndSettle(actions);
         ComponentSubtabsManager.attachIfNeeded(getProject(), actions);
@@ -35,16 +36,16 @@ public class SubtabRuleSwitchIntegrationTest extends RealEditorWindowTestCase {
         assertTrue("rule switch must appear when two state rules match", panel.isRuleSwitchVisible());
 
         assertEquals("rule:0:cart", ComponentFileNaming.componentBaseName(actions.getName()));
-        assertEquals("State", SubtabsSettings.getInstance().getRules().get(0).name);
+        assertEquals("State Central", SubtabsSettings.getInstance().getRules().get(0).name);
 
         panel.switchRuleForDisplayedFile();
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
 
         panel = barFor(actions);
         assertNotNull(panel);
-        assertEquals("rule:0:cart", ComponentFileNaming.componentBaseName(actions.getName()));
-        assertEquals("State Folder", SubtabsSettings.getInstance().getRules().get(0).name);
-        assertEquals("State", SubtabsSettings.getInstance().getRules().get(1).name);
+        assertEquals("rule:0:actions#cart", ComponentFileNaming.componentBaseName(actions.getName()));
+        assertEquals("State Feature", SubtabsSettings.getInstance().getRules().get(0).name);
+        assertEquals("State Central", SubtabsSettings.getInstance().getRules().get(1).name);
         assertTrue(panel.isRuleSwitchVisible());
     }
 
@@ -88,7 +89,7 @@ public class SubtabRuleSwitchIntegrationTest extends RealEditorWindowTestCase {
 
     public void testRuleSwitchUpdatesSubtabLabelsImmediately() throws Exception {
         CustomSubtabRule stemTabs = SubtabRulesDefaults.createDefaults().stream()
-                .filter(rule -> "State".equals(rule.name))
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow()
                 .copy();
@@ -148,6 +149,7 @@ public class SubtabRuleSwitchIntegrationTest extends RealEditorWindowTestCase {
             VirtualFile productsState = root.createChildDirectory(this, "products-state");
             products.createChildData(this, "products.actions.ts");
             products.createChildData(this, "products.selectors.ts");
+            products.createChildData(this, "demo.actions.ts");
             productsState.createChildData(this, "products.reducer.ts");
             productsState.createChildData(this, "products.effects.ts");
         });
@@ -163,7 +165,7 @@ public class SubtabRuleSwitchIntegrationTest extends RealEditorWindowTestCase {
         ComponentSubtabBarPanel panel = barFor(actions);
         assertNotNull(panel);
         assertEquals("rule:3:products", ComponentFileNaming.componentBaseName(actions.getName()));
-        assertEquals("State", SubtabsSettings.getInstance().getRules().get(3).name);
+        assertEquals("State Central", SubtabsSettings.getInstance().getRules().get(3).name);
         ComponentRelatedFiles.Match neighborMatch = ComponentRelatedFiles.find(actions);
         assertNotNull(neighborMatch);
         assertEquals(4, neighborMatch.relatedFiles().size());
@@ -171,8 +173,8 @@ public class SubtabRuleSwitchIntegrationTest extends RealEditorWindowTestCase {
         panel.switchRuleForDisplayedFile();
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
 
-        assertEquals("rule:3:products", ComponentFileNaming.componentBaseName(actions.getName()));
-        assertEquals("State Folder", SubtabsSettings.getInstance().getRules().get(3).name);
+        assertEquals("rule:3:actions#products", ComponentFileNaming.componentBaseName(actions.getName()));
+        assertEquals("State Feature", SubtabsSettings.getInstance().getRules().get(3).name);
         ComponentRelatedFiles.Match folderMatch = ComponentRelatedFiles.find(actions);
         assertNotNull(folderMatch);
         assertEquals(2, folderMatch.relatedFiles().size());
@@ -214,14 +216,11 @@ public class SubtabRuleSwitchIntegrationTest extends RealEditorWindowTestCase {
     }
 
     private static List<CustomSubtabRule> twoOverlappingStateRules() {
-        CustomSubtabRule primary = SubtabRulesDefaults.createDefaults().stream()
-                .filter(rule -> "State".equals(rule.name))
+        CustomSubtabRule central = SubtabRulesDefaults.createDefaults().stream()
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow();
-        CustomSubtabRule neighborState = primary.copy();
-        neighborState.name = "State Folder";
-        neighborState.searchNeighbors = true;
-        return new ArrayList<>(List.of(primary, neighborState));
+        return new ArrayList<>(List.of(central, SubtabRulesDefaults.stateFeatureRule()));
     }
 
     private static Object findScrollPaneAncestor(javax.swing.JComponent component) {

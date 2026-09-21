@@ -91,42 +91,45 @@ public class SubtabNameSegmentIntegrationTest extends HeavyPlatformTestCase {
         assertEquals(5, match.relatedFiles().size());
     }
 
-    public void testStateFolderRuleKeepsFeatureGroupInsideSingleFolder() throws Exception {
+    public void testStateFeatureRuleGroupsActionsAcrossEntitiesInSameFolder() throws Exception {
         SubtabsSettings settings = SubtabsSettings.getInstance();
         settings.setSubtabsActive(true);
         List<CustomSubtabRule> rules = new ArrayList<>(settings.getRules());
-        CustomSubtabRule state = rules.stream()
-                .filter(rule -> "State".equals(rule.name))
+        CustomSubtabRule stateCentral = rules.stream()
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow();
-        CustomSubtabRule stateFolder = rules.stream()
-                .filter(rule -> "State Folder".equals(rule.name))
+        CustomSubtabRule stateFeature = rules.stream()
+                .filter(rule -> "State Feature".equals(rule.name))
                 .findFirst()
                 .orElseThrow();
-        rules.remove(state);
-        rules.remove(stateFolder);
-        rules.add(0, stateFolder);
+        rules.remove(stateCentral);
+        rules.remove(stateFeature);
+        rules.add(0, stateFeature);
         settings.setRules(rules);
         ComponentFileNaming.invalidateRulesCache();
 
-        VirtualFile root = getVirtualFile(createTempDir("feature-based-folder-only"));
+        VirtualFile dir = getVirtualFile(createTempDir("central-actions"));
         WriteAction.runAndWait(() -> {
-            VirtualFile products = root.createChildDirectory(this, "products");
-            VirtualFile productsState = root.createChildDirectory(this, "products-state");
-            products.createChildData(this, "products.actions.ts");
-            products.createChildData(this, "products.selectors.ts");
-            productsState.createChildData(this, "products.reducer.ts");
+            dir.createChildData(this, "cart.actions.ts");
+            dir.createChildData(this, "catalog.actions.ts");
+            dir.createChildData(this, "user.actions.ts");
+            dir.createChildData(this, "cart.reducer.ts");
         });
-        VirtualFile actions = WriteAction.computeAndWait(() -> {
-            VirtualFile products = root.findChild("products");
-            return products == null ? null : products.findChild("products.actions.ts");
-        });
+        VirtualFile actions = WriteAction.computeAndWait(() -> dir.findChild("cart.actions.ts"));
         assertNotNull(actions);
 
         ComponentRelatedFiles.Match match = ComponentRelatedFiles.findUncached(actions);
         assertNotNull(match);
-        assertEquals("rule:0:products", match.baseName());
-        assertEquals(2, match.relatedFiles().size());
+        assertEquals("rule:0:actions#cart", match.baseName());
+        assertEquals(3, match.relatedFiles().size());
+        assertEquals("cart", labelFor(match, "cart.actions.ts"));
+        assertEquals("catalog", labelFor(match, "catalog.actions.ts"));
+        assertEquals("user", labelFor(match, "user.actions.ts"));
+        assertEquals(
+                "actions-state",
+                ComponentFileNaming.displayName(match.baseName())
+        );
     }
 
     public void testChangingNameSegmentsUpdatesSubtabLabels() throws Exception {
@@ -143,7 +146,7 @@ public class SubtabNameSegmentIntegrationTest extends HeavyPlatformTestCase {
 
         List<CustomSubtabRule> rules = new ArrayList<>(settings.getRules());
         CustomSubtabRule state = rules.stream()
-                .filter(rule -> "State".equals(rule.name))
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow();
         state.nameSegments = "1, 1, 1, 1, 1, 1, 1, 1";
@@ -171,7 +174,7 @@ public class SubtabNameSegmentIntegrationTest extends HeavyPlatformTestCase {
 
         List<CustomSubtabRule> rules = new ArrayList<>(settings.getRules());
         CustomSubtabRule state = rules.stream()
-                .filter(rule -> "State".equals(rule.name))
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow();
         state.nameSegments = "0, 0, 0, 0, 0, 0, 0, 0";

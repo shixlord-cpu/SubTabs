@@ -4,10 +4,15 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 final class SubtabProjectViewGrouping {
+    record ProjectViewGroup(@NotNull String groupKey, @NotNull List<String> fileNames) {
+    }
+
     private SubtabProjectViewGrouping() {
     }
 
@@ -21,14 +26,11 @@ final class SubtabProjectViewGrouping {
     }
 
     static @NotNull List<String> groupKeysForNesting(@NotNull List<String> visibleFileNames) {
-        Map<String, Integer> counts = countsByGroup(visibleFileNames, false);
-        List<String> groupKeys = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
-            if (entry.getValue() >= 2) {
-                groupKeys.add(entry.getKey());
-            }
+        List<String> mergeKeys = new ArrayList<>();
+        for (ProjectViewGroup group : nestGroups(visibleFileNames)) {
+            mergeKeys.add(mergeKey(group.groupKey()));
         }
-        return groupKeys;
+        return mergeKeys;
     }
 
     static @NotNull List<String> groupKeysIfReplaceable(
@@ -39,49 +41,100 @@ final class SubtabProjectViewGrouping {
             return List.of();
         }
 
-        Map<String, Integer> counts = countsByGroup(visibleFileNames, true);
-        if (counts.isEmpty()) {
+        List<ProjectViewGroup> groups = partitionedGroups(visibleFileNames);
+        if (!coversEveryFile(visibleFileNames, groups)) {
             return List.of();
         }
 
-        List<String> groupKeys = new ArrayList<>(counts.size());
-        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
-            if (entry.getValue() < 2) {
+        List<String> mergeKeys = new ArrayList<>(groups.size());
+        for (ProjectViewGroup group : groups) {
+            if (group.fileNames().size() < 2) {
                 return List.of();
             }
-            groupKeys.add(entry.getKey());
+            mergeKeys.add(mergeKey(group.groupKey()));
         }
-        return groupKeys;
+        return mergeKeys;
     }
 
-    private static @NotNull Map<String, Integer> countsByGroup(
-            @NotNull List<String> visibleFileNames,
-            boolean requireEveryFileGrouped
-    ) {
-        Map<String, Integer> counts = new LinkedHashMap<>();
+    static @NotNull List<ProjectViewGroup> partitionedGroups(@NotNull List<String> visibleFileNames) {
+        List<ProjectViewGroup> groups = groupsForActiveRules(visibleFileNames);
+        return coversEveryFile(visibleFileNames, groups) ? groups : List.of();
+    }
+
+    static @NotNull List<ProjectViewGroup> nestGroups(@NotNull List<String> visibleFileNames) {
+        return groupsForActiveRules(visibleFileNames);
+    }
+
+    static @NotNull List<ProjectViewGroup> groupsForActiveRules(@NotNull List<String> visibleFileNames) {
+        Map<Integer, List<String>> filesByRule = new LinkedHashMap<>();
+        List<CustomSubtabRule> rules = ComponentFileNaming.rules();
         for (String fileName : visibleFileNames) {
-            String groupKey = ComponentFileNaming.componentBaseName(fileName);
-            if (groupKey == null) {
-                if (requireEveryFileGrouped) {
-                    return Map.of();
-                }
+            int ruleIndex = CustomSubtabRuleMatcher.firstMatchingRuleIndex(fileName, rules);
+            if (ruleIndex < 0) {
                 continue;
             }
-            counts.merge(groupKey, 1, Integer::sum);
+            filesByRule.computeIfAbsent(ruleIndex, key -> new ArrayList<>()).add(fileName);
         }
-        return counts;
+
+        List<ProjectViewGroup> groups = new ArrayList<>();
+        for (Map.Entry<Integer, List<String>> entry : filesByRule.entrySet()) {
+            groups.addAll(groupsForRule(entry.getValue(), entry.getKey()));
+        }
+        return groups;
+    }
+
+    static @NotNull List<ProjectViewGroup> groupsForRule(
+            @NotNull List<String> visibleFileNames,
+            int ruleIndex
+    ) {
+        List<CustomSubtabRule> rules = ComponentFileNaming.rules();
+        if (ruleIndex < 0 || ruleIndex >= rules.size()) {
+            return List.of();
+        }
+        CustomSubtabRule rule = rules.get(ruleIndex);
+        if (!rule.enabled || rule.isSpecial()) {
+            return List.of();
+        }
+
+        Map<String, List<String>> filesByMergeKey = new LinkedHashMap<>();
+        Map<String, String> groupKeyByMergeKey = new LinkedHashMap<>();
+        for (String fileName : visibleFileNames) {
+            CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.matchAtIndex(fileName, rules, ruleIndex);
+            if (match == null) {
+                continue;
+            }
+            String mergeKey = mergeKey(match.groupKey());
+            filesByMergeKey.computeIfAbsent(mergeKey, key -> new ArrayList<>()).add(fileName);
+            groupKeyByMergeKey.putIfAbsent(mergeKey, match.groupKey());
+        }
+
+        List<ProjectViewGroup> groups = new ArrayList<>();
+        for (Map.Entry<String, List<String>> entry : filesByMergeKey.entrySet()) {
+            if (entry.getValue().size() < 2) {
+                continue;
+            }
+            String groupKey = groupKeyByMergeKey.get(entry.getKey());
+            if (groupKey == null) {
+                continue;
+            }
+            groups.add(new ProjectViewGroup(groupKey, List.copyOf(entry.getValue())));
+        }
+        return groups;
+    }
+
+    private static boolean coversEveryFile(
+            @NotNull List<String> visibleFileNames,
+            @NotNull List<ProjectViewGroup> groups
+    ) {
+        Set<String> grouped = new LinkedHashSet<>();
+        for (ProjectViewGroup group : groups) {
+            grouped.addAll(group.fileNames());
+        }
+        return grouped.size() == visibleFileNames.size();
     }
 
     static @NotNull String mergeKey(@NotNull String groupKey) {
         if (!CustomSubtabRuleMatcher.isRuleGroupKey(groupKey)) {
-            return groupKey;
-        }
-
-        CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.resolveGroup(
-                groupKey,
-                ComponentFileNaming.rules()
-        );
-        if (match == null || !match.searchNeighbors()) {
             return groupKey;
         }
 

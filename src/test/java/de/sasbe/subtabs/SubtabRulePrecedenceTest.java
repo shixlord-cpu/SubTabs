@@ -13,8 +13,8 @@ class SubtabRulePrecedenceTest {
     void lowerStateFolderRuleIsShadowedByState() {
         List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
 
-        int stateIndex = indexOf(rules, "State");
-        int stateFolderIndex = indexOf(rules, "State Folder");
+        int stateIndex = indexOf(rules, "State Central");
+        int stateFolderIndex = indexOf(rules, "State Feature");
 
         assertTrue(SubtabRulePrecedence.canWinFirstMatch(rules, stateIndex));
         assertTrue(SubtabRulePrecedence.isShadowed(rules, stateFolderIndex));
@@ -25,7 +25,7 @@ class SubtabRulePrecedenceTest {
         List<CustomSubtabRule> rules = new ArrayList<>();
         rules.add(SubtabRulesDefaults.folderRule());
         rules.add(SubtabRulesDefaults.createDefaults().stream()
-                .filter(rule -> "State".equals(rule.name))
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow());
 
@@ -38,15 +38,15 @@ class SubtabRulePrecedenceTest {
         List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
 
         assertFalse(SubtabRulePrecedence.isShadowed(rules, indexOf(rules, "npm")));
-        assertFalse(SubtabRulePrecedence.isShadowed(rules, indexOf(rules, "State")));
+        assertFalse(SubtabRulePrecedence.isShadowed(rules, indexOf(rules, "State Central")));
     }
 
     @Test
     void disabledRulesAreNotMarkedShadowed() {
         List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
-        rules.get(indexOf(rules, "State")).enabled = false;
+        rules.get(indexOf(rules, "State Central")).enabled = false;
 
-        assertFalse(SubtabRulePrecedence.isShadowed(rules, indexOf(rules, "State Folder")));
+        assertFalse(SubtabRulePrecedence.isShadowed(rules, indexOf(rules, "State Feature")));
     }
 
     private static int indexOf(List<CustomSubtabRule> rules, String name) {
