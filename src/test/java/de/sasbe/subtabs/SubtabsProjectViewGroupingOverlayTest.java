@@ -113,6 +113,32 @@ public class SubtabsProjectViewGroupingOverlayTest extends LightPlatformTestCase
         });
     }
 
+    public void testGroupingButtonStaysVisibleWhenGroupingIsDisabled() {
+        SubtabsSettings.getInstance().setFamiliaEnabled(true);
+        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(false);
+
+        ApplicationManager.getApplication().invokeAndWait(() -> {
+            JTree tree = new JTree();
+            JBScrollPane scrollPane = new JBScrollPane(tree);
+            JFrame frame = new JFrame();
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            frame.setContentPane(scrollPane);
+            frame.setSize(420, 320);
+            frame.setVisible(true);
+            frame.validate();
+
+            SubtabsProjectViewGroupingOverlay.attachForTest(getProject(), scrollPane);
+            scrollPane.validate();
+
+            ComponentSubtabIconButton button = SubtabsProjectViewGroupingOverlay.installedGroupingButtonForTree(tree);
+            assertNotNull("disabled grouping must still show the control", button);
+            assertTrue("disabled grouping control must stay visible", button.isVisible());
+            assertEquals(SubtabsIcons.GROUPING_COLLAPSED, button.getIcon());
+
+            frame.dispose();
+        });
+    }
+
     public void testGroupingButtonShowsLoadingSpinnerWhileProjectViewRebuilds() {
         SubtabsSettings.getInstance().setShowCollapseButton(true);
 

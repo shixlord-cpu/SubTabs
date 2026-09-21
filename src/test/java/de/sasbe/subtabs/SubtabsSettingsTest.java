@@ -234,9 +234,12 @@ class SubtabsSettingsTest {
         assertEquals(10, new SubtabsSettings.State().rules.size());
         assertEquals("npm", new SubtabsSettings.State().rules.get(0).name);
         assertEquals("tsconfig", new SubtabsSettings.State().rules.get(1).name);
-        assertEquals("State Folder", new SubtabsSettings.State().rules.get(4).name);
+        assertEquals("State Central", new SubtabsSettings.State().rules.get(3).name);
+        assertEquals("State Feature", new SubtabsSettings.State().rules.get(4).name);
+        assertEquals("2, 2, 2, 2, 2, 2, 2, 2", new SubtabsSettings.State().rules.get(3).nameSegments);
         assertEquals("1", new SubtabsSettings.State().rules.get(3).groupNameSegments);
-        assertEquals("1", new SubtabsSettings.State().rules.get(4).groupNameSegments);
+        assertEquals("1, 1, 1, 1, 1, 1, 1, 1", new SubtabsSettings.State().rules.get(4).nameSegments);
+        assertEquals("2", new SubtabsSettings.State().rules.get(4).groupNameSegments);
         assertFalse(new SubtabsSettings.State().rules.get(4).searchNeighbors);
         assertEquals("state", new SubtabsSettings.State().rules.get(4).groupSuffix);
         assertFalse(new SubtabsSettings.State().rules.get(4).builtin);

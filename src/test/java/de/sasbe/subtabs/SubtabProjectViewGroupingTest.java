@@ -58,7 +58,7 @@ class SubtabProjectViewGroupingTest {
                 "README.md"
         ));
         assertEquals(1, groupKeys.size());
-        assertTrue(groupKeys.get(0).endsWith(":user-card#user-card.component"));
+        assertTrue(groupKeys.get(0).endsWith(":user-card"));
     }
 
     @Test
@@ -86,19 +86,57 @@ class SubtabProjectViewGroupingTest {
     }
 
     @Test
-    void keepsLocalGroupsSeparateWithoutNeighborSearch() {
+    void mergesFolderGroupsByRuleGroupName() {
         assertEquals(
-                "rule:7:products#products.component",
+                "merge:rule:7:products",
                 SubtabProjectViewGrouping.mergeKey("rule:7:products#products.component")
         );
     }
 
     @Test
-    void keepsStateFolderGroupsLocalWithoutNeighborMerge() {
+    void mergesStateFeatureGroupsBySegmentName() {
         assertEquals(
-                "rule:4:cart",
-                SubtabProjectViewGrouping.mergeKey("rule:4:cart")
+                "merge:rule:4:actions",
+                SubtabProjectViewGrouping.mergeKey("rule:4:actions#cart")
         );
+        assertEquals(
+                SubtabProjectViewGrouping.mergeKey("rule:4:actions#cart"),
+                SubtabProjectViewGrouping.mergeKey("rule:4:actions#catalog")
+        );
+    }
+
+    @Test
+    void projectViewUsesOnlyFirstMatchingStateRule() {
+        List<SubtabProjectViewGrouping.ProjectViewGroup> groups = SubtabProjectViewGrouping.groupsForActiveRules(
+                List.of(
+                        "cart.actions.ts",
+                        "catalog.actions.ts",
+                        "cart.reducer.ts",
+                        "catalog.reducer.ts"
+                )
+        );
+
+        assertTrue(groups.stream().anyMatch(group -> "rule:3:cart".equals(group.groupKey())));
+        assertTrue(groups.stream().anyMatch(group -> "rule:3:catalog".equals(group.groupKey())));
+        assertTrue(groups.stream().noneMatch(group -> group.groupKey().contains("actions#")));
+        assertTrue(groups.stream().noneMatch(group -> group.groupKey().contains("reducer#")));
+    }
+
+    @Test
+    void groupsStateFeatureActionsAcrossEntitiesInFolder() {
+        List<SubtabProjectViewGrouping.ProjectViewGroup> groups = SubtabProjectViewGrouping.groupsForRule(
+                List.of(
+                        "cart.actions.ts",
+                        "catalog.actions.ts",
+                        "user.actions.ts",
+                        "cart.reducer.ts"
+                ),
+                4
+        );
+
+        assertEquals(1, groups.size());
+        assertEquals("rule:4:actions#cart", groups.get(0).groupKey());
+        assertEquals(3, groups.get(0).fileNames().size());
     }
 
     @Test

@@ -16,7 +16,7 @@ import java.util.Map;
 @Service(Service.Level.APP)
 @State(name = "ComponentSubtabsSettings", storages = @Storage("componentSubtabs.xml"))
 public final class SubtabsSettings implements PersistentStateComponent<SubtabsSettings.State> {
-    private static final int CURRENT_RULES_VERSION = 15;
+    private static final int CURRENT_RULES_VERSION = 17;
 
     private State state = new State();
 
@@ -393,7 +393,52 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
             return;
         }
         if (state.rulesVersion != CURRENT_RULES_VERSION || containsLegacySubtabRules(state.rules)) {
+            if (state.rules != null && !state.rules.isEmpty() && needsStateRulesMigration(state.rulesVersion, state.rules)) {
+                migrateStateRules(state.rules);
+                state.rulesVersion = CURRENT_RULES_VERSION;
+                rulesGeneration++;
+                return;
+            }
             resetSubtabRulesToDefaults();
+        }
+    }
+
+    private static boolean needsStateRulesMigration(int rulesVersion, @NotNull List<CustomSubtabRule> rules) {
+        if (rulesVersion < CURRENT_RULES_VERSION) {
+            return true;
+        }
+        for (CustomSubtabRule rule : rules) {
+            if ("State".equals(rule.name) || "State Folder".equals(rule.name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void migrateStateRules(@NotNull List<CustomSubtabRule> rules) {
+        CustomSubtabRule centralDefaults = SubtabRulesDefaults.createDefaults().stream()
+                .filter(rule -> "State Central".equals(rule.name))
+                .findFirst()
+                .orElseThrow();
+        CustomSubtabRule featureDefaults = SubtabRulesDefaults.stateFeatureRule();
+
+        for (CustomSubtabRule rule : rules) {
+            if (rule.isSpecial()) {
+                continue;
+            }
+            if ("State".equals(rule.name) || "State Central".equals(rule.name)) {
+                rule.name = "State Central";
+                rule.nameSegments = centralDefaults.nameSegments;
+                rule.groupNameSegments = centralDefaults.groupNameSegments;
+                rule.searchNeighbors = centralDefaults.searchNeighbors;
+                rule.groupSuffix = centralDefaults.groupSuffix;
+            } else if ("State Folder".equals(rule.name) || "State Feature".equals(rule.name)) {
+                rule.name = "State Feature";
+                rule.nameSegments = featureDefaults.nameSegments;
+                rule.groupNameSegments = featureDefaults.groupNameSegments;
+                rule.searchNeighbors = featureDefaults.searchNeighbors;
+                rule.groupSuffix = featureDefaults.groupSuffix;
+            }
         }
     }
 
@@ -416,7 +461,10 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
             if (rule.type == CustomSubtabRule.Type.STEM || rule.type == CustomSubtabRule.Type.FILES) {
                 return true;
             }
-            if ("State Typ".equalsIgnoreCase(rule.name) || "State Ordner".equalsIgnoreCase(rule.name)) {
+            if ("State".equals(rule.name)
+                    || "State Folder".equals(rule.name)
+                    || "State Typ".equalsIgnoreCase(rule.name)
+                    || "State Ordner".equalsIgnoreCase(rule.name)) {
                 return true;
             }
         }

@@ -22,17 +22,17 @@ class SubtabRuleRotationTest {
     @Test
     void rotatesLastMatchingRuleBeforeFirst() {
         List<CustomSubtabRule> rules = new ArrayList<>(twoOverlappingStateRules());
-        assertEquals("State", rules.get(0).name);
-        assertEquals("State Folder", rules.get(1).name);
+        assertEquals("State Central", rules.get(0).name);
+        assertEquals("State Feature", rules.get(1).name);
 
         assertTrue(SubtabRuleRotation.rotateMatchingRules("cart.actions.ts", rules));
-        assertEquals("State Folder", rules.get(0).name);
-        assertEquals("State", rules.get(1).name);
-        assertEquals("rule:0:cart", CustomSubtabRuleMatcher.match("cart.actions.ts", rules).groupKey());
+        assertEquals("State Feature", rules.get(0).name);
+        assertEquals("State Central", rules.get(1).name);
+        assertEquals("rule:0:actions#cart", CustomSubtabRuleMatcher.match("cart.actions.ts", rules).groupKey());
 
         assertTrue(SubtabRuleRotation.rotateMatchingRules("cart.actions.ts", rules));
-        assertEquals("State", rules.get(0).name);
-        assertEquals("State Folder", rules.get(1).name);
+        assertEquals("State Central", rules.get(0).name);
+        assertEquals("State Feature", rules.get(1).name);
     }
 
     @Test
@@ -42,7 +42,7 @@ class SubtabRuleRotationTest {
 
         assertEquals(2, matches.size());
         assertEquals("rule:0:cart", matches.get(0).groupKey());
-        assertEquals("rule:1:cart", matches.get(1).groupKey());
+        assertEquals("rule:1:actions#cart", matches.get(1).groupKey());
     }
 
     @Test
@@ -63,13 +63,10 @@ class SubtabRuleRotationTest {
     }
 
     private static @NotNull List<CustomSubtabRule> twoOverlappingStateRules() {
-        CustomSubtabRule primary = SubtabRulesDefaults.createDefaults().stream()
-                .filter(rule -> "State".equals(rule.name))
+        CustomSubtabRule central = SubtabRulesDefaults.createDefaults().stream()
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow();
-        CustomSubtabRule neighborState = primary.copy();
-        neighborState.name = "State Folder";
-        neighborState.searchNeighbors = true;
-        return new ArrayList<>(List.of(primary, neighborState));
+        return new ArrayList<>(List.of(central, SubtabRulesDefaults.stateFeatureRule()));
     }
 }

@@ -171,7 +171,7 @@ final class CustomSubtabRuleMatcher {
                 rule,
                 parsed.ruleIndex(),
                 parsed.matchPrefix(),
-                probeFileNameForPrefix(rule, parsed.matchPrefix())
+                fileNameForParsedGroup(rule, parsed)
         );
     }
 
@@ -330,6 +330,27 @@ final class CustomSubtabRuleMatcher {
         return matchPrefix;
     }
 
+    private static @NotNull String fileNameForParsedGroup(
+            @NotNull CustomSubtabRule rule,
+            @NotNull ParsedGroupKey parsed
+    ) {
+        if (parsed.groupName().equals(parsed.matchPrefix())) {
+            return probeFileNameForPrefix(rule, parsed.matchPrefix());
+        }
+
+        List<String> patterns = parseCsv(rule.patterns);
+        for (String pattern : patterns) {
+            if (!usesSuffixMatching(pattern)) {
+                continue;
+            }
+            String fileName = parsed.matchPrefix() + normalizeSuffix(pattern);
+            if (parsed.groupName().equals(resolveGroupName(rule, fileName))) {
+                return fileName;
+            }
+        }
+        return probeFileNameForPrefix(rule, parsed.matchPrefix());
+    }
+
     private static @NotNull String encodeGroupKeySuffix(@NotNull String groupName, @NotNull String matchPrefix) {
         return groupName.equals(matchPrefix) ? groupName : groupName + "#" + matchPrefix;
     }
@@ -415,6 +436,19 @@ final class CustomSubtabRuleMatcher {
             return left.matchPrefix().equals(right.matchPrefix());
         }
         return true;
+    }
+
+    static boolean sameFolderGroupIdentity(@NotNull String leftGroupKey, @NotNull String rightGroupKey) {
+        if (leftGroupKey.equals(rightGroupKey)) {
+            return true;
+        }
+
+        ParsedGroupKey left = parseGroupKey(leftGroupKey);
+        ParsedGroupKey right = parseGroupKey(rightGroupKey);
+        if (left == null || right == null || left.ruleIndex() != right.ruleIndex()) {
+            return false;
+        }
+        return left.groupName().equals(right.groupName());
     }
 
     private static @NotNull String groupKey(int index, @NotNull String suffix) {

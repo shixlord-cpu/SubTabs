@@ -15,11 +15,11 @@ class CustomSubtabRuleMatcherTest {
     @Test
     void matchAllCollectsEveryEnabledRuleMatch() {
         CustomSubtabRule state = SubtabRulesDefaults.createDefaults().stream()
-                .filter(rule -> "State".equals(rule.name))
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow();
         CustomSubtabRule neighbor = state.copy();
-        neighbor.name = "State Folder";
+        neighbor.name = "State Feature";
         neighbor.searchNeighbors = true;
         List<CustomSubtabRule> rules = List.of(state, neighbor);
 
@@ -99,6 +99,25 @@ class CustomSubtabRuleMatcherTest {
         assertNotNull(match);
         assertEquals("rule:0:user-card#user-card.component", match.groupKey());
         assertEquals("user-card", match.displayName());
+    }
+
+    @Test
+    void resolveGroupUsesGroupNameFromKeyNotFirstSuffix() {
+        CustomSubtabRule rule = SubtabRulesDefaults.stateFeatureRule();
+
+        CustomSubtabRuleMatcher.Match reducer = CustomSubtabRuleMatcher.resolveGroup(
+                "rule:0:reducer#cart",
+                List.of(rule)
+        );
+        CustomSubtabRuleMatcher.Match actions = CustomSubtabRuleMatcher.resolveGroup(
+                "rule:0:actions#cart",
+                List.of(rule)
+        );
+
+        assertNotNull(reducer);
+        assertNotNull(actions);
+        assertEquals("reducer", reducer.displayName());
+        assertEquals("actions", actions.displayName());
     }
 
     @Test
@@ -219,7 +238,7 @@ class CustomSubtabRuleMatcherTest {
     @Test
     void resolvesTabNamesFromNameSegments() {
         CustomSubtabRule rule = SubtabRulesDefaults.createDefaults().stream()
-                .filter(stored -> "State".equals(stored.name))
+                .filter(stored -> "State Central".equals(stored.name))
                 .findFirst()
                 .orElseThrow();
 
@@ -230,7 +249,7 @@ class CustomSubtabRuleMatcherTest {
     @Test
     void resolvesGroupNamesFromGroupNameSegments() {
         CustomSubtabRule rule = SubtabRulesDefaults.createDefaults().stream()
-                .filter(stored -> "State".equals(stored.name))
+                .filter(stored -> "State Central".equals(stored.name))
                 .findFirst()
                 .orElseThrow();
 
@@ -241,7 +260,7 @@ class CustomSubtabRuleMatcherTest {
     @Test
     void groupKeyFollowsGroupNameSegmentsNotFileStem() {
         CustomSubtabRule rule = SubtabRulesDefaults.createDefaults().stream()
-                .filter(stored -> "State".equals(stored.name))
+                .filter(stored -> "State Central".equals(stored.name))
                 .findFirst()
                 .orElseThrow()
                 .copy();

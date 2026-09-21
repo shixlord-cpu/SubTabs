@@ -40,7 +40,7 @@ public class ComponentExcludePatternsTest extends HeavyPlatformTestCase {
                 .orElseThrow()
                 .copy();
         CustomSubtabRule state = SubtabRulesDefaults.createDefaults().stream()
-                .filter(rule -> "State".equals(rule.name))
+                .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
                 .orElseThrow()
                 .copy();
