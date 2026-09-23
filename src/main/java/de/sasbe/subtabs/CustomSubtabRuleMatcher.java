@@ -416,28 +416,6 @@ final class CustomSubtabRuleMatcher {
         return groupKey.startsWith(GROUP_PREFIX);
     }
 
-    static boolean sameGroupIdentity(@NotNull String leftGroupKey, @NotNull String rightGroupKey) {
-        if (leftGroupKey.equals(rightGroupKey)) {
-            return true;
-        }
-
-        ParsedGroupKey left = parseGroupKey(leftGroupKey);
-        ParsedGroupKey right = parseGroupKey(rightGroupKey);
-        if (left == null || right == null || left.ruleIndex() != right.ruleIndex()) {
-            return false;
-        }
-        if (!left.groupName().equals(right.groupName())) {
-            return false;
-        }
-
-        boolean leftDisambiguated = !left.groupName().equals(left.matchPrefix());
-        boolean rightDisambiguated = !right.groupName().equals(right.matchPrefix());
-        if (leftDisambiguated || rightDisambiguated) {
-            return left.matchPrefix().equals(right.matchPrefix());
-        }
-        return true;
-    }
-
     static boolean sameFolderGroupIdentity(@NotNull String leftGroupKey, @NotNull String rightGroupKey) {
         if (leftGroupKey.equals(rightGroupKey)) {
             return true;

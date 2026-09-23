@@ -7,10 +7,14 @@ import com.intellij.ide.projectView.ViewSettings;
 import com.intellij.ide.projectView.impl.nodes.PsiFileNode;
 import com.intellij.ide.util.treeView.AbstractTreeNode;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Iconable;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.util.IconUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.swing.Icon;
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,9 +66,25 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
     protected void update(@NotNull PresentationData presentation) {
         VirtualFile primary = getValue().primaryFile();
         presentation.setPresentableText(ComponentFileNaming.displayName(groupKey, primary));
-        presentation.setIcon(ComponentFileNaming.createsSubtabs(groupKey)
-                ? SubtabsIcons.GROUPING_NODE
-                : AllIcons.Nodes.Package);
+        Color groupColor = SubtabGroupColors.colorForGroupNode(this);
+        Icon icon;
+        if (groupColor != null && getProject() != null) {
+            icon = SubtabGroupFileIconProvider.uncoloredPlatformIcon(
+                    primary,
+                    Iconable.ICON_FLAG_READ_STATUS,
+                    getProject()
+            );
+            if (icon == null) {
+                icon = AllIcons.Nodes.Package;
+            }
+            icon = IconUtil.colorize(icon, groupColor);
+        } else {
+            icon = primaryMemberIcon();
+            if (icon == null) {
+                icon = AllIcons.Nodes.Package;
+            }
+        }
+        presentation.setIcon(icon);
         if (fileNodes.size() > 1) {
             presentation.setLocationString(fileNodes.size() + " Dateien");
         }
@@ -165,6 +185,15 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
     @Override
     public int hashCode() {
         return getValue().primaryFile().hashCode();
+    }
+
+    private @Nullable Icon primaryMemberIcon() {
+        if (fileNodes.isEmpty()) {
+            return null;
+        }
+        PresentationData primaryPresentation = new PresentationData();
+        fileNodes.get(0).update(primaryPresentation);
+        return primaryPresentation.getIcon(false);
     }
 
     private static @NotNull VirtualFile primaryFile(@NotNull List<PsiFileNode> fileNodes) {

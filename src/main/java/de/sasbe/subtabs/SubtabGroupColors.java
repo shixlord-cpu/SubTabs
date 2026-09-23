@@ -51,8 +51,27 @@ final class SubtabGroupColors {
         if (!isEnabled()) {
             return null;
         }
+        return colorForKey(storageKey(groupNode));
+    }
+
+    static @Nullable Color colorForProjectViewFile(
+            @NotNull VirtualFile file,
+            @Nullable SubtabGroupProjectViewNode enclosingGroup
+    ) {
+        if (!isEnabled()) {
+            return null;
+        }
+        Color color = colorForFile(file);
+        if (color != null) {
+            return color;
+        }
+        return enclosingGroup == null ? null : colorForGroupNode(enclosingGroup);
+    }
+
+    static @Nullable String storageKey(@NotNull SubtabGroupProjectViewNode groupNode) {
         VirtualFile primary = groupNode.getVirtualFile();
-        return primary == null ? null : colorForFile(primary);
+        String key = primary == null ? null : colorKey(primary);
+        return key != null ? key : groupNode.groupKey();
     }
 
     static @Nullable String colorKey(@NotNull VirtualFile file) {

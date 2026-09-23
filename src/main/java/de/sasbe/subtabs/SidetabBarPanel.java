@@ -65,11 +65,26 @@ final class SidetabBarPanel extends JPanel {
         return JBUI.scale(4);
     }
 
+    static int subDepthDotBaseX() {
+        return JBUI.scale(4);
+    }
+
+    static int subDepthDotSpacing() {
+        return JBUI.scale(DEPTH_INDENT);
+    }
+
+    static int subDepthDotClusterWidth(int depth) {
+        if (depth <= 0) {
+            return 0;
+        }
+        return subDepthDotBaseX() + subDepthDotSize() + (depth - 1) * subDepthDotSpacing();
+    }
+
     static int subDepthDotOffset(int depth) {
         if (depth <= 0) {
             return -1;
         }
-        return (depth - 1) * JBUI.scale(DEPTH_INDENT);
+        return (depth - 1) * subDepthDotSpacing();
     }
 
     private final Project project;
@@ -330,6 +345,16 @@ final class SidetabBarPanel extends JPanel {
         tabsHost.repaint();
     }
 
+    void refreshTabHighlights() {
+        for (JToggleButton button : buttons) {
+            if (button instanceof SegmentButton) {
+                button.repaint();
+            } else {
+                ComponentSubtabUi.refreshButton(button);
+            }
+        }
+    }
+
     void refreshAppearance() {
         tabsHost.setBorder(BorderFactory.createEmptyBorder(
                 ComponentSubtabUi.verticalGap(),
@@ -522,6 +547,7 @@ final class SidetabBarPanel extends JPanel {
             @NotNull String documentText
     ) {
         boolean blank = section.isBlank(documentText);
+        VirtualFile editorFile = fileEditor.getFile();
         if (layoutMode == SidetabLayoutMode.OVERLAY) {
             SegmentButton button = new SegmentButton();
             button.setSelected(selected);
@@ -530,15 +556,28 @@ final class SidetabBarPanel extends JPanel {
             button.putClientProperty(BLANK_KEY, blank);
             button.putClientProperty(DEPTH_KEY, section.depth());
             button.putClientProperty(OVERLAY_TABS_ON_RIGHT_KEY, onRight);
+            if (editorFile != null) {
+                button.putClientProperty(ComponentSubtabUi.FILE_KEY, editorFile);
+            }
             return button;
         }
         JToggleButton button = ComponentSubtabUi.createSubtabButton(section.name(), selected);
+        if (editorFile != null) {
+            button.putClientProperty(ComponentSubtabUi.FILE_KEY, editorFile);
+        }
         ComponentSubtabUi.setVerticalPlacement(button, onRight);
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
         button.setToolTipText(section.name());
         button.putClientProperty(SECTION_INDEX_KEY, index);
         button.putClientProperty(BLANK_KEY, blank);
         button.putClientProperty(DEPTH_KEY, section.depth());
+        if (section.depth() > 0) {
+            // Sub-depth tabs paint themselves; segmented LAF rollover shifts the dot gutter on hover.
+            button.putClientProperty("JButton.buttonType", null);
+            button.setRolloverEnabled(false);
+            button.setContentAreaFilled(false);
+            button.setBorderPainted(false);
+        }
         return button;
     }
 
@@ -741,7 +780,7 @@ final class SidetabBarPanel extends JPanel {
             button.setPreferredSize(size);
             button.setMinimumSize(size);
             button.setMaximumSize(size);
-            button.setAlignmentX(Component.CENTER_ALIGNMENT);
+            button.setAlignmentX(Component.LEFT_ALIGNMENT);
         }
         int stackHeight = buttons.size() * ComponentSubtabUi.tabHeight();
         if (getWidth() > 0) {
@@ -902,7 +941,7 @@ final class SidetabBarPanel extends JPanel {
                     barHeight = Math.max(barHeight, JBUI.scale(OVERLAY_LINE_WIDTH + 1));
                 }
 
-                g.setColor(overlayMarkerColor(selected, hovered, blank, modified, hasErrors));
+                g.setColor(overlayMarkerColor(this, selected, hovered, blank, modified, hasErrors));
                 int edgeInset = JBUI.scale(OVERLAY_EDGE_INSET);
                 int centerY = height / 2;
                 Object depthValue = getClientProperty(DEPTH_KEY);
@@ -949,6 +988,7 @@ final class SidetabBarPanel extends JPanel {
         }
 
         private static @NotNull Color overlayMarkerColor(
+                @NotNull JToggleButton button,
                 boolean selected,
                 boolean hovered,
                 boolean blank,
@@ -963,7 +1003,8 @@ final class SidetabBarPanel extends JPanel {
             }
             Color base;
             if (selected) {
-                base = UIUtil.getLabelForeground();
+                Color groupColor = SubtabGroupColors.colorForFile(ComponentSubtabUi.tabFile(button));
+                base = groupColor != null ? groupColor : UIUtil.getLabelForeground();
             } else if (hovered) {
                 base = JBUI.CurrentTheme.TabbedPane.HOVER_COLOR;
             } else {

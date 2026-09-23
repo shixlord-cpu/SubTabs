@@ -132,7 +132,7 @@ final class SubtabGroupFilePopupPanel extends JPanel {
                     hasErrors
             );
             label.setBackground(highlighted
-                    ? ComponentSubtabUi.popupHighlightedBackground()
+                    ? ComponentSubtabUi.highlightBackground(file)
                     : UIUtil.getPanelBackground());
             return;
         }
@@ -245,7 +245,7 @@ final class SubtabGroupFilePopupPanel extends JPanel {
                 presentation.hasErrors()
         );
         label.setBackground(highlighted
-                ? ComponentSubtabUi.popupHighlightedBackground()
+                ? ComponentSubtabUi.highlightBackground(file)
                 : UIUtil.getPanelBackground());
     }
 

@@ -42,10 +42,7 @@ final class SidetabIconLayout {
         if (visibleIconCount <= 0) {
             return 0;
         }
-        if (visibleIconCount == 1) {
-            return iconSize() + iconGap();
-        }
-        return iconSize() * 2 + iconGap() * 2;
+        return iconSize() * visibleIconCount + iconGap() * visibleIconCount;
     }
 
     static int reservedTopHeight(
@@ -81,7 +78,13 @@ final class SidetabIconLayout {
         if (!settings.isShowCollapseButton()) {
             return 0;
         }
-        return 2;
+        if (settings.isSidetabsActive() && settings.isSubtabsActive() && !settings.isSidetabsExpanded()) {
+            return 3;
+        }
+        if (settings.isSidetabsActive() && settings.isSubtabsActive() && settings.isSidetabsExpanded()) {
+            return 2;
+        }
+        return 1;
     }
 
     static int besideColumnTopReserve() {
@@ -108,6 +111,15 @@ final class SidetabIconLayout {
             @NotNull Dimension size
     ) {
         return layoutAtEditorTopRight(editor, editorComponent, layeredPane, size, sidetabsSlotFromRight());
+    }
+
+    static @NotNull Rectangle layoutRuleSwitchIcon(
+            @NotNull FileEditor editor,
+            @NotNull JComponent editorComponent,
+            @NotNull JLayeredPane layeredPane,
+            @NotNull Dimension size
+    ) {
+        return layoutAtEditorTopRight(editor, editorComponent, layeredPane, size, subtabsSlotFromRight() + 1);
     }
 
     static int sidetabContentTopY(
@@ -171,17 +183,17 @@ final class SidetabIconLayout {
             int slotFromRight
     ) {
         CollapseIconRowAnchor anchor = collapseIconRowAnchor(editor, editorComponent);
-        Point origin = SwingUtilities.convertPoint(anchor.originComponent(), 0, 0, layeredPane);
+        Point rowRight = rowRightInLayeredPane(anchor.originComponent(), layeredPane);
         int y = iconY(editor, editorComponent, layeredPane, size.height);
         int slotWidth = size.width + iconGap();
-        int x = origin.x + anchor.width() - iconGap() - size.width - slotFromRight * slotWidth;
+        int x = rowRight.x - iconGap() - size.width - slotFromRight * slotWidth;
         return new Rectangle(x, y, size.width, size.height);
     }
 
     /**
      * Collapse icons share one row below the SubTab bar. With SideTabs attached the row anchor is
-     * {@link SidetabEditorHost}. Without SideTabs the row origin stays at the editor content wrapper
-     * while the horizontal span matches the full editor composite width.
+     * {@link SidetabEditorHost}. Without SideTabs the editor composite is the anchor so icons stay
+     * inside the visible code pane instead of drifting past its right edge.
      */
     private static @NotNull CollapseIconRowAnchor collapseIconRowAnchor(
             @NotNull FileEditor editor,
@@ -189,35 +201,28 @@ final class SidetabIconLayout {
     ) {
         SidetabEditorHost host = editorHost(editor, editorComponent);
         if (host != null) {
-            return new CollapseIconRowAnchor(host, hostWidth(host));
+            return new CollapseIconRowAnchor(host, componentWidth(host));
+        }
+        JComponent composite = findEditorComposite(editorComponent);
+        if (composite != null) {
+            return new CollapseIconRowAnchor(composite, componentWidth(composite));
         }
         JComponent rowOrigin = editorContentWrapper(editorComponent);
-        JComponent composite = findEditorComposite(editorComponent);
-        return new CollapseIconRowAnchor(rowOrigin, collapseRowWidth(rowOrigin, composite));
+        return new CollapseIconRowAnchor(rowOrigin, componentWidth(rowOrigin));
     }
 
-    private static int hostWidth(@NotNull JComponent host) {
-        if (host.getWidth() > 0) {
-            return host.getWidth();
-        }
-        return Math.max(host.getWidth(), host.getPreferredSize().width);
+    private static @NotNull Point rowRightInLayeredPane(
+            @NotNull JComponent anchorComponent,
+            @NotNull JLayeredPane layeredPane
+    ) {
+        return SwingUtilities.convertPoint(anchorComponent, componentWidth(anchorComponent), 0, layeredPane);
     }
 
-    private static int collapseRowWidth(@NotNull JComponent rowOrigin, @Nullable JComponent composite) {
-        if (composite != null) {
-            int compositeWidth = Math.max(composite.getWidth(), composite.getPreferredSize().width);
-            if (compositeWidth > 0) {
-                return compositeWidth;
-            }
+    private static int componentWidth(@NotNull JComponent component) {
+        if (component.getWidth() > 0) {
+            return component.getWidth();
         }
-        Container parent = rowOrigin.getParent();
-        if (parent instanceof JComponent parentComponent) {
-            int parentWidth = Math.max(parentComponent.getWidth(), parentComponent.getPreferredSize().width);
-            if (parentWidth > 0) {
-                return parentWidth;
-            }
-        }
-        return Math.max(rowOrigin.getWidth(), rowOrigin.getPreferredSize().width);
+        return Math.max(component.getPreferredSize().width, 0);
     }
 
     private static @NotNull JComponent editorContentWrapper(@NotNull JComponent editorComponent) {

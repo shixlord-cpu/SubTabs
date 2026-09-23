@@ -7,24 +7,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ComponentRelatedFilesOrderTest {
     @Test
-    void sameGroupIdentityUsesGroupNameSegmentsNotFileStem() {
-        assertTrue(CustomSubtabRuleMatcher.sameGroupIdentity(
+    void groupIdentityUsesGroupNameOnly() {
+        assertTrue(CustomSubtabRuleMatcher.sameFolderGroupIdentity(
                 "rule:3:products",
                 "rule:3:products"
         ));
-        assertFalse(CustomSubtabRuleMatcher.sameGroupIdentity(
+        assertFalse(CustomSubtabRuleMatcher.sameFolderGroupIdentity(
                 "rule:3:products",
                 "rule:3:products-state"
         ));
-    }
-
-    @Test
-    void sameGroupIdentityKeepsDisambiguatedComponentFamiliesSeparate() {
-        assertTrue(CustomSubtabRuleMatcher.sameGroupIdentity(
-                "rule:7:user-card#user-card.component",
-                "rule:7:user-card#user-card.component"
+        assertTrue(CustomSubtabRuleMatcher.sameFolderGroupIdentity(
+                "rule:4:actions#cart",
+                "rule:4:actions#catalog"
         ));
-        assertFalse(CustomSubtabRuleMatcher.sameGroupIdentity(
+        assertTrue(CustomSubtabRuleMatcher.sameFolderGroupIdentity(
+                "rule:4:actions",
+                "rule:4:actions#cart"
+        ));
+        assertFalse(CustomSubtabRuleMatcher.sameFolderGroupIdentity(
+                "rule:4:actions#cart",
+                "rule:4:reducer#cart"
+        ));
+        assertTrue(CustomSubtabRuleMatcher.sameFolderGroupIdentity(
                 "rule:7:user-card#user-card.component",
                 "rule:7:user-card#user-card"
         ));

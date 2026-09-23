@@ -81,6 +81,7 @@ final class FamiliaLifecycle {
     private static void hideEditorOverlays(@NotNull FileEditor editor) {
         SubtabsExpandOverlay.hide(editor);
         SubtabsCollapseOverlay.hide(editor);
+        RuleSwitchOverlay.hide(editor);
         SidetabsToggleOverlay.hide(editor);
         SidetabBarOverlay.hide(editor);
     }

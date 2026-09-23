@@ -1,12 +1,12 @@
 package de.sasbe.subtabs;
 
+import com.intellij.openapi.actionSystem.ActionPlaces;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.testFramework.HeavyPlatformTestCase;
-import com.intellij.testFramework.TestActionEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -55,6 +55,48 @@ public class SubtabFamiliaEditorTabTest extends HeavyPlatformTestCase {
         assertNotNull(ComponentSubtabGroupRegistry.getInstance(getProject()).getOrCreateGroup(license));
     }
 
+    public void testGroupedProjectViewFileOffersFamiliaColorsWhenEnabled() throws Exception {
+        SubtabsSettings.getInstance().setFamiliaEnabled(true);
+        SubtabsSettings.getInstance().setSubtabsActive(true);
+        SubtabGroupColors.setEnabled(true);
+
+        VirtualFile dir = getVirtualFile(createTempDir("app"));
+        WriteAction.runAndWait(() -> {
+            dir.createChildData(this, "header.component.ts");
+            dir.createChildData(this, "header.component.scss");
+        });
+        VirtualFile html = WriteAction.computeAndWait(() -> dir.createChildData(this, "header.component.html"));
+        assertTrue(SubtabFamiliaContext.belongsToSubtabGroup(html));
+
+        AnActionEvent event = projectViewFileEvent(html);
+        SubtabFamiliaActionGroup familiaGroup = new SubtabFamiliaActionGroup();
+        familiaGroup.update(event);
+        assertTrue(event.getPresentation().isEnabledAndVisible());
+
+        SubtabGroupChangeColorAction changeColorAction = new SubtabGroupChangeColorAction();
+        changeColorAction.update(event);
+        assertTrue(event.getPresentation().isEnabledAndVisible());
+        assertNotNull(SubtabFamiliaContext.colorStorageKey(event));
+    }
+
+    public void testGroupedProjectViewFileHidesFamiliaWhenGroupColorsDisabled() throws Exception {
+        SubtabsSettings.getInstance().setFamiliaEnabled(true);
+        SubtabsSettings.getInstance().setSubtabsActive(true);
+        SubtabGroupColors.setEnabled(false);
+
+        VirtualFile dir = getVirtualFile(createTempDir("app"));
+        WriteAction.runAndWait(() -> {
+            dir.createChildData(this, "footer.component.ts");
+            dir.createChildData(this, "footer.component.scss");
+        });
+        VirtualFile html = WriteAction.computeAndWait(() -> dir.createChildData(this, "footer.component.html"));
+
+        AnActionEvent event = projectViewFileEvent(html);
+        SubtabFamiliaActionGroup familiaGroup = new SubtabFamiliaActionGroup();
+        familiaGroup.update(event);
+        assertFalse(event.getPresentation().isEnabledAndVisible());
+    }
+
     public void testGroupedEditorTabStillOffersGroupColors() throws Exception {
         SubtabsSettings.getInstance().setSubtabsActive(true);
         SubtabGroupColors.setEnabled(true);
@@ -80,7 +122,17 @@ public class SubtabFamiliaEditorTabTest extends HeavyPlatformTestCase {
                 return resolveData(dataId, file);
             }
         };
-        return new TestActionEvent(context);
+        return AnActionEvent.createFromDataContext(ActionPlaces.EDITOR_TAB_POPUP, null, context);
+    }
+
+    private @NotNull AnActionEvent projectViewFileEvent(@NotNull VirtualFile file) {
+        DataContext context = new DataContext() {
+            @Override
+            public @Nullable Object getData(@NotNull String dataId) {
+                return resolveData(dataId, file);
+            }
+        };
+        return AnActionEvent.createFromDataContext(ActionPlaces.PROJECT_VIEW_POPUP, null, context);
     }
 
     private @Nullable Object resolveData(@NotNull String dataId, @NotNull VirtualFile file) {

@@ -1,5 +1,6 @@
 package de.sasbe.subtabs;
 
+import com.intellij.openapi.actionSystem.ActionPlaces;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
@@ -21,11 +22,15 @@ public final class SubtabFamiliaActionGroup extends DefaultActionGroup implement
 
     @Override
     public void update(@NotNull AnActionEvent event) {
-        boolean projectView = SubtabGroupProjectViewContext.selectedGroupNode(event) != null;
-        boolean editorTab = SubtabFamiliaContext.editorTabFile(event) != null;
-        boolean visible = SubtabsSettings.getInstance().isFamiliaEnabled()
-                && SubtabsSettings.getInstance().isSubtabsActive()
-                && (projectView || editorTab);
+        boolean visible = SubtabFamiliaContext.showInProjectViewPopup(event)
+                || isEditorTabFamiliaMenu(event);
         event.getPresentation().setEnabledAndVisible(visible);
+    }
+
+    private static boolean isEditorTabFamiliaMenu(@NotNull AnActionEvent event) {
+        return SubtabsSettings.getInstance().isFamiliaEnabled()
+                && SubtabsSettings.getInstance().isSubtabsActive()
+                && ActionPlaces.EDITOR_TAB_POPUP.equals(event.getPlace())
+                && SubtabFamiliaContext.editorTabFile(event) != null;
     }
 }

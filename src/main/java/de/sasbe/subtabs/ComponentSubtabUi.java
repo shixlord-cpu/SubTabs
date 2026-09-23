@@ -1,10 +1,12 @@
 package de.sasbe.subtabs;
 
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -19,12 +21,20 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 final class ComponentSubtabUi {
+    static final String FILE_KEY = "componentSubtabs.tabFile";
     static final String OPEN_ELSEWHERE_KEY = "componentSubtabs.openElsewhere";
+    static final String REORDER_HIDDEN_KEY = "componentSubtabs.reorderHidden";
+
+    static boolean isReorderHidden(@NotNull JToggleButton button) {
+        return Boolean.TRUE.equals(button.getClientProperty(REORDER_HIDDEN_KEY));
+    }
     private static final String SPLIT_PARTNER_KEY = "componentSubtabs.splitPartner";
     static final String MODIFIED_KEY = "componentSubtabs.modified";
     static final String ERROR_KEY = "componentSubtabs.hasErrors";
     private static final String FIT_KEY = "componentSubtabs.fitScale";
     private static final String EXTERNAL_HOVER_KEY = "componentSubtabs.externalHover";
+    static final String MANUAL_HOVER_KEY = "componentSubtabs.manualHover";
+    private static final String MAIN_TAB_SYNC_KEY = "componentSubtabs.mainTabSyncHighlight";
     private static final String VERTICAL_SIDE_KEY = "componentSubtabs.verticalSide";
     private static final Color HOVER_BACKGROUND = JBUI.CurrentTheme.TabbedPane.HOVER_COLOR;
     private static final Color SELECTED_BACKGROUND = JBUI.CurrentTheme.TabbedPane.FOCUS_COLOR;
@@ -68,6 +78,29 @@ final class ComponentSubtabUi {
         return new JBColor(new Color(0xDEEAF6), new Color(0x2D4A5E));
     }
 
+    static @NotNull Color highlightBackground(@Nullable VirtualFile file) {
+        return groupTintedBackground(file, popupHighlightedBackground());
+    }
+
+    static @NotNull Color selectedTabBackground(@Nullable VirtualFile file) {
+        return groupTintedBackground(file, SELECTED_BACKGROUND);
+    }
+
+    static @NotNull Color selectedTabUnderline(@Nullable VirtualFile file) {
+        if (SubtabGroupColors.isEnabled() && file != null) {
+            Color groupColor = SubtabGroupColors.colorForFile(file);
+            if (groupColor != null) {
+                return groupColor;
+            }
+        }
+        return SELECTED_UNDERLINE;
+    }
+
+    static @Nullable VirtualFile tabFile(@NotNull JToggleButton button) {
+        Object value = button.getClientProperty(FILE_KEY);
+        return value instanceof VirtualFile file ? file : null;
+    }
+
     static @NotNull JToggleButton createSubtabButton(@NotNull String label, boolean selected) {
         JToggleButton button = new ComponentSubtabToggleButton(label);
         button.setSelected(selected);
@@ -85,12 +118,15 @@ final class ComponentSubtabUi {
             @Override
             public void mouseEntered(MouseEvent event) {
                 if (!button.isSelected()) {
+                    button.putClientProperty(MANUAL_HOVER_KEY, Boolean.TRUE);
                     button.setBackground(HOVER_BACKGROUND);
+                    button.repaint();
                 }
             }
 
             @Override
             public void mouseExited(MouseEvent event) {
+                button.putClientProperty(MANUAL_HOVER_KEY, null);
                 applyAppearance(button);
             }
         });
@@ -105,6 +141,23 @@ final class ComponentSubtabUi {
         }
         button.putClientProperty(EXTERNAL_HOVER_KEY, hovered);
         applyAppearance(button);
+    }
+
+    static void setMainTabSyncHighlight(@NotNull JToggleButton button, boolean highlighted) {
+        Boolean current = (Boolean) button.getClientProperty(MAIN_TAB_SYNC_KEY);
+        if (current != null && current == highlighted) {
+            return;
+        }
+        if (highlighted) {
+            button.putClientProperty(MAIN_TAB_SYNC_KEY, Boolean.TRUE);
+        } else {
+            button.putClientProperty(MAIN_TAB_SYNC_KEY, null);
+        }
+        applyAppearance(button);
+    }
+
+    static boolean isMainTabSyncHighlight(@NotNull JToggleButton button) {
+        return Boolean.TRUE.equals(button.getClientProperty(MAIN_TAB_SYNC_KEY));
     }
 
     static void refreshButton(@NotNull JToggleButton button) {
@@ -177,14 +230,18 @@ final class ComponentSubtabUi {
         boolean openElsewhere = Boolean.TRUE.equals(button.getClientProperty(OPEN_ELSEWHERE_KEY));
         boolean modified = Boolean.TRUE.equals(button.getClientProperty(MODIFIED_KEY));
         boolean externalHover = Boolean.TRUE.equals(button.getClientProperty(EXTERNAL_HOVER_KEY));
+        boolean mainTabSync = Boolean.TRUE.equals(button.getClientProperty(MAIN_TAB_SYNC_KEY));
         SubtabFitScale.Result fit = fitOf(button);
         int height = tabHeight();
         String plainLabel = ComponentSubtabModifiedUi.plainLabel(button);
+        VirtualFile file = tabFile(button);
         button.setMargin(JBUI.insets(0, horizontalMargin(fit)));
         button.setOpaque(true);
-        if (selected) {
-            button.setBackground(SELECTED_BACKGROUND);
-        } else if (externalHover) {
+        if (mainTabSync) {
+            button.setBackground(highlightBackground(file));
+        } else if (selected) {
+            button.setBackground(selectedTabBackground(file));
+        } else if (externalHover || Boolean.TRUE.equals(button.getClientProperty(MANUAL_HOVER_KEY))) {
             button.setBackground(HOVER_BACKGROUND);
         } else {
             button.setBackground(UIUtil.getPanelBackground());
@@ -199,12 +256,18 @@ final class ComponentSubtabUi {
         // own file gets the selected background and underline.
         button.setFont(scaledFont(selected || splitPartner, fit, height));
         button.setBorder(createBorder(button, selected, fit));
-        int width = preferredWidth(button, fit);
-        Dimension size = new Dimension(width, height);
-        button.setPreferredSize(size);
-        button.setMinimumSize(size);
+        if (!isSidetabSectionButton(button)) {
+            int width = preferredWidth(button, fit);
+            Dimension size = new Dimension(width, height);
+            button.setPreferredSize(size);
+            button.setMinimumSize(size);
+        }
         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
         button.repaint();
+    }
+
+    static boolean isSidetabSectionButton(@NotNull JToggleButton button) {
+        return button.getClientProperty(SidetabBarPanel.SECTION_INDEX_KEY) != null;
     }
 
     static void setVerticalPlacement(@NotNull JToggleButton button, boolean tabsOnRight) {
@@ -257,16 +320,31 @@ final class ComponentSubtabUi {
         }
 
         int thickness = Math.max(1, JBUI.scale(2));
+        Color underlineColor = selectedTabUnderline(tabFile(button));
         Object vertical = button.getClientProperty(VERTICAL_SIDE_KEY);
         Border underline;
         if ("right".equals(vertical)) {
-            underline = BorderFactory.createMatteBorder(0, thickness, 0, 0, SELECTED_UNDERLINE);
+            underline = BorderFactory.createMatteBorder(0, thickness, 0, 0, underlineColor);
         } else if ("left".equals(vertical)) {
-            underline = BorderFactory.createMatteBorder(0, 0, 0, thickness, SELECTED_UNDERLINE);
+            underline = BorderFactory.createMatteBorder(0, 0, 0, thickness, underlineColor);
         } else {
-            underline = BorderFactory.createMatteBorder(0, 0, thickness, 0, SELECTED_UNDERLINE);
+            underline = BorderFactory.createMatteBorder(0, 0, thickness, 0, underlineColor);
         }
         return BorderFactory.createCompoundBorder(underline, empty);
+    }
+
+    private static @NotNull Color groupTintedBackground(@Nullable VirtualFile file, @NotNull Color fallback) {
+        if (SubtabGroupColors.isEnabled() && file != null) {
+            Color groupColor = SubtabGroupColors.colorForFile(file);
+            if (groupColor != null) {
+                return ComponentSubtabMainTabColors.blend(
+                        groupColor,
+                        UIUtil.getPanelBackground(),
+                        ComponentSubtabMainTabColors.FOCUSED_SELECTED_MIX
+                );
+            }
+        }
+        return fallback;
     }
 
     private static int horizontalMargin(@NotNull SubtabFitScale.Result fit) {

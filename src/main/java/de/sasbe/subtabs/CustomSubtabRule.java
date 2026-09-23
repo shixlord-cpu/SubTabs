@@ -21,6 +21,8 @@ public final class CustomSubtabRule {
     public String groupSuffix = "";
     public String excludePatterns = "";
     public boolean searchNeighbors = false;
+    /** When true, suffix rules use the matched stem (e.g. {@code User} from {@code UserRepository.java}) as the group name. */
+    public boolean groupNameFromMatchPrefix = false;
     public boolean enabled = true;
     public boolean builtin = false;
 
@@ -35,6 +37,7 @@ public final class CustomSubtabRule {
         copy.groupSuffix = groupSuffix;
         copy.excludePatterns = excludePatterns;
         copy.searchNeighbors = searchNeighbors;
+        copy.groupNameFromMatchPrefix = groupNameFromMatchPrefix;
         copy.enabled = enabled;
         copy.builtin = builtin;
         return copy;

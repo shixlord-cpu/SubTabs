@@ -4,6 +4,7 @@ import com.intellij.testFramework.LightPlatformTestCase;
 import com.intellij.testFramework.PlatformTestUtil;
 
 import javax.swing.JComponent;
+import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import java.awt.Container;
 
@@ -34,14 +35,20 @@ public class SubtabsConfigurablePerformanceTest extends LightPlatformTestCase {
         JComponent root = configurable.createComponent();
         JTabbedPane mainTabs = findTabbedPane(root);
         assertNotNull(mainTabs);
-        assertEquals(0, rulesTabCount(mainTabs));
+        assertEquals(5, mainTabs.getTabCount());
+        assertEquals("Ansicht", mainTabs.getTitleAt(0));
+        assertEquals("H-Tabs", mainTabs.getTitleAt(1));
+        assertEquals("V-Tabs", mainTabs.getTitleAt(2));
+        assertEquals("SplitTabs", mainTabs.getTitleAt(3));
+        assertEquals("AI", mainTabs.getTitleAt(4));
+        assertEquals(0, mountedRulesPanelCount(mainTabs));
 
         long elapsedMs = measureRulesTabOpenMs(mainTabs);
         assertTrue(
-                "Familia rules tab should build lazily within budget, took " + elapsedMs + "ms",
+                "Familia H-/V-Tabs rules should build lazily within budget, took " + elapsedMs + "ms",
                 elapsedMs <= RULES_TAB_BUDGET_MS
         );
-        assertTrue(rulesTabCount(mainTabs) >= 2);
+        assertTrue(mountedRulesPanelCount(mainTabs) >= 2);
         configurable.disposeUIResources();
     }
 
@@ -110,14 +117,18 @@ public class SubtabsConfigurablePerformanceTest extends LightPlatformTestCase {
         return null;
     }
 
-    private static int rulesTabCount(JTabbedPane mainTabs) {
-        if (mainTabs.getTabCount() < 2) {
-            return 0;
+    private static int mountedRulesPanelCount(JTabbedPane mainTabs) {
+        int count = 0;
+        if (mainTabs.getTabCount() > 1 && mainTabs.getComponentAt(1) instanceof JPanel hTabs) {
+            if (hTabs.getComponentCount() > 1) {
+                count++;
+            }
         }
-        var rulesHost = mainTabs.getComponentAt(1);
-        if (rulesHost instanceof JTabbedPane rulesTabs) {
-            return rulesTabs.getTabCount();
+        if (mainTabs.getTabCount() > 2 && mainTabs.getComponentAt(2) instanceof JPanel vTabs) {
+            if (vTabs.getComponentCount() > 1) {
+                count++;
+            }
         }
-        return 0;
+        return count;
     }
 }

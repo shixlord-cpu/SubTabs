@@ -26,6 +26,8 @@
     <extensions defaultExtensionNs="com.intellij">
         <editorTabTitleProvider implementation="de.sasbe.subtabs.ComponentEditorTabTitleProvider"/>
         <editorTabColorProvider implementation="de.sasbe.subtabs.SubtabGroupEditorTabColorProvider"/>
+        <fileIconProvider implementation="de.sasbe.subtabs.SubtabGroupFileIconProvider" order="first"/>
+        <iconProvider implementation="de.sasbe.subtabs.SubtabGroupPsiIconProvider" order="first"/>
         <projectActivity implementation="de.sasbe.subtabs.ComponentSubtabsStartupActivity"/>
         <applicationConfigurable
                 parentId="tools"

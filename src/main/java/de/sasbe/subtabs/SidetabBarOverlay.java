@@ -146,6 +146,7 @@ final class SidetabBarOverlay {
             SidetabsToggleOverlay.relayout(fileEditor);
             SubtabsCollapseOverlay.relayout(fileEditor);
             SubtabsExpandOverlay.relayout(fileEditor);
+            RuleSwitchOverlay.relayout(fileEditor);
         }
 
         private void dispose() {

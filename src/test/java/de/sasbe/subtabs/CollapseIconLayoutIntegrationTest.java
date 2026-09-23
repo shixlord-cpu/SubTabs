@@ -35,6 +35,29 @@ public class CollapseIconLayoutIntegrationTest extends RealEditorWindowTestCase 
         ComponentSubtabsDocumentListener.install(getProject());
     }
 
+    public void testThreeIconRowAlignsAfterStartupWithCollapsedSidetabs() throws Exception {
+        SubtabsSettings.getInstance().setRules(twoOverlappingStateRules());
+        SubtabsSettings.getInstance().setSidetabsExpanded(false);
+
+        VirtualFile dir = WriteAction.computeAndWait(() -> sourceDir.createChildDirectory(this, "startup-icons"));
+        VirtualFile actions = WriteAction.computeAndWait(() -> dir.createChildData(this, "cart.actions.ts"));
+        WriteAction.run(() -> actions.setBinaryContent("export const x = 1;".getBytes(StandardCharsets.UTF_8)));
+        VirtualFile reducer = WriteAction.computeAndWait(() -> dir.createChildData(this, "cart.reducer.ts"));
+        WriteAction.run(() -> reducer.setBinaryContent("export const y = 1;".getBytes(StandardCharsets.UTF_8)));
+
+        openAndSettle(actions);
+        ComponentSubtabsFileEditorListener.attachToAlreadyOpenFiles(getProject());
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+        FileEditor editor = selectedEditor(actions);
+        assertTrue("rule switch must use the overlay row on startup", RuleSwitchOverlay.isInstalled(editor));
+        assertTrue("SideTabs toggle must be installed on startup", SidetabsToggleOverlay.isInstalled(editor));
+        assertTrue("SubTabs collapse must be installed on startup", SubtabsCollapseOverlay.isInstalled(editor));
+
+        EditorLayoutMirror mirror = EditorLayoutMirror.forEditor(editor);
+        assertThreeIconRowAligned(editor, mirror);
+    }
+
     public void testSubtabsIconReturnsToOverlayRowAfterBothCollapsedThenSubtabsExpanded() throws Exception {
         VirtualFile html = createSourceFile("header.component.html");
         WriteAction.run(() -> html.setBinaryContent("""
@@ -342,6 +365,42 @@ public class CollapseIconLayoutIntegrationTest extends RealEditorWindowTestCase 
                 message + " (expected=" + expected + ", actual=" + actual + ", tolerance=" + TOLERANCE + ")",
                 Math.abs(expected - actual) <= TOLERANCE
         );
+    }
+
+    private static void assertThreeIconRowAligned(FileEditor editor, EditorLayoutMirror mirror) {
+        Dimension iconSize = new Dimension(SidetabIconLayout.iconSize(), SidetabIconLayout.iconSize());
+        Rectangle sidetabsIcon = SidetabIconLayout.layoutSidetabsIcon(
+                editor,
+                mirror.layoutComponent(),
+                mirror.layeredPane(),
+                iconSize
+        );
+        Rectangle subtabsIcon = SidetabIconLayout.layoutSubtabsIcon(
+                editor,
+                mirror.layoutComponent(),
+                mirror.layeredPane(),
+                iconSize
+        );
+        Rectangle ruleSwitchIcon = SidetabIconLayout.layoutRuleSwitchIcon(
+                editor,
+                mirror.layoutComponent(),
+                mirror.layeredPane(),
+                iconSize
+        );
+
+        int gap = SidetabIconLayout.iconGap();
+        assertNear("rule switch must sit left of SubTabs icon", ruleSwitchIcon.x + ruleSwitchIcon.width + gap, subtabsIcon.x);
+        assertNear("SubTabs icon must sit left of SideTabs icon", subtabsIcon.x + subtabsIcon.width + gap, sidetabsIcon.x);
+        assertNear("rule switch must share the icon row", ruleSwitchIcon.y, subtabsIcon.y);
+        assertNear("SideTabs icon must share the icon row", subtabsIcon.y, sidetabsIcon.y);
+    }
+
+    private static List<CustomSubtabRule> twoOverlappingStateRules() {
+        CustomSubtabRule central = SubtabRulesDefaults.createDefaults().stream()
+                .filter(rule -> "State Central".equals(rule.name))
+                .findFirst()
+                .orElseThrow();
+        return new ArrayList<>(List.of(central, SubtabRulesDefaults.stateFeatureRule()));
     }
 
     private static LayoutSnapshot captureLayout(FileEditor editor, EditorLayoutMirror mirror) {

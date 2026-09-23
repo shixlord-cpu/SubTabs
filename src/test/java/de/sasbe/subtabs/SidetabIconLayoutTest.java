@@ -129,6 +129,45 @@ class SidetabIconLayoutTest {
     }
 
     @Test
+    void iconsStayInsideEditorCompositeWhenContentWrapperIsInset() {
+        JLayeredPane layeredPane = new JLayeredPane();
+        layeredPane.setBounds(0, 0, 600, 400);
+
+        EditorCompositePanel composite = new EditorCompositePanel();
+        composite.setLayout(new BorderLayout());
+        composite.setBounds(0, 0, 600, 400);
+        layeredPane.add(composite);
+
+        JPanel codeWrapper = new JPanel(new BorderLayout());
+        codeWrapper.setBounds(40, 0, 560, 400);
+        composite.add(codeWrapper, BorderLayout.CENTER);
+
+        JPanel code = new JPanel();
+        code.setPreferredSize(new java.awt.Dimension(520, 400));
+        codeWrapper.add(code, BorderLayout.CENTER);
+        composite.setSize(600, 400);
+        composite.doLayout();
+        codeWrapper.setSize(560, 400);
+
+        TestFileEditor editor = new TestFileEditor(code);
+        java.awt.Dimension iconSize = new java.awt.Dimension(SidetabIconLayout.iconSize(), SidetabIconLayout.iconSize());
+        java.awt.Rectangle sidetabs = SidetabIconLayout.layoutSidetabsIcon(
+                editor,
+                code,
+                layeredPane,
+                iconSize
+        );
+
+        Point compositeRight = SwingUtilities.convertPoint(composite, composite.getWidth(), 0, layeredPane);
+        assertEquals(
+                compositeRight.x - SidetabIconLayout.iconGap(),
+                sidetabs.x + sidetabs.width,
+                1,
+                "Icons must anchor to the editor composite right edge, not wrapper offset + composite width"
+        );
+    }
+
+    @Test
     void iconPositionDoesNotShiftWhenSidetabColumnWidthChanges() {
         JLayeredPane layeredPane = new JLayeredPane();
         layeredPane.setBounds(0, 0, 600, 400);
@@ -169,6 +208,9 @@ class SidetabIconLayoutTest {
 
         assertEquals(narrowColumnIcon, wideColumnIcon,
                 "Icon position must not move when the SideTabs column width changes");
+    }
+
+    private static final class EditorCompositePanel extends JPanel {
     }
 
     private static final class TestFileEditor implements FileEditor {

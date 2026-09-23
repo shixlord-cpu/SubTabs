@@ -91,6 +91,48 @@ public class SubtabNameSegmentIntegrationTest extends HeavyPlatformTestCase {
         assertEquals(5, match.relatedFiles().size());
     }
 
+    public void testStateFeatureRuleGroupsActionsAcrossNeighborFolders() throws Exception {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        settings.setSubtabsActive(true);
+        List<CustomSubtabRule> rules = new ArrayList<>(settings.getRules());
+        CustomSubtabRule stateCentral = rules.stream()
+                .filter(rule -> "State Central".equals(rule.name))
+                .findFirst()
+                .orElseThrow();
+        CustomSubtabRule stateFeature = rules.stream()
+                .filter(rule -> "State Feature".equals(rule.name))
+                .findFirst()
+                .orElseThrow();
+        rules.remove(stateCentral);
+        rules.remove(stateFeature);
+        rules.add(0, stateFeature);
+        settings.setRules(rules);
+        ComponentFileNaming.invalidateRulesCache();
+
+        VirtualFile root = getVirtualFile(createTempDir("feature-neighbor-actions"));
+        WriteAction.runAndWait(() -> {
+            VirtualFile products = root.createChildDirectory(this, "products");
+            VirtualFile productsState = root.createChildDirectory(this, "products-state");
+            products.createChildData(this, "cart.actions.ts");
+            products.createChildData(this, "catalog.actions.ts");
+            productsState.createChildData(this, "user.actions.ts");
+            productsState.createChildData(this, "cart.reducer.ts");
+        });
+        VirtualFile actions = WriteAction.computeAndWait(() -> {
+            VirtualFile products = root.findChild("products");
+            return products == null ? null : products.findChild("cart.actions.ts");
+        });
+        assertNotNull(actions);
+
+        ComponentRelatedFiles.Match match = ComponentRelatedFiles.findUncached(actions);
+        assertNotNull(match);
+        assertEquals("rule:0:actions#cart", match.baseName());
+        assertEquals(3, match.relatedFiles().size());
+        assertEquals("cart", labelFor(match, "cart.actions.ts"));
+        assertEquals("catalog", labelFor(match, "catalog.actions.ts"));
+        assertEquals("user", labelFor(match, "user.actions.ts"));
+    }
+
     public void testStateFeatureRuleGroupsActionsAcrossEntitiesInSameFolder() throws Exception {
         SubtabsSettings settings = SubtabsSettings.getInstance();
         settings.setSubtabsActive(true);

@@ -16,7 +16,7 @@ import java.util.Map;
 @Service(Service.Level.APP)
 @State(name = "ComponentSubtabsSettings", storages = @Storage("componentSubtabs.xml"))
 public final class SubtabsSettings implements PersistentStateComponent<SubtabsSettings.State> {
-    private static final int CURRENT_RULES_VERSION = 17;
+    private static final int CURRENT_RULES_VERSION = 18;
 
     private State state = new State();
 
@@ -158,6 +158,21 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
 
     public void setNextGroupColorIndex(int index) {
         state.nextGroupColorIndex = Math.max(0, index);
+    }
+
+    public @NotNull List<String> getSubtabGroupOrder(@NotNull String groupKey) {
+        if (state.subtabGroupOrders == null) {
+            state.subtabGroupOrders = new LinkedHashMap<>();
+        }
+        List<String> order = state.subtabGroupOrders.get(groupKey);
+        return order == null ? List.of() : List.copyOf(order);
+    }
+
+    public void setSubtabGroupOrder(@NotNull String groupKey, @NotNull List<String> filePaths) {
+        if (state.subtabGroupOrders == null) {
+            state.subtabGroupOrders = new LinkedHashMap<>();
+        }
+        state.subtabGroupOrders.put(groupKey, new ArrayList<>(filePaths));
     }
 
     public @NotNull List<CustomSubtabRule> getRules() {
@@ -302,6 +317,9 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         if (state.groupColorHexes == null) {
             state.groupColorHexes = new LinkedHashMap<>();
         }
+        if (state.subtabGroupOrders == null) {
+            state.subtabGroupOrders = new LinkedHashMap<>();
+        }
         if (state.sidetabLayoutMode == null || state.sidetabLayoutMode.isBlank()) {
             migrateSidetabLayoutMode();
         }
@@ -394,7 +412,7 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         }
         if (state.rulesVersion != CURRENT_RULES_VERSION || containsLegacySubtabRules(state.rules)) {
             if (state.rules != null && !state.rules.isEmpty() && needsStateRulesMigration(state.rulesVersion, state.rules)) {
-                migrateStateRules(state.rules);
+                migrateStateRules(state.rules, state.rulesVersion);
                 state.rulesVersion = CURRENT_RULES_VERSION;
                 rulesGeneration++;
                 return;
@@ -415,7 +433,7 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         return false;
     }
 
-    private static void migrateStateRules(@NotNull List<CustomSubtabRule> rules) {
+    private static void migrateStateRules(@NotNull List<CustomSubtabRule> rules, int fromVersion) {
         CustomSubtabRule centralDefaults = SubtabRulesDefaults.createDefaults().stream()
                 .filter(rule -> "State Central".equals(rule.name))
                 .findFirst()
@@ -426,18 +444,23 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
             if (rule.isSpecial()) {
                 continue;
             }
-            if ("State".equals(rule.name) || "State Central".equals(rule.name)) {
-                rule.name = "State Central";
-                rule.nameSegments = centralDefaults.nameSegments;
-                rule.groupNameSegments = centralDefaults.groupNameSegments;
-                rule.searchNeighbors = centralDefaults.searchNeighbors;
-                rule.groupSuffix = centralDefaults.groupSuffix;
-            } else if ("State Folder".equals(rule.name) || "State Feature".equals(rule.name)) {
-                rule.name = "State Feature";
-                rule.nameSegments = featureDefaults.nameSegments;
-                rule.groupNameSegments = featureDefaults.groupNameSegments;
+            if (fromVersion < 17) {
+                if ("State".equals(rule.name) || "State Central".equals(rule.name)) {
+                    rule.name = "State Central";
+                    rule.nameSegments = centralDefaults.nameSegments;
+                    rule.groupNameSegments = centralDefaults.groupNameSegments;
+                    rule.searchNeighbors = centralDefaults.searchNeighbors;
+                    rule.groupSuffix = centralDefaults.groupSuffix;
+                } else if ("State Folder".equals(rule.name) || "State Feature".equals(rule.name)) {
+                    rule.name = "State Feature";
+                    rule.nameSegments = featureDefaults.nameSegments;
+                    rule.groupNameSegments = featureDefaults.groupNameSegments;
+                    rule.searchNeighbors = featureDefaults.searchNeighbors;
+                    rule.groupSuffix = featureDefaults.groupSuffix;
+                }
+            }
+            if (fromVersion < 18 && "State Feature".equals(rule.name)) {
                 rule.searchNeighbors = featureDefaults.searchNeighbors;
-                rule.groupSuffix = featureDefaults.groupSuffix;
             }
         }
     }
@@ -489,6 +512,7 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         public boolean hoverViewEnabled = true;
         public boolean showSubtabNameInMainTab = false;
         public Map<String, String> groupColorHexes = new LinkedHashMap<>();
+        public Map<String, List<String>> subtabGroupOrders = new LinkedHashMap<>();
         public int nextGroupColorIndex = 0;
         public int barHeightPercent = 75;
         public int textSizePercent = 75;

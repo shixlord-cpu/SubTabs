@@ -30,6 +30,7 @@ import javax.swing.tree.TreePath;
 final class ComponentSubtabProjectViewHover {
     private static final String ACTIVE_HOVER_KEY = "componentSubtabs.projectViewHover";
     private static final String EXTERNAL_HOVER_ROWS_KEY = "componentSubtabs.projectViewExternalHoverRows";
+    private static final String EXTERNAL_HOVER_PRIMARY_FILE_KEY = "componentSubtabs.projectViewExternalHoverPrimaryFile";
     private static final String EXTERNAL_HOVER_HANDLE_KEY = "componentSubtabs.projectViewExternalHoverHandle";
     private static final String HOVER_OWNER_KEY = "componentSubtabs.projectViewHoverOwner";
 
@@ -119,7 +120,7 @@ final class ComponentSubtabProjectViewHover {
             onEnter(project, tabFile, source);
             return;
         }
-        applyExternalRows(source, tree, targetRows);
+        applyExternalRows(source, tree, targetRows, tabFile);
     }
 
     static void onExit(@NotNull JComponent source) {
@@ -164,7 +165,8 @@ final class ComponentSubtabProjectViewHover {
     private static void applyExternalRows(
             @NotNull JComponent source,
             @NotNull JTree tree,
-            @NotNull Set<Integer> rows
+            @NotNull Set<Integer> rows,
+            @Nullable VirtualFile primaryHighlightFile
     ) {
         Set<Integer> copied = Set.copyOf(rows);
         if (TreeHoverListener.getHoveredRow(tree) >= 0) {
@@ -172,9 +174,17 @@ final class ComponentSubtabProjectViewHover {
         }
         clearExternalRows(tree);
         tree.putClientProperty(EXTERNAL_HOVER_ROWS_KEY, copied);
+        if (primaryHighlightFile != null) {
+            tree.putClientProperty(EXTERNAL_HOVER_PRIMARY_FILE_KEY, primaryHighlightFile);
+        }
         tree.putClientProperty(HOVER_OWNER_KEY, source);
         source.putClientProperty(EXTERNAL_HOVER_HANDLE_KEY, new ExternalHandle(tree, copied));
         repaintHover(tree);
+    }
+
+    static @Nullable VirtualFile primaryHoverFile(@NotNull JTree tree) {
+        Object value = tree.getClientProperty(EXTERNAL_HOVER_PRIMARY_FILE_KEY);
+        return value instanceof VirtualFile file ? file : null;
     }
 
     static @NotNull Set<Integer> paintedHoverRows(@NotNull JTree tree) {
@@ -211,6 +221,7 @@ final class ComponentSubtabProjectViewHover {
 
     private static void clearExternalRows(@NotNull JTree tree) {
         tree.putClientProperty(EXTERNAL_HOVER_ROWS_KEY, null);
+        tree.putClientProperty(EXTERNAL_HOVER_PRIMARY_FILE_KEY, null);
         repaintHover(tree);
     }
 
@@ -472,12 +483,22 @@ final class ComponentSubtabProjectViewHover {
             @NotNull JTree tree,
             @NotNull Set<Integer> rows
     ) {
+        activateMainTabHoverForTest(source, tree, rows, null);
+    }
+
+    @TestOnly
+    static void activateMainTabHoverForTest(
+            @NotNull JComponent source,
+            @NotNull JTree tree,
+            @NotNull Set<Integer> rows,
+            @Nullable VirtualFile primaryHighlightFile
+    ) {
         onExit(source);
         releaseTreeHoverForOtherOwner(tree, source);
         if (rows.isEmpty()) {
             return;
         }
-        applyExternalRows(source, tree, rows);
+        applyExternalRows(source, tree, rows, primaryHighlightFile);
     }
 
     @TestOnly

@@ -82,6 +82,10 @@ public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTes
         assertFalse(rows.contains(rowForFile(tree, scss)));
         assertFalse(rows.contains(rowForFile(tree, spec)));
         assertTrue("group row has to be marked together with the tab file", rows.contains(groupRow(tree)));
+
+        JPanel tabLabel = new JPanel();
+        ComponentSubtabProjectViewHover.activateMainTabHoverForTest(tabLabel, tree, rows, ts);
+        assertEquals(ts, ComponentSubtabProjectViewHover.primaryHoverFile(tree));
     }
 
     public void testStaleExitFromPreviousTabDoesNotClearCurrentHover() throws Exception {
@@ -236,13 +240,19 @@ public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTes
         ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(files.ts);
         assertNotNull(match);
         Set<Integer> rows = ComponentSubtabProjectViewHover.collectMainTabHoverRows(tree, match, files.ts);
-        ComponentSubtabProjectViewHover.activateMainTabHoverForTest(new JPanel(), tree, rows);
+        ComponentSubtabProjectViewHover.activateMainTabHoverForTest(new JPanel(), tree, rows, files.ts);
 
         java.awt.image.BufferedImage image = paintOverlay(overlay, "grouped-main-tab-hover.png");
         assertTrue("group row must be marked", rows.contains(groupRow(tree)));
         assertTrue("tab file must be marked", rows.contains(rowForFile(tree, files.ts)));
         assertFalse("other group files must stay unmarked", rows.contains(rowForFile(tree, files.html)));
-        assertHoveredRowsLookDifferent(tree, overlay, image, rows, rowForFile(tree, files.html));
+        int plain = sampleRow(tree, overlay, image, rowForFile(tree, files.html));
+        int highlighted = sampleRow(tree, overlay, image, rowForFile(tree, files.ts));
+        assertTrue(
+                "tab file row must paint differently from sibling files ("
+                        + Integer.toHexString(highlighted) + " vs " + Integer.toHexString(plain) + ")",
+                highlighted != plain
+        );
     }
 
     private static ProjectViewTreeOverlayPanel overlayOf(JTree tree) {

@@ -43,6 +43,7 @@ final class ComponentSubtabEditorDragSupport {
     static void install(
             @NotNull Project project,
             @NotNull JComponent host,
+            @NotNull ComponentSubtabBarPanel barPanel,
             @NotNull Map<VirtualFile, JToggleButton> buttonsByFile,
             @NotNull AtomicBoolean ignoreNextClick
     ) {
@@ -54,6 +55,7 @@ final class ComponentSubtabEditorDragSupport {
             private TabInfo draggedTab;
             private EditorWindow dragWindow;
             private boolean sourceWasOpen;
+            private int pendingDropIndex = -1;
 
             @Override
             protected boolean canStartDragging(
@@ -69,17 +71,23 @@ final class ComponentSubtabEditorDragSupport {
                     @NotNull Point dragToScreenPoint,
                     @NotNull Point startScreenPoint
             ) {
-                return dragFile != null || findPressedFile(event) != null;
+                if (dragFile == null) {
+                    return false;
+                }
+                return !isPointerInReorderZone(event);
             }
 
             @Override
             protected void processMousePressed(@NotNull MouseEvent event) {
-                JToggleButton button = findButtonAt(
-                        host,
-                        buttonsByFile,
-                        SwingUtilities.convertPoint(event.getComponent(), event.getPoint(), host)
+                Point pointInHost = SwingUtilities.convertPoint(
+                        event.getComponent(),
+                        event.getPoint(),
+                        host
                 );
+                dragFile = findFileAt(host, buttonsByFile, pointInHost);
+                JToggleButton button = findButtonAt(host, buttonsByFile, pointInHost);
                 dragSourceComponent = button != null ? button : host;
+                pendingDropIndex = -1;
             }
 
             @Override
@@ -88,7 +96,20 @@ final class ComponentSubtabEditorDragSupport {
                     @NotNull Point dragToScreenPoint,
                     @NotNull Point startScreenPoint
             ) {
-                // Subtabs always detach like editor tabs; in-bar reordering is not used.
+                if (dragFile == null) {
+                    return;
+                }
+                if (dragSession != null) {
+                    cancelDockSessionForReorderReturn();
+                }
+
+                Point pointerInTabsHost = barPanel.pointerInTabsHostFromEvent(event);
+                int dropIndex = barPanel.resolveReorderDropIndex(pointerInTabsHost, dragFile);
+                int fromIndex = barPanel.tabIndexForFile(dragFile);
+                pendingDropIndex = fromIndex >= 0 && ComponentSubtabReorderLayout.isNoOpDrop(fromIndex, dropIndex)
+                        ? -1
+                        : dropIndex;
+                barPanel.updateReorderDragState(dropIndex, dragFile, pointerInTabsHost);
             }
 
             @Override
@@ -98,7 +119,17 @@ final class ComponentSubtabEditorDragSupport {
                     @NotNull Point startScreenPoint,
                     boolean justStarted
             ) {
+                if (isPointerInReorderZone(event)) {
+                    if (dragSession != null) {
+                        cancelDockSessionForReorderReturn();
+                    }
+                    processDrag(event, dragToScreenPoint, startScreenPoint);
+                    return;
+                }
+
                 if (justStarted) {
+                    pendingDropIndex = -1;
+                    barPanel.clearReorderPreview();
                     if (!startDockSession(event)) {
                         cancelDragging();
                         return;
@@ -121,11 +152,18 @@ final class ComponentSubtabEditorDragSupport {
 
             @Override
             protected boolean canFinishDragging(@NotNull JComponent component, @NotNull RelativePoint point) {
+                if (dragSession == null && dragFile != null && pendingDropIndex >= 0) {
+                    ComponentSubtabOrder.reorder(project, dragFile, pendingDropIndex);
+                    ignoreNextClick.set(true);
+                }
+                pendingDropIndex = -1;
+                barPanel.clearReorderPreview();
+                dragFile = null;
                 return true;
             }
 
             private boolean startDockSession(@NotNull MouseEvent event) {
-                VirtualFile file = findPressedFile(event);
+                VirtualFile file = dragFile != null ? dragFile : findPressedFile(event);
                 if (file == null) {
                     return false;
                 }
@@ -259,6 +297,19 @@ final class ComponentSubtabEditorDragSupport {
                 }
             }
 
+            private void cancelDockSessionForReorderReturn() {
+                Component uiAnchor = dragUiAnchor;
+                disposeDragSession(dragSession);
+                restoreHiddenTab();
+                dragSession = null;
+                draggedTab = null;
+                dragWindow = null;
+                dragUiAnchor = null;
+                sourceWasOpen = false;
+                ignoreNextClick.set(false);
+                ComponentSubtabDragMouseEvents.repaintDragSurfaces(host, uiAnchor, host);
+            }
+
             private void resetSession() {
                 dragSession = null;
                 draggedTab = null;
@@ -267,6 +318,17 @@ final class ComponentSubtabEditorDragSupport {
                 dragSourceComponent = null;
                 dragUiAnchor = null;
                 sourceWasOpen = false;
+                pendingDropIndex = -1;
+                barPanel.clearReorderPreview();
+            }
+
+            private boolean isPointerInReorderZone(@NotNull MouseEvent event) {
+                Point pointInHost = SwingUtilities.convertPoint(
+                        event.getComponent(),
+                        event.getPoint(),
+                        host
+                );
+                return host.contains(pointInHost);
             }
 
             private @Nullable VirtualFile findPressedFile(@NotNull MouseEvent event) {

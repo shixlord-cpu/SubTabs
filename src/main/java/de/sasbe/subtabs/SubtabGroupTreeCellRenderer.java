@@ -2,18 +2,23 @@ package de.sasbe.subtabs;
 
 import com.intellij.ide.util.treeView.AbstractTreeNode;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Iconable;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.SimpleColoredComponent;
 import com.intellij.ui.SimpleTextAttributes;
+import com.intellij.util.IconUtil;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import com.intellij.util.ui.tree.TreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.swing.Icon;
+import javax.swing.JLabel;
 import javax.swing.JTree;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
+import javax.swing.JComponent;
 import java.awt.Color;
 import java.awt.Component;
 
@@ -80,13 +85,59 @@ final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
         }
 
         VirtualFile file = ComponentSubtabProjectViewHover.virtualFileOf(path);
-        if (file != null
-                && ComponentFileNaming.componentBaseName(file.getName()) != null
-                && ComponentSubtabModifiedUi.isModified(project, file)) {
-            applyModifiedMainText(colored, ComponentSubtabModifiedUi.foreground(true, false));
+        if (file != null) {
+            SubtabGroupProjectViewNode enclosingGroup = enclosingGroupNode(path);
+            Color groupColor = SubtabGroupColors.colorForProjectViewFile(file, enclosingGroup);
+            if (groupColor != null) {
+                applyGroupColoredFileIcon(component, colored, project, file, groupColor);
+            }
+            if (ComponentFileNaming.componentBaseName(file.getName()) != null
+                    && ComponentSubtabModifiedUi.isModified(project, file)) {
+                applyModifiedMainText(colored, ComponentSubtabModifiedUi.foreground(true, false));
+            }
         }
 
         return component;
+    }
+
+    private static @Nullable SubtabGroupProjectViewNode enclosingGroupNode(@NotNull TreePath path) {
+        for (TreePath current = path.getParentPath(); current != null; current = current.getParentPath()) {
+            Object userObject = TreeUtil.getLastUserObject(current);
+            if (userObject instanceof SubtabGroupProjectViewNode groupNode) {
+                return groupNode;
+            }
+        }
+        return null;
+    }
+
+    private static void applyGroupColoredFileIcon(
+            @NotNull Component component,
+            @Nullable SimpleColoredComponent colored,
+            @NotNull Project project,
+            @NotNull VirtualFile file,
+            @NotNull Color groupColor
+    ) {
+        Icon base = SubtabGroupFileIconProvider.uncoloredPlatformIcon(
+                file,
+                Iconable.ICON_FLAG_READ_STATUS,
+                project
+        );
+        if (base == null) {
+            return;
+        }
+        Icon tinted = IconUtil.colorize(base, groupColor);
+        if (colored != null) {
+            colored.setIcon(tinted);
+            return;
+        }
+        if (component instanceof JComponent jComponent) {
+            for (JLabel label : UIUtil.findComponentsOfType(jComponent, JLabel.class)) {
+                if (label.getIcon() != null) {
+                    label.setIcon(tinted);
+                    return;
+                }
+            }
+        }
     }
 
     static void applyModifiedMainText(@NotNull SimpleColoredComponent colored, @NotNull Color color) {

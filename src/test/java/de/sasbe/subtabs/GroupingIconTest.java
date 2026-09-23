@@ -28,11 +28,12 @@ class GroupingIconTest {
     }
 
     @Test
-    void drawsThreeStackedLinesBelowTopBar() {
+    void drawsThreeLeftAlignedSquaresBelowTopBar() {
         BufferedImage active = render(new GroupingIcon(true), 16);
-        assertTrue(hasColoredPixel(active, 8, 7));
-        assertTrue(hasColoredPixel(active, 8, 10));
-        assertTrue(hasColoredPixel(active, 8, 12));
+        assertTrue(hasColoredPixel(active, 3, 7));
+        assertTrue(hasColoredPixel(active, 3, 10));
+        assertTrue(hasColoredPixel(active, 3, 14));
+        assertTrue(!hasColoredPixel(active, 12, 7));
     }
 
     @Test

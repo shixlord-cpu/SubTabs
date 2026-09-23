@@ -26,7 +26,22 @@ final class ComponentSubtabToggleButton extends JToggleButton {
     }
 
     @Override
+    protected void paintComponent(Graphics graphics) {
+        if (ComponentSubtabUi.isReorderHidden(this)) {
+            return;
+        }
+        super.paintComponent(graphics);
+    }
+
+    @Override
     public void paint(Graphics graphics) {
+        if (ComponentSubtabUi.isReorderHidden(this)) {
+            return;
+        }
+        if (subDepth() > 0) {
+            paintSubDepthButton(graphics);
+            return;
+        }
         hidingLookAndFeelText = true;
         try {
             super.paint(graphics);
@@ -34,28 +49,47 @@ final class ComponentSubtabToggleButton extends JToggleButton {
             hidingLookAndFeelText = false;
         }
         paintLabelText(graphics);
-        paintSubDepthDot(graphics);
+    }
+
+    private int subDepth() {
+        Object depthValue = getClientProperty(SidetabBarPanel.DEPTH_KEY);
+        return depthValue instanceof Integer value ? Math.max(0, value) : 0;
+    }
+
+    private void paintSubDepthButton(@NotNull Graphics graphics) {
+        Graphics2D g2 = (Graphics2D) graphics.create();
+        try {
+            g2.setClip(0, 0, getWidth(), getHeight());
+            g2.setColor(getBackground());
+            g2.fillRect(0, 0, getWidth(), getHeight());
+            if (getBorder() != null) {
+                getBorder().paintBorder(this, g2, 0, 0, getWidth(), getHeight());
+            }
+            paintSubDepthDot(g2);
+            paintLabelText(g2);
+        } finally {
+            g2.dispose();
+        }
     }
 
     private void paintSubDepthDot(@NotNull Graphics graphics) {
-        Object depthValue = getClientProperty(SidetabBarPanel.DEPTH_KEY);
-        int depth = depthValue instanceof Integer value ? Math.max(0, value) : 0;
+        int depth = subDepth();
         if (depth <= 0) {
             return;
         }
         int dotSize = SidetabBarPanel.subDepthDotSize();
-        int dotOffset = SidetabBarPanel.subDepthDotOffset(depth);
-        if (dotOffset < 0) {
-            return;
-        }
-        Insets insets = getInsets();
-        int dotX = insets.left + dotOffset;
+        int dotSpacing = SidetabBarPanel.subDepthDotSpacing();
+        int baseX = SidetabBarPanel.subDepthDotBaseX();
         int centerY = getHeight() / 2;
 
         Graphics2D g2 = (Graphics2D) graphics.create();
         try {
+            g2.setClip(0, 0, getWidth(), getHeight());
             g2.setColor(getForeground());
-            g2.fillOval(dotX, centerY - dotSize / 2, dotSize, dotSize);
+            for (int dotIndex = 0; dotIndex < depth; dotIndex++) {
+                int dotX = baseX + dotIndex * dotSpacing;
+                g2.fillOval(dotX, centerY - dotSize / 2, dotSize, dotSize);
+            }
         } finally {
             g2.dispose();
         }

@@ -48,6 +48,7 @@ final class ComponentSubtabsFileEditorListener
         refreshOpenPopups(source.getProject());
         ComponentSubtabMainTabSelectPopup.installOn(source.getProject());
         ComponentSubtabMainTabColors.refresh(source.getProject());
+        ComponentSubtabMainTabIcons.scheduleRefreshAfterPlatformUpdate(source.getProject());
     }
 
     @Override
@@ -86,7 +87,8 @@ final class ComponentSubtabsFileEditorListener
         }
         if (oldFile != null && !oldFile.equals(newFile)) {
             selectionUpdated |= ComponentSubtabsManager.updateSelectionForFile(project, oldFile);
-            ComponentSubtabsManager.refreshMainTabPresentation(project, oldFile);
+            // Do not call updateFilePresentation on the deselected tab — it asynchronously resets tab icons
+            // to the default file-type color; group tint is restored via deferred icon refresh below.
         }
         if (selectionUpdated) {
             ComponentSubtabsManager.refreshOpenStates(project);
@@ -95,6 +97,7 @@ final class ComponentSubtabsFileEditorListener
         ComponentSubtabGroupSplitNavigation.reapplyAll(project);
         refreshOpenPopups(project);
         ComponentSubtabMainTabColors.refresh(project);
+        ComponentSubtabMainTabIcons.scheduleRefreshAfterPlatformUpdate(project);
     }
 
     private static void refreshOpenPopups(@NotNull Project project) {
@@ -121,12 +124,15 @@ final class ComponentSubtabsFileEditorListener
         ComponentSubtabsDocumentListener.install(project);
         FileEditorManager manager = FileEditorManager.getInstance(project);
         for (VirtualFile file : manager.getOpenFiles()) {
+            SidetabsManager.attachIfNeeded(project, file);
             ComponentSubtabsManager.attachIfNeeded(project, file);
             ComponentSubtabsManager.updateSelectionForFile(project, file);
-            SidetabsManager.attachIfNeeded(project, file);
         }
         ComponentSubtabsManager.refreshOpenStates(project);
+        ComponentSubtabsManager.applyPresentationState(project);
+        ComponentSubtabsManager.scheduleStartupIconRelayout(project);
         ComponentSubtabsManager.refreshAllMainTabPresentations(project);
         ComponentSubtabMainTabColors.refresh(project);
+        ComponentSubtabMainTabIcons.scheduleStartupRefresh(project);
     }
 }

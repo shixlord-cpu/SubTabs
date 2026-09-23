@@ -29,12 +29,17 @@ public class ComponentSubtabBarPopupMenuTest extends HeavyPlatformTestCase {
         assertTrue(topLevel.contains("Im Projektbaum anzeigen"));
         assertTrue(topLevel.contains("Sub-Tab im neuen Tab öffnen"));
         assertTrue(topLevel.contains("Sub-Tab im neuen Fenster öffnen"));
+        assertTrue(topLevel.contains("Nach links verschieben"));
+        assertTrue(topLevel.contains("Nach rechts verschieben"));
     }
 
     public void testFocusedOrGrayedSubtabsOfferRevealOnly() {
         List<String> topLevel = topLevelTexts(htmlFile, true);
-        assertEquals("focused and grayed subtabs keep one entry only: " + topLevel, 1, topLevel.size());
-        assertEquals("Im Projektbaum anzeigen", topLevel.get(0));
+        assertTrue(topLevel.contains("Im Projektbaum anzeigen"));
+        assertTrue(topLevel.contains("Nach links verschieben"));
+        assertTrue(topLevel.contains("Nach rechts verschieben"));
+        assertFalse(topLevel.contains("Sub-Tab im neuen Tab öffnen"));
+        assertFalse(topLevel.contains("Sub-Tab im neuen Fenster öffnen"));
         assertFalse(topLevel.contains("Familia"));
     }
 
