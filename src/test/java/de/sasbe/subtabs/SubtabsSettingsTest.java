@@ -240,7 +240,7 @@ class SubtabsSettingsTest {
         assertEquals("1", new SubtabsSettings.State().rules.get(3).groupNameSegments);
         assertEquals("1, 1, 1, 1, 1, 1, 1, 1", new SubtabsSettings.State().rules.get(4).nameSegments);
         assertEquals("2", new SubtabsSettings.State().rules.get(4).groupNameSegments);
-        assertFalse(new SubtabsSettings.State().rules.get(4).searchNeighbors);
+        assertTrue(new SubtabsSettings.State().rules.get(4).searchNeighbors);
         assertEquals("state", new SubtabsSettings.State().rules.get(4).groupSuffix);
         assertFalse(new SubtabsSettings.State().rules.get(4).builtin);
         assertEquals("state", new SubtabsSettings.State().rules.get(3).groupSuffix);

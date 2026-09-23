@@ -128,12 +128,14 @@ final class SidetabsManager {
             detach(project, editor);
             SidetabsToggleOverlay.hide(editor);
             SidetabBarOverlay.hide(editor);
+            ComponentSubtabsManager.placeRuleSwitchIcon(project, editor);
             return;
         }
         if (!settings.isSidetabsActive()) {
             detach(project, editor);
             SidetabsToggleOverlay.hide(editor);
             SidetabBarOverlay.hide(editor);
+            ComponentSubtabsManager.placeRuleSwitchIcon(project, editor);
             return;
         }
 
@@ -150,6 +152,7 @@ final class SidetabsManager {
             SidetabsToggleOverlay.hide(editor);
             SidetabBarOverlay.hide(editor);
             editor.putUserData(ATTACH_STATE_KEY, null);
+            ComponentSubtabsManager.placeRuleSwitchIcon(project, editor);
             return;
         }
 
@@ -167,6 +170,7 @@ final class SidetabsManager {
             }
             SidetabBarOverlay.hide(editor);
             editor.putUserData(ATTACH_STATE_KEY, null);
+            ComponentSubtabsManager.placeRuleSwitchIcon(project, editor);
             return;
         }
 
@@ -189,6 +193,7 @@ final class SidetabsManager {
             }
             relayoutCollapseIcons(editor);
             SidetabBarOverlay.relayout(editor);
+            ComponentSubtabsManager.placeRuleSwitchIcon(project, editor);
             return;
         }
 
@@ -211,12 +216,14 @@ final class SidetabsManager {
         SidetabBarPanel.installFoldingListener(editor, panel);
         relayoutCollapseIcons(editor);
         SidetabBarOverlay.relayout(editor);
+        ComponentSubtabsManager.placeRuleSwitchIcon(project, editor);
     }
 
     private static void relayoutCollapseIcons(@NotNull FileEditor editor) {
         SidetabsToggleOverlay.relayout(editor);
         SubtabsCollapseOverlay.relayout(editor);
         SubtabsExpandOverlay.relayout(editor);
+        RuleSwitchOverlay.relayout(editor);
     }
 
     static void refreshSeparatorBorders(@NotNull Project project) {

@@ -2,14 +2,17 @@ package de.sasbe.subtabs;
 
 import com.intellij.openapi.util.Key;
 import com.intellij.ui.hover.TreeHoverListener;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.render.RenderingHelper;
 import com.intellij.ui.render.RenderingUtil;
 import com.intellij.ui.tree.ui.DefaultTreeUI;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.JComponent;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
+import javax.swing.tree.TreePath;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Rectangle;
@@ -55,9 +58,7 @@ final class ComponentSubtabProjectViewTreeUI extends DefaultTreeUI {
         }
 
         Color hover = RenderingUtil.getHoverBackground(tree);
-        if (hover == null) {
-            return;
-        }
+        VirtualFile primaryHighlightFile = ComponentSubtabProjectViewHover.primaryHoverFile(tree);
 
         RenderingHelper helper = new RenderingHelper(tree);
         int x = helper.getX();
@@ -66,7 +67,6 @@ final class ComponentSubtabProjectViewTreeUI extends DefaultTreeUI {
             return;
         }
 
-        g.setColor(hover);
         int nativeHoverRow = TreeHoverListener.getHoveredRow(tree);
         for (int row : rows) {
             if (row == nativeHoverRow || tree.isRowSelected(row)) {
@@ -76,7 +76,26 @@ final class ComponentSubtabProjectViewTreeUI extends DefaultTreeUI {
             if (bounds == null) {
                 continue;
             }
+            Color fill = externalHoverFill(tree, row, primaryHighlightFile, hover);
+            if (fill == null) {
+                continue;
+            }
+            g.setColor(fill);
             g.fillRect(x, bounds.y, width, bounds.height);
         }
+    }
+
+    private static @Nullable Color externalHoverFill(
+            @NotNull JTree tree,
+            int row,
+            @Nullable VirtualFile primaryHighlightFile,
+            @Nullable Color defaultHover
+    ) {
+        TreePath path = tree.getPathForRow(row);
+        VirtualFile file = path == null ? null : ComponentSubtabProjectViewHover.virtualFileOf(path);
+        if (primaryHighlightFile != null && primaryHighlightFile.equals(file)) {
+            return ComponentSubtabUi.highlightBackground(file);
+        }
+        return defaultHover;
     }
 }

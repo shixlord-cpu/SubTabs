@@ -1,5 +1,6 @@
 package de.sasbe.subtabs;
 
+import com.intellij.openapi.actionSystem.ActionPlaces;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -27,7 +28,28 @@ final class SubtabFamiliaContext {
         if (!SubtabsSettings.getInstance().isFamiliaEnabled()) {
             return null;
         }
+        if (!ActionPlaces.EDITOR_TAB_POPUP.equals(event.getPlace())) {
+            return null;
+        }
         return event.getData(CommonDataKeys.VIRTUAL_FILE);
+    }
+
+    static boolean showInProjectViewPopup(@NotNull AnActionEvent event) {
+        if (!SubtabsSettings.getInstance().isFamiliaEnabled()
+                || !SubtabsSettings.getInstance().isSubtabsActive()) {
+            return false;
+        }
+        if (!ActionPlaces.PROJECT_VIEW_POPUP.equals(event.getPlace())) {
+            return false;
+        }
+        if (SubtabGroupProjectViewContext.selectedGroupNode(event) != null) {
+            return true;
+        }
+        if (!SubtabGroupColors.isEnabled()) {
+            return false;
+        }
+        VirtualFile file = SubtabGroupProjectViewContext.selectedVirtualFile(event);
+        return file != null && belongsToSubtabGroup(file);
     }
 
     static @Nullable String colorStorageKey(@NotNull AnActionEvent event) {
@@ -35,11 +57,27 @@ final class SubtabFamiliaContext {
         if (groupNode != null) {
             return SubtabGroupProjectViewContext.colorStorageKey(groupNode);
         }
-        VirtualFile file = editorTabFile(event);
-        if (file == null || !hasSubtabGroup(file)) {
+        VirtualFile file = fileForColorActions(event);
+        if (file == null) {
             return null;
         }
         return SubtabGroupColors.colorKey(file);
+    }
+
+    static @Nullable VirtualFile fileForColorActions(@NotNull AnActionEvent event) {
+        VirtualFile editorFile = editorTabFile(event);
+        if (editorFile != null && belongsToSubtabGroup(editorFile)) {
+            return editorFile;
+        }
+        if (!ActionPlaces.PROJECT_VIEW_POPUP.equals(event.getPlace())) {
+            return null;
+        }
+        VirtualFile projectFile = SubtabGroupProjectViewContext.selectedVirtualFile(event);
+        return projectFile != null && belongsToSubtabGroup(projectFile) ? projectFile : null;
+    }
+
+    static boolean belongsToSubtabGroup(@NotNull VirtualFile file) {
+        return hasSubtabGroup(file);
     }
 
     private static boolean hasSubtabGroup(@NotNull VirtualFile file) {

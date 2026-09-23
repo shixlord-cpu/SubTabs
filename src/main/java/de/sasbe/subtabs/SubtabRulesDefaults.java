@@ -100,7 +100,7 @@ public final class SubtabRulesDefaults {
         rule.groupNameSegments = "2";
         rule.slotKeys = """
                 .actions.ts, .reducer.ts, .reducer.ts, .effects.ts, .selectors.ts, .state.ts, .store.ts, .facade.ts""".replace('\n', ' ').trim();
-        rule.searchNeighbors = false;
+        rule.searchNeighbors = true;
         rule.groupSuffix = "state";
         return rule;
     }

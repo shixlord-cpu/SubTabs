@@ -1,1 +1,169 @@
-<section>Orders</section>
+<header class="page-header">
+  <p class="eyebrow">Orders</p>
+  <h1>{{ entityName }}</h1>
+  <p class="lede">Working copy for the shop floor. Nothing here is persisted.</p>
+</header>
+
+<nav class="page-nav" aria-label="Sections">
+  <a href="#overview">Overview</a>
+  <a href="#catalog">Catalog</a>
+  <a href="#draft">Draft</a>
+  <a href="#activity">Activity</a>
+</nav>
+
+<main class="page-main">
+  <section id="overview">
+    <h2>Overview</h2>
+    <p *ngIf="loading">Loading the current snapshot.</p>
+    <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+    <dl class="stats">
+      <div><dt>Open drafts</dt><dd>{{ rows.length }}</dd></div>
+      <div><dt>Active rows</dt><dd>{{ rows.length }}</dd></div>
+      <div><dt>Archived rows</dt><dd>{{ rows.length }}</dd></div>
+    </dl>
+  </section>
+
+  <section id="catalog">
+    <h2>Catalog</h2>
+    <table>
+      <thead>
+        <tr><th>SKU</th><th>Title</th><th>Status</th><th>Price</th><th>Stock</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of rows" [class.is-selected]="row.id === selectedId">
+          <td>{{ row.sku }}</td>
+          <td>{{ row.title }}</td>
+          <td>{{ row.status }}</td>
+          <td>{{ row.priceCents }}</td>
+          <td>{{ row.stock }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="draft">
+    <h2>Draft</h2>
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <label>Title <input formControlName="title" /></label>
+      <label>Summary <textarea formControlName="summary"></textarea></label>
+      <label>Price <input type="number" formControlName="priceCents" /></label>
+      <button type="submit" [disabled]="saving">Save draft</button>
+    </form>
+  </section>
+
+  <section id="activity">
+    <h2>Activity</h2>
+    <!-- +SUB-Timeline -->
+    <ol class="timeline">
+      <li>
+        <time>Load</time>
+        <p>Load the current snapshot from the remote catalog.</p>
+      </li>
+      <li>
+        <time>Refresh</time>
+        <p>Refresh stale values without resetting the open view.</p>
+      </li>
+      <li>
+        <time>Save</time>
+        <p>Persist the draft and keep the previous revision.</p>
+      </li>
+      <li>
+        <time>Validate</time>
+        <p>Check required fields before the next transition.</p>
+      </li>
+      <li>
+        <time>Apply Discount</time>
+        <p>Apply a percentage discount and round to cents.</p>
+      </li>
+      <li>
+        <time>Clear Discount</time>
+        <p>Remove the active discount and restore list prices.</p>
+      </li>
+      <li>
+        <time>Select</time>
+        <p>Remember the row the operator last focused.</p>
+      </li>
+      <li>
+        <time>Deselect</time>
+        <p>Drop the current selection and return to the list.</p>
+      </li>
+      <li>
+        <time>Filter</time>
+        <p>Narrow the visible rows by the active query.</p>
+      </li>
+      <li>
+        <time>Sort</time>
+        <p>Order rows by the requested column and direction.</p>
+      </li>
+      <li>
+        <time>Page</time>
+        <p>Move the window to another slice of the result set.</p>
+      </li>
+      <li>
+        <time>Retry</time>
+        <p>Repeat the last failed request with the same payload.</p>
+      </li>
+      <li>
+        <time>Cancel</time>
+        <p>Abort the in-flight request and restore the idle flag.</p>
+      </li>
+      <li>
+        <time>Archive</time>
+        <p>Move a finished record out of the working set.</p>
+      </li>
+      <li>
+        <time>Restore</time>
+        <p>Bring an archived record back into the working set.</p>
+      </li>
+      <li>
+        <time>Duplicate</time>
+        <p>Copy a record and assign a fresh identifier.</p>
+      </li>
+      <li>
+        <time>Merge</time>
+        <p>Fold incoming changes into the local draft.</p>
+      </li>
+      <li>
+        <time>Split</time>
+        <p>Separate a combined line into independent entries.</p>
+      </li>
+      <li>
+        <time>Assign</time>
+        <p>Attach the record to the current operator.</p>
+      </li>
+      <li>
+        <time>Release</time>
+        <p>Detach the record so another operator can take it.</p>
+      </li>
+      <li>
+        <time>Notify</time>
+        <p>Queue a status message for the surrounding shell.</p>
+      </li>
+      <li>
+        <time>Audit</time>
+        <p>Append an audit note without changing business fields.</p>
+      </li>
+      <li>
+        <time>Export Rows</time>
+        <p>Build a flat export of the rows currently in view.</p>
+      </li>
+      <li>
+        <time>Import Rows</time>
+        <p>Accept a flat import and reject unknown columns.</p>
+      </li>
+      <li>
+        <time>Summarize</time>
+        <p>Reduce the working set to totals and counts.</p>
+      </li>
+      <li>
+        <time>Reset</time>
+        <p>Return the draft to the last confirmed snapshot.</p>
+      </li>
+    </ol>
+    <!-- +SUBEND -->
+  </section>
+</main>
+
+<footer class="page-footer">
+  <p>Orders demo workspace. Figures are illustrative.</p>
+</footer>

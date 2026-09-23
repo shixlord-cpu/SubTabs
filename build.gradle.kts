@@ -1,6 +1,7 @@
 import org.gradle.api.tasks.testing.Test
 import org.gradle.process.CommandLineArgumentProvider
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
 
 plugins {
     id("java")
@@ -50,10 +51,24 @@ tasks {
         untilBuild.set("261.*")
     }
 
+    listOf("prepareSandbox", "prepareSandbox_runIdeBackend", "prepareSandbox_runIdeFrontend").forEach { taskName ->
+        named<PrepareSandboxTask>(taskName) {
+            // Bundled Kubernetes uses split frontend RPC; standard sandbox has no backend → log spam on demo start.
+            disabledPlugins.add("com.intellij.kubernetes")
+        }
+    }
+
     runIde {
         val demoProjectPath = layout.projectDirectory.dir("demo-project").asFile.absolutePath
         argumentProviders += CommandLineArgumentProvider {
             listOf(demoProjectPath)
+        }
+        // Demo project must not attach Git to the plugin repo; otherwise the sandbox spams remote-fetch errors.
+        jvmArgumentProviders += CommandLineArgumentProvider {
+            listOf(
+                "-Dgit4idea.fetch.automatically=false",
+                "-Didea.git.automatic.branchupdate=false",
+            )
         }
     }
 }

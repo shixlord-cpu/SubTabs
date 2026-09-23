@@ -117,6 +117,15 @@ final class ComponentSubtabGroupRegistry {
         recycledPanelsByKey.clear();
     }
 
+    @Nullable ComponentSubtabGroup updateGroupOrder(
+            @NotNull String key,
+            @NotNull List<ComponentRelatedFiles.Entry> orderedEntries
+    ) {
+        ComponentSubtabGroup group = new ComponentSubtabGroup(List.copyOf(orderedEntries));
+        groupsByKey.put(key, group);
+        return group;
+    }
+
     private @Nullable ComponentSubtabBarPanel takePendingTransfer() {
         ComponentSubtabBarPanel panel = pendingTransfer;
         pendingTransfer = null;

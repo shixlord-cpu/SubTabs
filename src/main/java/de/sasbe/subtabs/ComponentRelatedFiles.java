@@ -109,9 +109,10 @@ final class ComponentRelatedFiles {
                 if (match == null) {
                     continue;
                 }
-                boolean sameGroup = ComponentFileNaming.searchNeighbors(groupKey)
-                        ? CustomSubtabRuleMatcher.sameGroupIdentity(groupKey, match.groupKey())
-                        : CustomSubtabRuleMatcher.sameFolderGroupIdentity(groupKey, match.groupKey());
+                boolean sameGroup = CustomSubtabRuleMatcher.sameFolderGroupIdentity(
+                        groupKey,
+                        match.groupKey()
+                );
                 if (!sameGroup) {
                     continue;
                 }
@@ -138,14 +139,13 @@ final class ComponentRelatedFiles {
             return null;
         }
 
-        sortByFileName(relatedFiles);
-
         String anchorPath = SubtabCandidateResolver.commonDirectory(locatedFiles, pathKey(parent));
         VirtualFile anchor = foldersByPath.get(anchorPath);
         if (anchor == null) {
             anchor = parent;
         }
-        return new Match(anchor, groupKey, List.copyOf(relatedFiles));
+        List<Entry> orderedFiles = finalizeRelatedFiles(anchor, groupKey, relatedFiles);
+        return new Match(anchor, groupKey, orderedFiles);
     }
 
     private static @Nullable Match findFolderGroup(
@@ -171,11 +171,10 @@ final class ComponentRelatedFiles {
             }
         }
 
-        sortByFileName(relatedFiles);
         if (relatedFiles.size() < 2) {
             return null;
         }
-        return new Match(parent, groupKey, List.copyOf(relatedFiles));
+        return new Match(parent, groupKey, finalizeRelatedFiles(parent, groupKey, relatedFiles));
     }
 
     private static @Nullable Match findUserGroup(
@@ -214,7 +213,14 @@ final class ComponentRelatedFiles {
         if (relatedFiles.size() < 2) {
             return null;
         }
-        return new Match(parent, groupKey, List.copyOf(relatedFiles));
+        return new Match(
+                parent,
+                groupKey,
+                ComponentSubtabOrder.applyStoredOrder(
+                        ComponentSubtabGroupRegistry.componentKey(parent, groupKey),
+                        List.copyOf(relatedFiles)
+                )
+        );
     }
 
     private static @NotNull String parsedGroupName(@NotNull String groupKey) {
@@ -249,11 +255,22 @@ final class ComponentRelatedFiles {
             ));
         }
 
-        sortByFileName(relatedFiles);
         if (relatedFiles.size() < 2) {
             return null;
         }
-        return new Match(parent, baseName, List.copyOf(relatedFiles));
+        return new Match(parent, baseName, finalizeRelatedFiles(parent, baseName, relatedFiles));
+    }
+
+    private static @NotNull List<Entry> finalizeRelatedFiles(
+            @NotNull VirtualFile anchor,
+            @NotNull String baseName,
+            @NotNull List<Entry> relatedFiles
+    ) {
+        sortByFileName(relatedFiles);
+        return ComponentSubtabOrder.applyStoredOrder(
+                ComponentSubtabGroupRegistry.componentKey(anchor, baseName),
+                List.copyOf(relatedFiles)
+        );
     }
 
     private static final Comparator<Entry> FILE_NAME_ORDER =

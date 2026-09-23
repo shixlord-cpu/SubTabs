@@ -6,24 +6,65 @@ import org.junit.jupiter.api.Test;
 import javax.swing.JToggleButton;
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.Insets;
 import java.awt.image.BufferedImage;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SidetabSubDepthLabelTest {
     @Test
-    void deeperSubDotsMoveFurtherRight() {
-        JToggleButton depthOne = labelButton("Nav", 1);
-        JToggleButton depthTwo = labelButton("Detail", 2);
-        Insets insets = depthOne.getInsets();
+    void deeperSubDotsIncreaseDotCount() {
+        JToggleButton depthOne = labelButton("", 1);
+        JToggleButton depthTwo = labelButton("", 2);
+        JToggleButton depthThree = labelButton("", 3);
 
-        int dotXOne = insets.left + SidetabBarPanel.subDepthDotOffset(1);
-        int dotXTwo = insets.left + SidetabBarPanel.subDepthDotOffset(2);
+        assertEquals(1, countDepthDots(depthOne, 1));
+        assertEquals(2, countDepthDots(depthTwo, 2));
+        assertEquals(3, countDepthDots(depthThree, 3));
+    }
 
-        assertTrue(hasDotCluster(depthOne, dotXOne));
-        assertTrue(hasDotCluster(depthTwo, dotXTwo));
-        assertTrue(dotXTwo > dotXOne);
+    @Test
+    void subDepthDotsStayFixedOnHover() {
+        JToggleButton button = labelButton("", 2);
+        int beforeHover = firstDotX(button);
+        button.dispatchEvent(new java.awt.event.MouseEvent(
+                button,
+                java.awt.event.MouseEvent.MOUSE_ENTERED,
+                System.currentTimeMillis(),
+                0,
+                Math.max(1, button.getWidth() / 2),
+                Math.max(1, button.getHeight() / 2),
+                0,
+                false
+        ));
+        ComponentSubtabUi.refreshButton(button);
+        int afterHover = firstDotX(button);
+        assertEquals(beforeHover, afterHover);
+    }
+
+    private static int firstDotX(@NotNull JToggleButton button) {
+        BufferedImage image = render(button);
+        int dotSize = SidetabBarPanel.subDepthDotSize();
+        int centerY = button.getHeight() / 2;
+        int expectedX = SidetabBarPanel.subDepthDotBaseX();
+        for (int x = 0; x < button.getWidth(); x++) {
+            if (dotPixelHitsAt(image, x, centerY, dotSize) >= dotSize) {
+                return x;
+            }
+        }
+        return expectedX;
+    }
+
+    private static int countDepthDots(@NotNull JToggleButton button, int depth) {
+        int baseX = SidetabBarPanel.subDepthDotBaseX();
+        int spacing = SidetabBarPanel.subDepthDotSpacing();
+        int count = 0;
+        for (int dotIndex = 0; dotIndex < depth; dotIndex++) {
+            if (hasDotCluster(button, baseX + dotIndex * spacing)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     @Test
@@ -54,6 +95,12 @@ class SidetabSubDepthLabelTest {
     private static JToggleButton labelButton(@NotNull String label, int depth) {
         JToggleButton button = ComponentSubtabUi.createSubtabButton(label, false);
         button.putClientProperty(SidetabBarPanel.DEPTH_KEY, depth);
+        if (depth > 0) {
+            button.putClientProperty("JButton.buttonType", null);
+            button.setRolloverEnabled(false);
+            button.setContentAreaFilled(false);
+            button.setBorderPainted(false);
+        }
         button.setSize(120, ComponentSubtabUi.tabHeight());
         ComponentSubtabUi.refreshButton(button);
         return button;
@@ -67,6 +114,15 @@ class SidetabSubDepthLabelTest {
         BufferedImage image = render(button);
         int dotSize = SidetabBarPanel.subDepthDotSize();
         int centerY = button.getHeight() / 2;
+        return dotPixelHitsAt(image, dotX, centerY, dotSize);
+    }
+
+    private static int dotPixelHitsAt(
+            @NotNull BufferedImage image,
+            int dotX,
+            int centerY,
+            int dotSize
+    ) {
         int hits = 0;
         for (int y = centerY - dotSize; y <= centerY + dotSize; y++) {
             if (y < 0 || y >= image.getHeight()) {

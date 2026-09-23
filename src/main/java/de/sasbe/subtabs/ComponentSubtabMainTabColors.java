@@ -44,15 +44,18 @@ final class ComponentSubtabMainTabColors {
 
         if (!SubtabGroupColors.isEnabled()) {
             clearDirectTabColors(manager);
+            ComponentSubtabMainTabIcons.refresh(project);
             SidetabsManager.refreshSeparatorBorders(project);
             return;
         }
 
         applyDirectTabColors(manager);
+        ComponentSubtabMainTabIcons.refresh(project);
         SidetabsManager.refreshSeparatorBorders(project);
         ApplicationManager.getApplication().invokeLater(() -> {
             if (!project.isDisposed()) {
                 applyDirectTabColors(FileEditorManagerEx.getInstanceEx(project));
+                ComponentSubtabMainTabIcons.refresh(project);
                 SidetabsManager.refreshSeparatorBorders(project);
             }
         });

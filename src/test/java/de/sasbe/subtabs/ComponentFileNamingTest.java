@@ -230,6 +230,6 @@ class ComponentFileNamingTest {
         CustomSubtabRuleMatcher.Match match = CustomSubtabRuleMatcher.match("cart.actions.ts", rules);
         assertNotNull(match);
         assertEquals("rule:0:actions#cart", match.groupKey());
-        assertFalse(match.searchNeighbors());
+        assertTrue(match.searchNeighbors());
     }
 }

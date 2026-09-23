@@ -45,11 +45,17 @@ final class ComponentSubtabMainTabSelectPopup {
     }
 
     static void installOn(@NotNull Project project) {
-        if (project.isDisposed() || !SubtabsSettings.getInstance().isFamiliaEnabled()) {
-            hideAllPopups(project);
+        if (project.isDisposed()) {
             return;
         }
+        boolean familiaEnabled = SubtabsSettings.getInstance().isFamiliaEnabled();
+        if (!familiaEnabled) {
+            hideAllPopups(project);
+        }
         if (!SubtabsSettings.getInstance().isSubtabsActive()) {
+            return;
+        }
+        if (!familiaEnabled && SubtabHoverView.isDisabled()) {
             return;
         }
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
@@ -97,8 +103,18 @@ final class ComponentSubtabMainTabSelectPopup {
                     return;
                 }
                 if (hasSubtabGroup(currentTabFile)) {
-                    schedulePopup(project, label);
-                    ComponentSubtabProjectViewHover.onEnterRelatedGroup(project, currentTabFile, label);
+                    if (SubtabsSettings.getInstance().isFamiliaEnabled()) {
+                        if (isForegroundMainTab(project, label)) {
+                            cancelShowTimer(label);
+                            hidePopup(label);
+                        } else {
+                            schedulePopup(project, label);
+                        }
+                    }
+                    if (SubtabHoverView.isEnabled()) {
+                        ComponentSubtabProjectViewHover.onEnterRelatedGroup(project, currentTabFile, label);
+                        ComponentSubtabBarHover.onEnterMainTab(project, currentTabFile, label);
+                    }
                 } else if (SubtabHoverView.isEnabled()) {
                     ComponentSubtabProjectViewHover.onEnter(project, currentTabFile, label);
                 }
@@ -133,6 +149,12 @@ final class ComponentSubtabMainTabSelectPopup {
     }
 
     private static void schedulePopup(@NotNull Project project, @NotNull TabLabel label) {
+        if (isForegroundMainTab(project, label)) {
+            cancelShowTimer(label);
+            hidePopup(label);
+            return;
+        }
+
         Point screenPoint = MouseInfo.getPointerInfo().getLocation();
         if (isMouseOverPopup(label, screenPoint)) {
             cancelShowTimer(label);
@@ -145,7 +167,7 @@ final class ComponentSubtabMainTabSelectPopup {
 
         cancelShowTimer(label);
         Timer showTimer = new Timer(SHOW_DELAY_MS, event -> {
-            if (!isPointerOver(label)) {
+            if (!isPointerOver(label) || isForegroundMainTab(project, label)) {
                 return;
             }
             showPopup(project, label);
@@ -156,6 +178,10 @@ final class ComponentSubtabMainTabSelectPopup {
     }
 
     private static void showPopup(@NotNull Project project, @NotNull TabLabel label) {
+        if (isForegroundMainTab(project, label)) {
+            return;
+        }
+
         VirtualFile tabFile = resolveTabFile(project, label);
         if (tabFile == null) {
             return;
@@ -238,6 +264,7 @@ final class ComponentSubtabMainTabSelectPopup {
             return;
         }
         ComponentSubtabNavigation.switchInTabOf(project, anchorFile, targetFile, true);
+        ComponentSubtabBarHover.refreshAllActiveMainTabSync(project);
     }
 
     private static @NotNull Point popupShowPoint(@NotNull TabLabel label, @NotNull SubtabGroupFilePopupPanel panel) {
@@ -306,6 +333,25 @@ final class ComponentSubtabMainTabSelectPopup {
      * {@link TabInfo} first, because that is the only source that stays correct when several main
      * tabs of one subtab group are open and their files change through subtab switches.
      */
+    /**
+     * The hover select box is only for background main tabs. A tab whose pane is already showing its
+     * content is in the foreground and must not open the popup on hover.
+     */
+    private static boolean isForegroundMainTab(@NotNull Project project, @NotNull TabLabel label) {
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        for (EditorWindow window : manager.getWindows()) {
+            JBTabs tabs = window.getTabbedPane().getTabs();
+            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
+                continue;
+            }
+            TabInfo selected = tabsImpl.getSelectedInfo();
+            if (selected != null && tabsImpl.getTabLabel(selected) == label) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static @Nullable VirtualFile resolveTabFile(@NotNull Project project, @NotNull TabLabel label) {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         for (EditorWindow window : manager.getWindows()) {
@@ -365,6 +411,7 @@ final class ComponentSubtabMainTabSelectPopup {
 
     private static void clearHoverAreaEffects(@NotNull TabLabel label) {
         ComponentSubtabProjectViewHover.onExit(label);
+        ComponentSubtabBarHover.onExitMainTab(label);
         SubtabGroupFilePopupPanel panel = getPopupPanel(label);
         if (panel != null) {
             ComponentSubtabBarHover.onExit(panel);

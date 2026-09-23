@@ -26,7 +26,8 @@ import java.awt.FlowLayout;
 import java.util.function.Function;
 
 public final class SubtabsConfigurable implements SearchableConfigurable {
-    private JCheckBox subtabsActiveCheckbox;
+    private JCheckBox familiaEnabledCheckbox;
+    private JCheckBox hTabsActiveCheckbox;
     private JCheckBox sidetabsActiveCheckbox;
     private ComboBox<SidetabLayoutMode> sidetabLayoutModeCombo;
     private SidetabsSideSwitchButton sidetabsSideSwitch;
@@ -48,7 +49,8 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
     private SidetabsRulesPanel sidetabsRulesPanel;
     private JPanel rootPanel;
     private JTabbedPane mainTabs;
-    private JTabbedPane rulesTabs;
+    private JPanel hTabsPanel;
+    private JPanel vTabsPanel;
     private boolean rulesUiInitialized;
 
     @Override
@@ -63,14 +65,17 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
 
     @Override
     public @Nullable JComponent createComponent() {
-        subtabsActiveCheckbox = new JCheckBox("Familia aktivieren");
-        sidetabsActiveCheckbox = new JCheckBox("SideTabs aktivieren");
+        familiaEnabledCheckbox = new JCheckBox("Familia aktivieren");
+        hTabsActiveCheckbox = new JCheckBox("H-Tabs aktivieren");
+        hTabsActiveCheckbox.setToolTipText("Horizontale Tab-Leiste direkt über dem Editor");
+        sidetabsActiveCheckbox = new JCheckBox("V-Tabs aktivieren");
+        sidetabsActiveCheckbox.setToolTipText("Vertikale Tab-Leiste am Editorrand");
         sidetabLayoutModeCombo = labeledEnumCombo(SidetabLayoutMode.values(), SidetabLayoutMode::label);
         sidetabLayoutModeCombo.addActionListener(event -> updateSidetabLayoutOptions());
         sidetabsSideSwitch = new SidetabsSideSwitchButton();
         showCollapseButtonCheckbox = new JCheckBox("Einklappen-Symbole anzeigen");
         showCollapseButtonCheckbox.setToolTipText(
-                "Zeigt das Einklappen-Symbol in der Subtab-Leiste, bei SideTabs und im Projektbaum"
+                "Zeigt das Einklappen-Symbol in der H-Tab-Leiste, bei V-Tabs und im Projektbaum"
         );
         groupInProjectViewCheckbox = new JCheckBox(
                 "Zugehörige Dateien im Projektbaum gruppieren"
@@ -89,9 +94,9 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 "Färbt Editor-Haupttabs und „X Dateien“ im Projektbaum in der Gruppenfarbe ein"
         );
 
-        hoverViewEnabledCheckbox = new JCheckBox("Hover-View");
+        hoverViewEnabledCheckbox = new JCheckBox("Hover Sync");
         hoverViewEnabledCheckbox.setToolTipText(
-                "Hebt beim Hover über Subtabs, Dateien und Haupttabs die zugehörigen Tabs, Subtabs "
+                "Hebt beim Hover über H-Tabs, Dateien und Haupttabs die zugehörigen Tabs, H-Tabs "
                         + "und Projektbaum-Einträge hervor"
         );
 
@@ -126,15 +131,12 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         sidetabsFlagRow.add(sidetabLayoutModeCombo);
         sidetabsFlagRow.add(sidetabsSideSwitch);
 
-        JPanel appearancePanel = FormBuilder.createFormBuilder()
-                .addComponent(subtabsActiveCheckbox)
-                .addComponent(sidetabsFlagRow)
+        JPanel ansichtPanel = FormBuilder.createFormBuilder()
+                .addComponent(familiaEnabledCheckbox)
                 .addComponent(showCollapseButtonCheckbox)
                 .addComponent(groupInProjectViewCheckbox)
                 .addComponent(groupColorsEnabledCheckbox)
                 .addComponent(hoverViewEnabledCheckbox)
-                .addComponent(showSubtabNameInMainTabCheckbox)
-                .addLabeledComponent("Überlauf", overflowModeCombo)
                 .addLabeledComponent("Gruppierung im Projektbaum", groupTreeControlStyleCombo)
                 .addComponent(invertGroupTreeControlFillCheckbox)
                 .addLabeledComponent("Tab-Höhe", sliderRow(barHeightSlider, barHeightValueLabel))
@@ -143,14 +145,39 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 .addComponent(fitTabsToEditorWidthCheckbox)
                 .getPanel();
 
-        rulesTabs = new JTabbedPane();
+        JPanel hTabsOptionsPanel = FormBuilder.createFormBuilder()
+                .addComponent(hTabsActiveCheckbox)
+                .addComponent(showSubtabNameInMainTabCheckbox)
+                .addLabeledComponent("Überlauf", overflowModeCombo)
+                .getPanel();
+        hTabsPanel = new JPanel(new BorderLayout());
+        hTabsPanel.add(hTabsOptionsPanel, BorderLayout.NORTH);
+
+        JPanel vTabsOptionsPanel = FormBuilder.createFormBuilder()
+                .addComponent(sidetabsFlagRow)
+                .getPanel();
+        vTabsPanel = new JPanel(new BorderLayout());
+        vTabsPanel.add(vTabsOptionsPanel, BorderLayout.NORTH);
+
+        JPanel splitTabsPanel = new JPanel(new BorderLayout());
+        splitTabsPanel.setBorder(JBUI.Borders.empty(8, 0));
+        splitTabsPanel.add(new JBLabel("Noch keine Einstellungen."), BorderLayout.NORTH);
+
+        JPanel aiPanel = new JPanel(new BorderLayout());
+        aiPanel.setBorder(JBUI.Borders.empty(8, 0));
+        aiPanel.add(new JBLabel("Noch keine Einstellungen."), BorderLayout.NORTH);
+
         rulesUiInitialized = false;
 
         mainTabs = new JTabbedPane();
-        mainTabs.addTab("Ansicht", appearancePanel);
-        mainTabs.addTab("Regeln", rulesTabs);
+        mainTabs.addTab("Ansicht", ansichtPanel);
+        mainTabs.addTab("H-Tabs", hTabsPanel);
+        mainTabs.addTab("V-Tabs", vTabsPanel);
+        mainTabs.addTab("SplitTabs", splitTabsPanel);
+        mainTabs.addTab("AI", aiPanel);
         mainTabs.addChangeListener(event -> {
-            if (mainTabs.getSelectedComponent() == rulesTabs) {
+            Component selected = mainTabs.getSelectedComponent();
+            if (selected == hTabsPanel || selected == vTabsPanel) {
                 ensureRulesUiInitialized();
             }
         });
@@ -177,21 +204,24 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         rulesUiInitialized = true;
         rulesPanel = new SubtabsRulesPanel();
         sidetabsRulesPanel = new SidetabsRulesPanel();
-        rulesTabs.addTab("SubTabs", rulesPanel.createPanel());
-        rulesTabs.addTab("SideTabs", sidetabsRulesPanel.createPanel());
+        hTabsPanel.add(rulesPanel.createPanel(), BorderLayout.CENTER);
+        vTabsPanel.add(sidetabsRulesPanel.createPanel(), BorderLayout.CENTER);
         SubtabsSettings settings = SubtabsSettings.getInstance();
         rulesPanel.reset(settings.getRules());
         sidetabsRulesPanel.reset(settings.getSidetabRules());
+        hTabsPanel.revalidate();
+        vTabsPanel.revalidate();
     }
 
     @Override
     public boolean isModified() {
-        if (subtabsActiveCheckbox == null) {
+        if (familiaEnabledCheckbox == null) {
             return false;
         }
 
         SubtabsSettings settings = SubtabsSettings.getInstance();
-        boolean appearanceModified = subtabsActiveCheckbox.isSelected() != settings.isFamiliaEnabled()
+        boolean appearanceModified = familiaEnabledCheckbox.isSelected() != settings.isFamiliaEnabled()
+                || hTabsActiveCheckbox.isSelected() != settings.isSubtabsActive()
                 || sidetabsActiveCheckbox.isSelected() != settings.isSidetabsActive()
                 || sidetabLayoutModeCombo.getItem() != settings.getSidetabLayoutMode()
                 || sidetabsSideSwitch.isSelected() != settings.isSidetabsOnRight()
@@ -219,13 +249,14 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
 
     @Override
     public void apply() {
-        if (subtabsActiveCheckbox == null) {
+        if (familiaEnabledCheckbox == null) {
             return;
         }
 
         TypographyPreview.clear();
         SubtabsSettings settings = SubtabsSettings.getInstance();
-        settings.setFamiliaEnabled(subtabsActiveCheckbox.isSelected());
+        settings.setFamiliaEnabled(familiaEnabledCheckbox.isSelected());
+        settings.setSubtabsActive(hTabsActiveCheckbox.isSelected());
         settings.setSidetabsActive(sidetabsActiveCheckbox.isSelected());
         settings.setSidetabLayoutMode(sidetabLayoutModeCombo.getItem());
         settings.setSidetabsOnRight(sidetabsSideSwitch.isSelected());
@@ -250,13 +281,14 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
 
     @Override
     public void reset() {
-        if (subtabsActiveCheckbox == null) {
+        if (familiaEnabledCheckbox == null) {
             return;
         }
 
         TypographyPreview.clear();
         SubtabsSettings settings = SubtabsSettings.getInstance();
-        subtabsActiveCheckbox.setSelected(settings.isFamiliaEnabled());
+        familiaEnabledCheckbox.setSelected(settings.isFamiliaEnabled());
+        hTabsActiveCheckbox.setSelected(settings.isSubtabsActive());
         sidetabsActiveCheckbox.setSelected(settings.isSidetabsActive());
         sidetabLayoutModeCombo.setItem(settings.getSidetabLayoutMode());
         sidetabsSideSwitch.setSelected(settings.isSidetabsOnRight());
@@ -285,7 +317,8 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
     @Override
     public void disposeUIResources() {
         TypographyPreview.clear();
-        subtabsActiveCheckbox = null;
+        familiaEnabledCheckbox = null;
+        hTabsActiveCheckbox = null;
         sidetabsActiveCheckbox = null;
         sidetabLayoutModeCombo = null;
         sidetabsSideSwitch = null;
@@ -307,7 +340,8 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         sidetabsRulesPanel = null;
         rootPanel = null;
         mainTabs = null;
-        rulesTabs = null;
+        hTabsPanel = null;
+        vTabsPanel = null;
         rulesUiInitialized = false;
     }
 
@@ -317,7 +351,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         }
         int answer = Messages.showYesNoDialog(
                 rootPanel,
-                "Alle Familia-Einstellungen (Ansicht, Regeln, SideTabs und Gruppenfarben) "
+                "Alle Familia-Einstellungen (Ansicht, H-Tabs, V-Tabs, SplitTabs, AI und Gruppenfarben) "
                         + "werden auf die Standardwerte zurückgesetzt.\n\n"
                         + "Eigene Regeln und Anpassungen gehen dabei verloren.",
                 "Einstellungen zurücksetzen?",
