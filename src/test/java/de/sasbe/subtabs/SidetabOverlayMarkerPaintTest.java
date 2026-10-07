@@ -7,7 +7,6 @@ import javax.swing.SwingUtilities;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
-import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -206,13 +205,11 @@ class SidetabOverlayMarkerPaintTest {
         return new Point((minX + maxX) / 2, (minY + maxY) / 2);
     }
 
-    private static BufferedImage render(JToggleButton button) throws Exception {
+    private static BufferedImage render(JToggleButton button) {
         BufferedImage image = new BufferedImage(button.getWidth(), button.getHeight(), BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         try {
-            Method paint = button.getClass().getDeclaredMethod("paintComponent", java.awt.Graphics.class);
-            paint.setAccessible(true);
-            paint.invoke(button, graphics);
+            button.paint(graphics);
         } finally {
             graphics.dispose();
         }
@@ -239,6 +236,25 @@ class SidetabOverlayMarkerPaintTest {
         var constructor = type.getDeclaredConstructor();
         constructor.setAccessible(true);
         return (JToggleButton) constructor.newInstance();
+    }
+
+    @Test
+    void blankMarkerBrightensAndGrowsOnHover() throws Exception {
+        JToggleButton button = newOverlayButton();
+        button.setSize(40, 32);
+        button.putClientProperty(SidetabBarPanel.BLANK_KEY, true);
+        button.putClientProperty(SidetabBarPanel.FOLDED_KEY, false);
+        button.putClientProperty("overlayLineWidth", 6);
+
+        int idleSpan = paintedVerticalSpan(button);
+        double idleAlpha = averageAlpha(render(button));
+
+        button.putClientProperty(SidetabBarPanel.SEGMENT_HOVER_KEY, Boolean.TRUE);
+        int hoverSpan = paintedVerticalSpan(button);
+        double hoverAlpha = averageAlpha(render(button));
+
+        assertTrue(hoverSpan > idleSpan, "Hovered blank bars must grow like selected bars");
+        assertTrue(hoverAlpha > idleAlpha, "Hovered blank bars must brighten");
     }
 
     @Test

@@ -1,7 +1,6 @@
 package de.sasbe.subtabs;
 
 import com.intellij.codeInsight.daemon.impl.HighlightInfo;
-import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.markup.RangeHighlighter;
@@ -111,7 +110,7 @@ record ComponentSubtabFilePresentation(boolean modified, boolean hasErrors) {
                 continue;
             }
             HighlightInfo info = HighlightInfo.fromRangeHighlighter(highlighter);
-            if (info != null && info.getSeverity().compareTo(HighlightSeverity.ERROR) >= 0) {
+            if (ComponentSubtabEditorHighlighting.countsAsTabError(info)) {
                 return true;
             }
         }

@@ -122,6 +122,15 @@ Optional vorher einmalig ausführen (beschleunigt den ersten Demo-Start):
 
 Das oeffnet automatisch das Demo-Projekt unter `demo-project/`.
 
+**Voraussetzung:** [Node.js](https://nodejs.org/) (npm) im PATH. Beim `prepareSandbox` /
+`start-demo.bat` wird in `demo-project` automatisch `npm ci` ausgeführt; die Sandbox-IDE
+(Ultimate) bekommt vorkonfiguriert ESLint, Stylelint (CSS/SCSS) und TypeScript-Service
+(`tsconfig.app.json`). Das Demo-Projekt ist als **WEB-Modul** angelegt (nicht nur Java), damit
+`.ts`/`.scss` analysiert werden. SubTabs/SideTabs übernehmen Editor-Highlights als rote Wellen.
+
+Nach dem Wechsel auf Ultimate einmal `gradlew cleanSandbox` ausführen, falls die Test-IDE noch
+keine TypeScript-Kringel zeigt.
+
 1. Dieses Verzeichnis in IntelliJ IDEA oeffnen (optional, fuer Entwicklung).
 2. Warten, bis der Gradle-Import abgeschlossen ist.
 3. Die Gradle-Aufgabe `runIde` starten (siehe oben).
@@ -138,6 +147,11 @@ Das oeffnet automatisch das Demo-Projekt unter `demo-project/`.
     Gleiches Muster fuer `checkout/` + `checkout-state/` sowie `orders/` + `orders-state/`.
 12. Oeffne `src/app/models/central/user.model.ts` und
     `src/app/models/feature-based/user/user.model.ts`.
+13. **Navigation-Popup + Hover Sync:** Siehe
+    [`demo-project/FAMILIA-NAVIGATION-HOVER-DEMO.md`](demo-project/FAMILIA-NAVIGATION-HOVER-DEMO.md).
+    **Zuverlaessig:** `demo-project/sidetabs-examples/java/NavigationHoverDemoStandalone.java`
+    oeffnen, **`familiaNavigationDemoTarget`** in `runNavigationHoverDemo()` markieren, **Ctrl+B**,
+    Eintraege hovern. (Alternativ TS: `navigation-hover-demo.standalone.ts` — nur mit laufender TS-Analyse.)
 
 ## Automatisierte Tests und Build
 

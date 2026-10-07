@@ -45,6 +45,14 @@ final class SidetabIconLayout {
         return iconSize() * visibleIconCount + iconGap() * visibleIconCount;
     }
 
+    static int collapseOverlayIconRowWidth() {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        if (!settings.isShowCollapseButton()) {
+            return 0;
+        }
+        return reservedHorizontalWidth(visibleCollapseIconCount());
+    }
+
     static int reservedTopHeight(
             boolean showCollapseButton,
             boolean subtabsActive,
@@ -104,6 +112,21 @@ final class SidetabIconLayout {
         return layoutAtEditorTopRight(editor, editorComponent, layeredPane, size, subtabsSlotFromRight());
     }
 
+    static @NotNull Rectangle layoutSplittabRestoreIcon(
+            @NotNull FileEditor editor,
+            @NotNull JComponent editorComponent,
+            @NotNull JLayeredPane layeredPane,
+            @NotNull Dimension size
+    ) {
+        return layoutAtEditorTopRight(
+                editor,
+                editorComponent,
+                layeredPane,
+                size,
+                splittabRestoreSlotFromRight()
+        );
+    }
+
     static @NotNull Rectangle layoutSidetabsIcon(
             @NotNull FileEditor editor,
             @NotNull JComponent editorComponent,
@@ -119,7 +142,11 @@ final class SidetabIconLayout {
             @NotNull JLayeredPane layeredPane,
             @NotNull Dimension size
     ) {
-        return layoutAtEditorTopRight(editor, editorComponent, layeredPane, size, subtabsSlotFromRight() + 1);
+        int slot = subtabsSlotFromRight() + 1;
+        if (splittabRestoreSlotFromRight() > 0) {
+            slot++;
+        }
+        return layoutAtEditorTopRight(editor, editorComponent, layeredPane, size, slot);
     }
 
     static int sidetabContentTopY(
@@ -145,6 +172,14 @@ final class SidetabIconLayout {
             return 0;
         }
         return 1;
+    }
+
+    static int splittabRestoreSlotFromRight() {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        if (!settings.isFamiliaEnabled() || !settings.isShowCollapseButton()) {
+            return 0;
+        }
+        return subtabsSlotFromRight() + 1;
     }
 
     private static int sidetabsSlotFromRight() {

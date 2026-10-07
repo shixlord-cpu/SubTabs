@@ -20,6 +20,10 @@ echo   sobald die Configure-Phase wirklich fertig ist.
 echo.
 echo   Schliesse zuerst eine bereits laufende Test-IDE, falls vorhanden.
 echo.
+echo   Session-Recording: Zustaende landen in demo-replay\ (siehe demo-replay\README.md).
+echo   Navigation-Popup-Hover-Demo: sidetabs-examples\java\NavigationHoverDemoStandalone.java
+echo   Anleitung: demo-project\FAMILIA-NAVIGATION-HOVER-DEMO.md
+echo.
 echo ------------------------------------------------------------
 echo [1/2] Sandbox vorbereiten (prepareSandbox)...
 echo ------------------------------------------------------------

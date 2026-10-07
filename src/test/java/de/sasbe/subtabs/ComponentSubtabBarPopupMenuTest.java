@@ -23,10 +23,12 @@ public class ComponentSubtabBarPopupMenuTest extends HeavyPlatformTestCase {
         htmlFile = WriteAction.computeAndWait(() -> dir.createChildData(this, "product-list.component.html"));
     }
 
-    public void testInactiveSubtabsOfferFlatMenuWithoutFamilia() {
-        List<String> topLevel = topLevelTexts(htmlFile, false);
+    public void testInactiveSubtabsOfferFlatMenuWithoutFamilia() throws Exception {
+        VirtualFile specFile = siblingFile("product-list.component.spec.ts");
+        List<String> topLevel = topLevelTexts(specFile, false);
         assertFalse("subtab menus must not contain Familia: " + topLevel, topLevel.contains("Familia"));
         assertTrue(topLevel.contains("Im Projektbaum anzeigen"));
+        assertTrue(topLevel.contains("Splittab erstellen"));
         assertTrue(topLevel.contains("Sub-Tab im neuen Tab öffnen"));
         assertTrue(topLevel.contains("Sub-Tab im neuen Fenster öffnen"));
         assertTrue(topLevel.contains("Nach links verschieben"));
@@ -41,6 +43,13 @@ public class ComponentSubtabBarPopupMenuTest extends HeavyPlatformTestCase {
         assertFalse(topLevel.contains("Sub-Tab im neuen Tab öffnen"));
         assertFalse(topLevel.contains("Sub-Tab im neuen Fenster öffnen"));
         assertFalse(topLevel.contains("Familia"));
+        assertFalse("the active subtab must not offer split", topLevel.contains("Splittab erstellen"));
+    }
+
+    public void testGrayedSubtabsStillOfferSplitten() throws Exception {
+        VirtualFile specFile = siblingFile("product-list.component.spec.ts");
+        List<String> topLevel = topLevelTexts(specFile, true);
+        assertTrue("grayed subtabs must still offer split: " + topLevel, topLevel.contains("Splittab erstellen"));
     }
 
     public void testEverySubtabMenuOffersProjectTreeReveal() {
@@ -66,6 +75,10 @@ public class ComponentSubtabBarPopupMenuTest extends HeavyPlatformTestCase {
 
     public void testHoverViewDefaultsToEnabled() {
         assertTrue(SubtabHoverView.isEnabled());
+    }
+
+    private VirtualFile siblingFile(String name) throws Exception {
+        return WriteAction.computeAndWait(() -> htmlFile.getParent().createChildData(this, name));
     }
 
     private List<String> topLevelTexts(VirtualFile targetFile, boolean revealOnly) {

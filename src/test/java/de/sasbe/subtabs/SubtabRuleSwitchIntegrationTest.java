@@ -140,6 +140,56 @@ public class SubtabRuleSwitchIntegrationTest extends RealEditorWindowTestCase {
         assertTrue("rule switch must stay visible when SubTabs are inactive", panel.isRuleSwitchVisible());
     }
 
+    public void testReuseOpenAfterRuleSwitchUsesCurrentGrouping() throws Exception {
+        SubtabsSettings.getInstance().setReuseOpenSubtabGroupMainTab(true);
+        SubtabsSettings.getInstance().setRules(SubtabRulesDefaults.createDefaults());
+
+        VirtualFile root = WriteAction.computeAndWait(() -> sourceDir.createChildDirectory(this, "feature-neighbors"));
+        WriteAction.runAndWait(() -> {
+            VirtualFile products = root.createChildDirectory(this, "products");
+            VirtualFile productsState = root.createChildDirectory(this, "products-state");
+            products.createChildData(this, "products.actions.ts");
+            products.createChildData(this, "products.selectors.ts");
+            products.createChildData(this, "demo.actions.ts");
+            productsState.createChildData(this, "products.reducer.ts");
+            productsState.createChildData(this, "products.effects.ts");
+        });
+        VirtualFile actions = WriteAction.computeAndWait(() -> {
+            VirtualFile products = root.findChild("products");
+            return products == null ? null : products.findChild("products.actions.ts");
+        });
+        assertNotNull(actions);
+
+        openAndSettle(actions);
+        ComponentSubtabsManager.attachIfNeeded(getProject(), actions);
+
+        ComponentSubtabBarPanel panel = barFor(actions);
+        assertNotNull(panel);
+        panel.switchRuleForDisplayedFile();
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+        ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(actions);
+        assertNotNull(match);
+        assertEquals(2, match.relatedFiles().size());
+        VirtualFile partner = match.relatedFiles().stream()
+                .map(ComponentRelatedFiles.Entry::file)
+                .filter(file -> !file.equals(actions))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(partner);
+        assertTrue(ComponentSubtabNavigation.sharesCurrentSubtabGrouping(partner, actions));
+        assertTrue(
+                ComponentSubtabProjectViewNavigation.navigateRelatedFileFromProjectView(
+                        getProject(),
+                        partner,
+                        true
+                )
+        );
+        drainDeferredEditorEvents();
+        assertTrue(manager.isFileOpen(partner));
+        assertFalse(manager.isFileOpen(actions));
+    }
+
     public void testRuleSwitchChangesNeighborGroupingWithDefaultRules() throws Exception {
         SubtabsSettings.getInstance().setRules(SubtabRulesDefaults.createDefaults());
 

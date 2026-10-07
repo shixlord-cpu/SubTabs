@@ -27,6 +27,7 @@ final class ComponentSubtabsStartupActivity implements ProjectActivity {
             }
             ComponentSubtabMainTabColors.refresh(project);
             ComponentSubtabMainTabIcons.scheduleStartupRefresh(project);
+            ComponentSubtabEditorSplitNavigation.restorePersistedActiveSplittab(project);
         });
         SubtabGroupTreeControl.installOn(project);
         ComponentSubtabProjectViewEditorHover.installOn(project);

@@ -26,10 +26,11 @@ final class SubtabsCollapseOverlay {
     static void show(@NotNull Project project, @NotNull FileEditor editor) {
         hide(editor);
         JComponent editorComponent = editor.getComponent();
-        ComponentSubtabIconButton button = createButton(project);
+        ComponentSubtabIconButton button = createButton(project, editor);
         Handle handle = new Handle(editor, editorComponent, button);
         editor.putUserData(OVERLAY_KEY, handle);
         handle.install();
+        SplittabRestoreOverlay.syncEditor(project, editor);
     }
 
     static void hide(@NotNull FileEditor editor) {
@@ -39,6 +40,7 @@ final class SubtabsCollapseOverlay {
         }
         handle.dispose();
         editor.putUserData(OVERLAY_KEY, null);
+        SplittabRestoreOverlay.hide(editor);
     }
 
     static void relayout(@NotNull FileEditor editor) {
@@ -58,11 +60,15 @@ final class SubtabsCollapseOverlay {
         return editor.getUserData(OVERLAY_KEY) != null;
     }
 
-    private static @NotNull ComponentSubtabIconButton createButton(@NotNull Project project) {
+    private static @NotNull ComponentSubtabIconButton createButton(
+            @NotNull Project project,
+            @NotNull FileEditor editor
+    ) {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(SubtabsIcons.ACTIVE);
         button.setToolTipText("SubTabs einklappen");
         button.getAccessibleContext().setAccessibleName("SubTabs einklappen");
-        button.addActionListener(event -> SubtabsCollapseState.getInstance(project).toggle(project));
+        ComponentSubtabsIconContextMenu.installSubtabIconToggleClick(project, editor, button);
+        ComponentSubtabsIconContextMenu.installSubtabIconMenu(project, editor, button);
         return button;
     }
 

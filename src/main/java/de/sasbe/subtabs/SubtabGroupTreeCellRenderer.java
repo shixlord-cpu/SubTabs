@@ -95,9 +95,29 @@ final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
                     && ComponentSubtabModifiedUi.isModified(project, file)) {
                 applyModifiedMainText(colored, ComponentSubtabModifiedUi.foreground(true, false));
             }
+            appendSplittabHoverMarker(colored, tree, row);
         }
 
         return component;
+    }
+
+    private static void appendSplittabHoverMarker(
+            @NotNull SimpleColoredComponent colored,
+            @NotNull JTree tree,
+            int row
+    ) {
+        String marker = ComponentSubtabProjectViewHover.splittabHoverMarkerForRow(tree, row);
+        if (marker == null || marker.isEmpty()) {
+            return;
+        }
+        colored.append("  ", SimpleTextAttributes.REGULAR_ATTRIBUTES);
+        colored.append(
+                marker,
+                new SimpleTextAttributes(
+                        SimpleTextAttributes.STYLE_PLAIN,
+                        UIUtil.getInactiveTextColor()
+                )
+        );
     }
 
     private static @Nullable SubtabGroupProjectViewNode enclosingGroupNode(@NotNull TreePath path) {

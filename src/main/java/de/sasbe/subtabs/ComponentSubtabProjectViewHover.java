@@ -33,6 +33,9 @@ final class ComponentSubtabProjectViewHover {
     private static final String EXTERNAL_HOVER_PRIMARY_FILE_KEY = "componentSubtabs.projectViewExternalHoverPrimaryFile";
     private static final String EXTERNAL_HOVER_HANDLE_KEY = "componentSubtabs.projectViewExternalHoverHandle";
     private static final String HOVER_OWNER_KEY = "componentSubtabs.projectViewHoverOwner";
+    private static final String SPLITTAB_HOVER_MARKERS_KEY = "componentSubtabs.projectViewSplittabHoverMarkers";
+    static final String SPLITTAB_HOVER_MARKER_LEFT = "<-A";
+    static final String SPLITTAB_HOVER_MARKER_RIGHT = "B->";
 
     private record Handle(@NotNull JTree tree, int row) {
     }
@@ -121,6 +124,61 @@ final class ComponentSubtabProjectViewHover {
             return;
         }
         applyExternalRows(source, tree, targetRows, tabFile);
+    }
+
+    /**
+     * Hover Sync for an active splittab pair: both pair files are marked in the project tree;
+     * {@value SPLITTAB_HOVER_MARKER_LEFT} on the left pair file, {@value SPLITTAB_HOVER_MARKER_RIGHT} on the right.
+     */
+    static boolean onEnterSplittabPair(
+            @NotNull Project project,
+            @NotNull ComponentSubtabEditorSplitRegistry.SplittabPair pair,
+            @Nullable VirtualFile primaryHighlightFile,
+            @NotNull JComponent source
+    ) {
+        if (SubtabHoverView.isDisabled()) {
+            return false;
+        }
+        onExit(source);
+
+        JTree tree = projectViewTree(project);
+        if (tree == null || !tree.isShowing()) {
+            return false;
+        }
+
+        releaseTreeHoverForOtherOwner(tree, source);
+        return applySplittabPairHover(source, tree, pair, primaryHighlightFile);
+    }
+
+    private static boolean applySplittabPairHover(
+            @NotNull JComponent source,
+            @NotNull JTree tree,
+            @NotNull ComponentSubtabEditorSplitRegistry.SplittabPair pair,
+            @Nullable VirtualFile primaryHighlightFile
+    ) {
+        java.util.Map<Integer, String> markers = new java.util.LinkedHashMap<>();
+        Set<Integer> targetRows = new LinkedHashSet<>();
+        collectSplittabPairHoverRow(tree, pair.leftFile(), SPLITTAB_HOVER_MARKER_LEFT, targetRows, markers);
+        collectSplittabPairHoverRow(tree, pair.rightFile(), SPLITTAB_HOVER_MARKER_RIGHT, targetRows, markers);
+
+        if (targetRows.isEmpty()) {
+            return false;
+        }
+
+        VirtualFile primary = primaryHighlightFile != null ? primaryHighlightFile : pair.leftFile();
+        applyExternalRows(source, tree, targetRows, primary);
+        tree.putClientProperty(SPLITTAB_HOVER_MARKERS_KEY, java.util.Map.copyOf(markers));
+        repaintHover(tree);
+        return true;
+    }
+
+    static @Nullable String splittabHoverMarkerForRow(@NotNull JTree tree, int row) {
+        Object value = tree.getClientProperty(SPLITTAB_HOVER_MARKERS_KEY);
+        if (!(value instanceof java.util.Map<?, ?> markers)) {
+            return null;
+        }
+        Object marker = markers.get(row);
+        return marker instanceof String text ? text : null;
     }
 
     static void onExit(@NotNull JComponent source) {
@@ -222,7 +280,26 @@ final class ComponentSubtabProjectViewHover {
     private static void clearExternalRows(@NotNull JTree tree) {
         tree.putClientProperty(EXTERNAL_HOVER_ROWS_KEY, null);
         tree.putClientProperty(EXTERNAL_HOVER_PRIMARY_FILE_KEY, null);
+        tree.putClientProperty(SPLITTAB_HOVER_MARKERS_KEY, null);
         repaintHover(tree);
+    }
+
+    private static void collectSplittabPairHoverRow(
+            @NotNull JTree tree,
+            @NotNull VirtualFile file,
+            @NotNull String marker,
+            @NotNull Set<Integer> targetRows,
+            @NotNull java.util.Map<Integer, String> markers
+    ) {
+        TreePath path = findHoverTargetPath(tree, file);
+        if (path == null) {
+            return;
+        }
+        int row = rowForPath(tree, path);
+        if (row >= 0) {
+            targetRows.add(row);
+            markers.put(row, marker);
+        }
     }
 
     private static void releaseTreeHoverForOtherOwner(@NotNull JTree tree, @NotNull JComponent source) {
@@ -241,6 +318,11 @@ final class ComponentSubtabProjectViewHover {
         if (TreeHoverListener.DEFAULT instanceof TreeHoverListener listener) {
             listener.onHover(tree, row);
         }
+    }
+
+    @TestOnly
+    static @Nullable JTree projectViewTreeForTest(@NotNull Project project) {
+        return projectViewTree(project);
     }
 
     private static @Nullable JTree projectViewTree(@NotNull Project project) {
@@ -499,6 +581,18 @@ final class ComponentSubtabProjectViewHover {
             return;
         }
         applyExternalRows(source, tree, rows, primaryHighlightFile);
+    }
+
+    @TestOnly
+    static void activateSplittabPairHoverForTest(
+            @NotNull JComponent source,
+            @NotNull JTree tree,
+            @NotNull ComponentSubtabEditorSplitRegistry.SplittabPair pair,
+            @Nullable VirtualFile primaryHighlightFile
+    ) {
+        onExit(source);
+        releaseTreeHoverForOtherOwner(tree, source);
+        applySplittabPairHover(source, tree, pair, primaryHighlightFile);
     }
 
     @TestOnly

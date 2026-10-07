@@ -19,10 +19,10 @@ import java.beans.PropertyChangeListener;
 import java.util.List;
 
 /**
- * TESTE: production SidetabBarPanel hover path must keep sub-depth dots fixed.
+ * TESTE: production SidetabBarPanel hover path must keep sub-depth indent fixed.
  */
 public class SidetabSubDepthHoverTest extends HeavyPlatformTestCase {
-    public void testSubDepthDotsAndButtonOriginStayFixedOnHover() {
+    public void testSubDepthIndentAndButtonOriginStayFixedOnHover() {
         SidetabBarPanel panel = createPanelWithNestedSections(getProject());
         layoutPanel(panel);
 
@@ -30,14 +30,14 @@ public class SidetabSubDepthHoverTest extends HeavyPlatformTestCase {
             JToggleButton button = panel.buttonAt(index);
             assertNotNull("section button " + index, button);
 
-            int dotXBefore = dotColumnInPanel(panel, button);
+            int textXBefore = textStartInPanel(panel, button);
             int buttonXBefore = button.getLocation().x;
 
             hoverButton(button);
             ComponentSubtabUi.refreshButton(button);
             layoutPanel(panel);
 
-            assertEquals("dot column must not move on hover for section " + index, dotXBefore, dotColumnInPanel(panel, button));
+            assertEquals("text indent must not move on hover for section " + index, textXBefore, textStartInPanel(panel, button));
             assertEquals("button origin must not move on hover for section " + index, buttonXBefore, button.getLocation().x);
         }
     }
@@ -90,13 +90,15 @@ public class SidetabSubDepthHoverTest extends HeavyPlatformTestCase {
         ));
     }
 
-    private static int dotColumnInPanel(@NotNull SidetabBarPanel panel, @NotNull JToggleButton button) {
-        Point dotInPanel = SwingUtilities.convertPoint(
+    private static int textStartInPanel(@NotNull SidetabBarPanel panel, @NotNull JToggleButton button) {
+        Object depthValue = button.getClientProperty(SidetabBarPanel.DEPTH_KEY);
+        int depth = depthValue instanceof Integer value ? value : 0;
+        Point textInPanel = SwingUtilities.convertPoint(
                 button,
-                new Point(SidetabBarPanel.subDepthDotBaseX(), button.getHeight() / 2),
+                new Point(SidetabBarPanel.subDepthTextIndent(depth), button.getHeight() / 2),
                 panel
         );
-        return dotInPanel.x;
+        return textInPanel.x;
     }
 
     private static final class TestFileEditor implements FileEditor {

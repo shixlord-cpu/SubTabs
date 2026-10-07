@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
+import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JLayeredPane;
 import java.awt.Dimension;
@@ -27,10 +28,11 @@ final class SubtabsExpandOverlay {
         hide(editor);
 
         JComponent editorComponent = editor.getComponent();
-        ComponentSubtabIconButton button = createExpandButton(project);
+        ComponentSubtabIconButton button = createExpandButton(project, editor);
         Handle handle = new Handle(editor, editorComponent, button);
         editor.putUserData(OVERLAY_KEY, handle);
         handle.install();
+        SplittabRestoreOverlay.syncEditor(project, editor);
     }
 
     static @Nullable JComponent visibleButton(@NotNull FileEditor editor) {
@@ -46,6 +48,12 @@ final class SubtabsExpandOverlay {
         return editor.getUserData(OVERLAY_KEY) != null;
     }
 
+    @TestOnly
+    static @Nullable Icon expandIconOnEditor(@NotNull FileEditor editor) {
+        Handle handle = editor.getUserData(OVERLAY_KEY);
+        return handle == null ? null : handle.button.getIcon();
+    }
+
     static void hide(@NotNull FileEditor editor) {
         Handle handle = editor.getUserData(OVERLAY_KEY);
         if (handle == null) {
@@ -53,6 +61,7 @@ final class SubtabsExpandOverlay {
         }
         handle.dispose();
         editor.putUserData(OVERLAY_KEY, null);
+        SplittabRestoreOverlay.hide(editor);
     }
 
     static void relayout(@NotNull FileEditor editor) {
@@ -62,11 +71,15 @@ final class SubtabsExpandOverlay {
         }
     }
 
-    private static @NotNull ComponentSubtabIconButton createExpandButton(@NotNull Project project) {
+    private static @NotNull ComponentSubtabIconButton createExpandButton(
+            @NotNull Project project,
+            @NotNull FileEditor editor
+    ) {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(SubtabsIcons.INACTIVE);
         button.setToolTipText("SubTabs ausklappen");
         button.getAccessibleContext().setAccessibleName("SubTabs ausklappen");
-        button.addActionListener(event -> SubtabsCollapseState.getInstance(project).toggle(project));
+        ComponentSubtabsIconContextMenu.installSubtabIconToggleClick(project, editor, button);
+        ComponentSubtabsIconContextMenu.installSubtabIconMenu(project, editor, button);
         return button;
     }
 

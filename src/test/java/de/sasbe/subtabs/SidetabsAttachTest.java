@@ -205,7 +205,7 @@ public class SidetabsAttachTest extends RealEditorWindowTestCase {
         assertEquals("Body", body.getToolTipText());
     }
 
-    public void testOverlayBarsStayTopAligned() throws Exception {
+    public void testOverlayBarsStayVerticallyCenteredWhenTheyFit() throws Exception {
         SubtabsSettings.getInstance().setSidetabLayoutMode(SidetabLayoutMode.OVERLAY);
         VirtualFile file = createSourceFile("stack.component.ts");
         WriteAction.run(() -> file.setBinaryContent("""
@@ -224,15 +224,29 @@ public class SidetabsAttachTest extends RealEditorWindowTestCase {
 
         panel.setSize(panel.getPreferredSize().width, 720);
         panel.validate();
+        panel.refreshOverlayStackLayout();
+        panel.validate();
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+        java.awt.Container tabsHost = panel.buttonAt(0).getParent().getParent();
+        assertNotNull(tabsHost);
+        javax.swing.JViewport viewport = tabsHost.getParent() instanceof javax.swing.JViewport hostViewport
+                ? hostViewport
+                : null;
+        assertNotNull(viewport);
+        assertTrue(
+                "Overlay host must fill the code window height for vertical centering",
+                tabsHost.getHeight() > SidetabBarPanel.overlayStackHeight(sectionCount)
+        );
 
         int stackTop = Integer.MAX_VALUE;
         int stackBottom = 0;
+        java.awt.Component centerReference = tabsHost;
         for (int index = 0; index < sectionCount; index++) {
             JToggleButton button = panel.buttonAt(index);
             assertNotNull(button);
-            java.awt.Point top = javax.swing.SwingUtilities.convertPoint(button, 0, 0, panel);
-            java.awt.Point bottom = javax.swing.SwingUtilities.convertPoint(button, 0, button.getHeight(), panel);
+            java.awt.Point top = javax.swing.SwingUtilities.convertPoint(button, 0, 0, centerReference);
+            java.awt.Point bottom = javax.swing.SwingUtilities.convertPoint(button, 0, button.getHeight(), centerReference);
             stackTop = Math.min(stackTop, top.y);
             stackBottom = Math.max(stackBottom, bottom.y);
         }
@@ -242,15 +256,12 @@ public class SidetabsAttachTest extends RealEditorWindowTestCase {
                 "Overlay stack must stay compact",
                 stackBottom - stackTop <= expectedHeight + com.intellij.util.ui.JBUI.scale(2)
         );
-        int expectedTop = SidetabBarPanel.stackTopInset();
+        int stackCenterY = (stackTop + stackBottom) / 2;
+        int hostCenterY = tabsHost.getHeight() / 2;
         assertTrue(
-                "Overlay bars must sit near the top of the panel (stackTop="
-                        + stackTop + ", expectedTop=" + expectedTop + ")",
-                stackTop >= 0 && stackTop <= expectedTop + com.intellij.util.ui.JBUI.scale(8)
-        );
-        assertTrue(
-                "Overlay bars must not stay vertically centered in a tall panel",
-                stackTop < panel.getHeight() / 3
+                "Overlay bars must start from the vertical center of the code window (stackCenter="
+                        + stackCenterY + ", hostCenter=" + hostCenterY + ")",
+                Math.abs(stackCenterY - hostCenterY) <= com.intellij.util.ui.JBUI.scale(8)
         );
     }
 

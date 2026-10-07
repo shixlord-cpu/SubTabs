@@ -11,6 +11,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.util.List;
 
 record SidetabSectionPresentation(boolean modified, boolean hasErrors) {
     static final SidetabSectionPresentation CLEAN = new SidetabSectionPresentation(false, false);
@@ -27,7 +28,7 @@ record SidetabSectionPresentation(boolean modified, boolean hasErrors) {
         int start = section.startOffset();
         int end = section.endOffset();
         boolean errors = ComponentSubtabFilePresentation.hasMarkupErrorsInRange(project, document, start, end);
-        boolean modified = isModifiedInRange(project, document, file, start, end);
+        boolean modified = isModifiedInRange(project, document, file, section);
         return new SidetabSectionPresentation(modified, errors);
     }
 
@@ -35,45 +36,87 @@ record SidetabSectionPresentation(boolean modified, boolean hasErrors) {
             @NotNull Project project,
             @NotNull Document document,
             @NotNull VirtualFile file,
-            int start,
-            int end
+            @NotNull SidetabSection section
     ) {
-        if (end <= start) {
+        if (section.endOffset() <= section.startOffset()) {
             return false;
         }
-        if (rangeDiffersFromSaved(document, file, start, end)) {
+        if (document.getModificationStamp() != file.getModificationStamp()
+                && rangeDiffersFromSaved(document, file, section)) {
             return true;
         }
-        return ReadAction.compute(() -> hasVcsChangesInRange(project, document, start, end));
+        return ReadAction.compute(() -> hasVcsChangesInRange(
+                project,
+                document,
+                section.startOffset(),
+                section.endOffset()
+        ));
     }
 
     private static boolean rangeDiffersFromSaved(
             @NotNull Document document,
             @NotNull VirtualFile file,
-            int start,
-            int end
+            @NotNull SidetabSection section
     ) {
+        String currentRange = textInRange(document, section.startOffset(), section.endOffset());
+        try {
+            String savedText = VfsUtil.loadText(file);
+            List<CustomSidetabRule> rules = SubtabsSettings.getInstance().getSidetabRules();
+            List<SidetabSection> currentSections = SidetabSections.split(
+                    file.getName(),
+                    document.getText(),
+                    rules
+            );
+            List<SidetabSection> savedSections = SidetabSections.split(
+                    file.getName(),
+                    savedText,
+                    rules
+            );
+            int sectionIndex = sectionIndex(currentSections, section);
+            if (sectionIndex < 0) {
+                return !currentRange.isEmpty();
+            }
+            if (sectionIndex >= savedSections.size()) {
+                return !currentRange.isBlank();
+            }
+            SidetabSection savedSection = savedSections.get(sectionIndex);
+            String savedRange = textInRange(savedText, savedSection.startOffset(), savedSection.endOffset());
+            return !currentRange.equals(savedRange);
+        } catch (IOException ignored) {
+            return true;
+        }
+    }
+
+    private static int sectionIndex(@NotNull List<SidetabSection> sections, @NotNull SidetabSection section) {
+        for (int index = 0; index < sections.size(); index++) {
+            SidetabSection candidate = sections.get(index);
+            if (candidate.name().equals(section.name())
+                    && candidate.depth() == section.depth()
+                    && candidate.startOffset() == section.startOffset()) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private static @NotNull String textInRange(@NotNull Document document, int start, int end) {
         int textLength = document.getTextLength();
         int safeStart = Math.max(0, Math.min(start, textLength));
         int safeEnd = Math.max(safeStart, Math.min(end, textLength));
         if (safeEnd <= safeStart) {
-            return false;
+            return "";
         }
-        String current = document.getCharsSequence().subSequence(safeStart, safeEnd).toString();
-        try {
-            String savedText = VfsUtil.loadText(file);
-            if (safeStart >= savedText.length()) {
-                return true;
-            }
-            int savedEnd = Math.min(safeEnd, savedText.length());
-            String savedRange = savedText.substring(safeStart, savedEnd);
-            if (safeEnd > savedText.length()) {
-                return true;
-            }
-            return !current.equals(savedRange);
-        } catch (IOException ignored) {
-            return true;
+        return document.getCharsSequence().subSequence(safeStart, safeEnd).toString();
+    }
+
+    private static @NotNull String textInRange(@NotNull String text, int start, int end) {
+        int textLength = text.length();
+        int safeStart = Math.max(0, Math.min(start, textLength));
+        int safeEnd = Math.max(safeStart, Math.min(end, textLength));
+        if (safeEnd <= safeStart) {
+            return "";
         }
+        return text.substring(safeStart, safeEnd);
     }
 
     private static boolean hasVcsChangesInRange(

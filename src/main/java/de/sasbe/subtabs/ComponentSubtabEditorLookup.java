@@ -38,4 +38,23 @@ final class ComponentSubtabEditorLookup {
         }
         return currentWindow;
     }
+
+    /**
+     * For a simple two-pane editor split, returns whether {@code window} is the right-hand pane.
+     */
+    static boolean isRightSplitPane(
+            @NotNull FileEditorManagerEx manager,
+            @NotNull EditorWindow window
+    ) {
+        EditorWindow[] windows = manager.getWindows();
+        if (windows.length <= 1) {
+            return false;
+        }
+        for (int index = 0; index < windows.length; index++) {
+            if (windows[index] == window) {
+                return index > 0;
+            }
+        }
+        return false;
+    }
 }

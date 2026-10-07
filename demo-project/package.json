@@ -1,5 +1,26 @@
 {
   "name": "demo-project",
   "private": true,
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "scripts": {
+    "lint": "eslint \"src/**/*.ts\" \"sidetabs-examples/**/*.{ts,js}\" && stylelint \"src/**/*.{css,scss}\" \"sidetabs-examples/**/*.{css,scss}\"",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+  },
+  "dependencies": {
+    "@angular/core": "19.2.4",
+    "@angular/forms": "19.2.4",
+    "@ngrx/effects": "19.2.0",
+    "@ngrx/store": "19.2.0",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.23.0",
+    "@types/jasmine": "5.1.7",
+    "eslint": "9.23.0",
+    "postcss-scss": "4.0.9",
+    "stylelint": "16.16.0",
+    "stylelint-config-standard-scss": "14.0.0",
+    "typescript": "5.8.2",
+    "typescript-eslint": "8.28.0"
+  }
 }

@@ -34,7 +34,8 @@ final class SubtabsPresentation {
             ComponentSubtabsManager.applySettingsChange(project);
             FamiliaLifecycle.activate(project);
         }
-        if (SubtabsSettings.getInstance().isGroupRelatedFilesInProjectView()) {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        if (settings.isProjectViewGroupingActive() || !settings.isProjectViewGroupingEnabled()) {
             refreshProjectViews();
         } else {
             refreshProjectViewOverlaysOnly();
@@ -42,7 +43,7 @@ final class SubtabsPresentation {
     }
 
     static boolean refreshesProjectViewOnSettingsChange() {
-        return SubtabsSettings.getInstance().isGroupRelatedFilesInProjectView();
+        return SubtabsSettings.getInstance().isProjectViewGroupingActive();
     }
 
     private static void refreshProjectViewOverlaysOnly() {

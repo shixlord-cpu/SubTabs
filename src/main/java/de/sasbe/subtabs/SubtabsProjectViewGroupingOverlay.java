@@ -50,7 +50,8 @@ final class SubtabsProjectViewGroupingOverlay {
     }
 
     private static boolean shouldShowGroupingButton() {
-        return SubtabsSettings.getInstance().isFamiliaEnabled();
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        return settings.isFamiliaEnabled() && settings.isProjectViewGroupingEnabled();
     }
 
     static void installOn(@NotNull Project project) {

@@ -176,6 +176,7 @@ final class SubtabGroupFilePopupPanel extends JPanel {
                     if (mainTabProjectViewHover != null) {
                         ComponentSubtabProjectViewHover.onEnter(mainTabProjectViewHover.project(), file, label);
                     }
+                    ComponentSubtabFileEditorHover.onEnter(project, file, label);
                 }
             }
 
@@ -184,6 +185,7 @@ final class SubtabGroupFilePopupPanel extends JPanel {
                 applyPresentationState(project, label, file, context());
                 ComponentSubtabBarHover.onExit(label);
                 ComponentSubtabMainTabHover.onExit(label);
+                ComponentSubtabFileEditorHover.onExit(label);
                 if (mainTabProjectViewHover != null) {
                     ComponentSubtabProjectViewHover.onExit(label);
                     if (isPointerOver(mainTabProjectViewHover.tabLabel())) {

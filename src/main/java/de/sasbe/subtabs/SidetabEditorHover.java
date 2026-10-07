@@ -31,7 +31,12 @@ final class SidetabEditorHover {
         int sectionStart = Math.max(0, Math.min(section.startOffset(), textLength));
         int sectionEnd = Math.max(sectionStart, Math.min(section.endOffset(), textLength));
         if (sectionEnd <= sectionStart) {
-            return;
+            if (textLength <= 0) {
+                return;
+            }
+            int anchor = Math.min(sectionStart, Math.max(0, textLength - 1));
+            sectionStart = anchor;
+            sectionEnd = Math.min(textLength, anchor + 1);
         }
 
         int startLine = document.getLineNumber(sectionStart);

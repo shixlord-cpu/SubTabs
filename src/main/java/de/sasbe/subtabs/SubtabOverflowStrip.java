@@ -72,7 +72,8 @@ final class SubtabOverflowStrip extends JPanel {
         attachWheel(leftArrow);
         attachWheel(rightArrow);
 
-        scrollPane.getViewport().addChangeListener(event -> updateArrows());
+        // Syncing the view size here would fight the viewport layout and loop forever in narrow split panes.
+        scrollPane.getViewport().addChangeListener(event -> updateArrowVisibility());
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent event) {
@@ -209,14 +210,18 @@ final class SubtabOverflowStrip extends JPanel {
 
     private void updateArrows() {
         JViewport viewport = scrollPane.getViewport();
-        int width = contentWidth.getAsInt();
         SubtabBarScrolling.syncViewWidth(
                 viewport,
-                width,
+                contentWidth.getAsInt(),
                 Math.max(viewport.getExtentSize().width, viewport.getWidth())
         );
+        updateArrowVisibility();
+    }
+
+    private void updateArrowVisibility() {
+        JViewport viewport = scrollPane.getViewport();
         boolean arrows = mode == SubtabOverflowMode.ARROWS;
-        SubtabBarScrolling.ViewportSnapshot snapshot = SubtabBarScrolling.snapshot(viewport, width);
+        SubtabBarScrolling.ViewportSnapshot snapshot = SubtabBarScrolling.snapshot(viewport, contentWidth.getAsInt());
         leftArrow.setVisible(arrows && snapshot.canScrollLeft());
         rightArrow.setVisible(arrows && snapshot.canScrollRight());
     }

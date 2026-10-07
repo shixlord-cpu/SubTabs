@@ -3,6 +3,7 @@ package de.sasbe.subtabs;
 import com.intellij.ide.projectView.ProjectView;
 import com.intellij.ide.projectView.impl.AbstractProjectViewPane;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
@@ -135,6 +136,8 @@ final class ComponentSubtabProjectViewEditorHover {
         if (userObject instanceof SubtabGroupProjectViewNode groupNode) {
             ComponentSubtabBarHover.onExit(tree);
             ComponentSubtabMainTabHover.onEnterGroup(project, groupNode.groupKey(), tree);
+            ComponentSubtabProjectViewHover.onExit(tree);
+            ComponentSubtabFileEditorHover.onEnterMergeGroup(project, groupNode.groupKey(), tree);
             return;
         }
 
@@ -144,12 +147,35 @@ final class ComponentSubtabProjectViewEditorHover {
             return;
         }
 
+        ComponentSubtabProjectViewHover.onExit(tree);
         ComponentSubtabBarHover.onEnter(project, file, tree);
         if (FileEditorManager.getInstance(project).isFileOpen(file)) {
             ComponentSubtabMainTabHover.onEnter(project, file, tree);
         } else {
             ComponentSubtabMainTabHover.onExit(tree);
         }
+        if (shouldEditorHighlight(project, file)) {
+            ComponentSubtabFileEditorHover.onEnter(project, file, tree);
+        } else {
+            ComponentSubtabFileEditorHover.onExit(tree);
+        }
+    }
+
+    private static boolean shouldEditorHighlight(
+            @NotNull Project project,
+            @NotNull VirtualFile file
+    ) {
+        if (!SubtabHoverView.isEditorHighlightEnabled()) {
+            return false;
+        }
+        FileEditorManagerEx managerEx = FileEditorManagerEx.getInstanceEx(project);
+        if (!managerEx.isFileOpen(file)) {
+            return false;
+        }
+        if (ComponentSubtabEditorLookup.findWindowWithFile(managerEx, file) == null) {
+            return false;
+        }
+        return ComponentSubtabFileEditorHover.isIdeEditorForeground(project);
     }
 
     private static boolean tryOpenRelatedFileAsSubtabSwitch(
@@ -175,5 +201,7 @@ final class ComponentSubtabProjectViewEditorHover {
         tree.putClientProperty(LAST_ROW_KEY, null);
         ComponentSubtabBarHover.onExit(tree);
         ComponentSubtabMainTabHover.onExit(tree);
+        ComponentSubtabFileEditorHover.onExit(tree);
+        ComponentSubtabProjectViewHover.onExit(tree);
     }
 }

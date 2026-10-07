@@ -33,6 +33,9 @@ import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.RoundRectangle2D;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -102,27 +105,28 @@ final class SubtabGroupTreeControl {
         }
     }
 
+    /**
+     * Uses the tree's expansion state only: asking an async tree model for children of a collapsed node
+     * makes it load them in the background, which would pull in whole folders such as {@code node_modules}.
+     */
     private static void collapseExpandedSubtabGroups(@NotNull JTree tree) {
         Object root = tree.getModel().getRoot();
         if (root == null) {
             return;
         }
-        collapseExpandedSubtabGroups(tree, new TreePath(root));
-    }
-
-    private static void collapseExpandedSubtabGroups(@NotNull JTree tree, @NotNull TreePath path) {
-        if (isAutoExpandedGroupPath(path)) {
-            expandPath(tree, path);
+        Enumeration<TreePath> expanded = tree.getExpandedDescendants(new TreePath(root));
+        if (expanded == null) {
             return;
         }
-        if (isSubtabGroupPath(path) && tree.isExpanded(path)) {
-            tree.collapsePath(path);
+        List<TreePath> toCollapse = new ArrayList<>();
+        while (expanded.hasMoreElements()) {
+            TreePath path = expanded.nextElement();
+            if (isSubtabGroupPath(path) && !isAutoExpandedGroupPath(path)) {
+                toCollapse.add(path);
+            }
         }
-        Object node = path.getLastPathComponent();
-        int childCount = tree.getModel().getChildCount(node);
-        for (int i = 0; i < childCount; i++) {
-            Object child = tree.getModel().getChild(node, i);
-            collapseExpandedSubtabGroups(tree, path.pathByAddingChild(child));
+        for (TreePath path : toCollapse) {
+            tree.collapsePath(path);
         }
     }
 
@@ -173,22 +177,11 @@ final class SubtabGroupTreeControl {
     }
 
     private static void expandAutoExpandedGroups(@NotNull JTree tree) {
-        Object root = tree.getModel().getRoot();
-        if (root == null) {
-            return;
-        }
-        expandAutoExpandedGroups(tree, new TreePath(root));
-    }
-
-    private static void expandAutoExpandedGroups(@NotNull JTree tree, @NotNull TreePath path) {
-        if (isAutoExpandedGroupPath(path)) {
-            expandPath(tree, path);
-        }
-        Object node = path.getLastPathComponent();
-        int childCount = tree.getModel().getChildCount(node);
-        for (int i = 0; i < childCount; i++) {
-            Object child = tree.getModel().getChild(node, i);
-            expandAutoExpandedGroups(tree, path.pathByAddingChild(child));
+        for (int row = 0; row < tree.getRowCount(); row++) {
+            TreePath path = tree.getPathForRow(row);
+            if (isAutoExpandedGroupPath(path)) {
+                expandPath(tree, path);
+            }
         }
     }
 

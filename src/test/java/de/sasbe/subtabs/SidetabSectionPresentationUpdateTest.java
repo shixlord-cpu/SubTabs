@@ -101,6 +101,58 @@ public class SidetabSectionPresentationUpdateTest extends RealEditorWindowTestCa
         );
     }
 
+    public void testLaterSectionsStayUnmodifiedWhenEarlierSectionIsEdited() throws Exception {
+        VirtualFile file = createSourceFile("page.html");
+        WriteAction.run(() -> file.setBinaryContent("""
+                <html>
+                <head><title>Hi</title></head>
+                <body><p>Hello</p></body>
+                <footer>Bye</footer>
+                </html>
+                """.getBytes(StandardCharsets.UTF_8)));
+        openAndSettle(file);
+        SidetabsManager.attachIfNeeded(getProject(), file);
+
+        Document document = FileDocumentManager.getInstance().getDocument(file);
+        assertNotNull(document);
+        int bodyStart = document.getText().indexOf("<body>");
+        assertTrue(bodyStart >= 0);
+        WriteCommandAction.runWriteCommandAction(getProject(), () ->
+                document.insertString(bodyStart + "<body>".length(), "<!-- edit -->"));
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+        SidetabBarPanel panel = panelFor(file);
+        SidetabSection headSection = panel.sections().stream()
+                .filter(section -> "Head".equals(section.name()))
+                .findFirst()
+                .orElseThrow();
+        SidetabSection bodySection = panel.sections().stream()
+                .filter(section -> "Body".equals(section.name()))
+                .findFirst()
+                .orElseThrow();
+        SidetabSection footerSection = panel.sections().stream()
+                .filter(section -> section.name().toLowerCase().contains("foot") || "Footer".equals(section.name()))
+                .findFirst()
+                .orElse(null);
+        if (footerSection == null && panel.sections().size() >= 3) {
+            footerSection = panel.sections().get(panel.sections().size() - 1);
+        }
+        assertNotNull(footerSection);
+
+        assertFalse(
+                "unchanged head section must stay unmodified",
+                SidetabSectionPresentation.compute(getProject(), document, file, headSection).modified()
+        );
+        assertTrue(
+                "edited body section must be modified",
+                SidetabSectionPresentation.compute(getProject(), document, file, bodySection).modified()
+        );
+        assertFalse(
+                "sections after the edit must not inherit modified styling",
+                SidetabSectionPresentation.compute(getProject(), document, file, footerSection).modified()
+        );
+    }
+
     public void testSectionShowsErrorWaveWhenMarkupErrorIsInsideRange() throws Exception {
         VirtualFile file = createSourceFile("page.html");
         WriteAction.run(() -> file.setBinaryContent("""

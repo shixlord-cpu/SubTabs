@@ -41,6 +41,73 @@ final class ComponentSubtabsManager {
                 || editor.getUserData(SidetabsManager.SIDETAB_BAR_KEY) != null;
     }
 
+    static int overlayIconRightReserveForEditor(@NotNull FileEditor editor) {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        if (!settings.isShowCollapseButton()) {
+            return 0;
+        }
+        SidetabBarPanel sidetabBar = editor.getUserData(SidetabsManager.SIDETAB_BAR_KEY);
+        if (sidetabBar != null
+                && settings.isSidetabsExpanded()
+                && settings.getSidetabLayoutMode() == SidetabLayoutMode.BESIDE) {
+            return 0;
+        }
+        return SidetabIconLayout.collapseOverlayIconRowWidth();
+    }
+
+    static int splittabHeaderLeftReserveForEditor(@NotNull FileEditor editor) {
+        return sidetabBesideColumnReserve(editor, false);
+    }
+
+    static int splittabHeaderRightReserveForEditor(@NotNull FileEditor editor) {
+        int sidetabColumn = sidetabBesideColumnReserve(editor, true);
+        if (sidetabColumn > 0) {
+            return sidetabColumn;
+        }
+        return overlayIconRightReserveForEditor(editor);
+    }
+
+    private static int sidetabBesideColumnReserve(@NotNull FileEditor editor, boolean onRightSide) {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        if (!settings.isSidetabsActive() || !settings.isSidetabsExpanded()) {
+            return 0;
+        }
+        if (settings.getSidetabLayoutMode() != SidetabLayoutMode.BESIDE) {
+            return 0;
+        }
+        if (settings.isSidetabsOnRight() != onRightSide) {
+            return 0;
+        }
+        SidetabBarPanel sidetabBar = editor.getUserData(SidetabsManager.SIDETAB_BAR_KEY);
+        if (sidetabBar == null) {
+            return 0;
+        }
+        int width = sidetabBar.getWidth();
+        if (width <= 0) {
+            width = sidetabBar.getPreferredSize().width;
+        }
+        return Math.max(0, width);
+    }
+
+    static void refreshOverlayIconReserve(@NotNull Project project, @NotNull FileEditor editor) {
+        int subtabBarReserve = overlayIconRightReserveForEditor(editor);
+        ComponentSubtabBarPanel subtabBar = editor.getUserData(SUBTAB_BAR_KEY);
+        if (subtabBar != null) {
+            subtabBar.setOverlayIconRightReserve(subtabBarReserve);
+        }
+        SplittabPaneHeaderPanel header = editor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_HEADER_KEY);
+        if (header != null) {
+            header.setLayoutReserves(
+                    splittabHeaderLeftReserveForEditor(editor),
+                    splittabHeaderRightReserveForEditor(editor)
+            );
+        }
+        SplittabSwitchBarPanel switchBar = editor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_SWITCH_BAR_KEY);
+        if (switchBar != null) {
+            switchBar.setOverlayIconRightReserve(subtabBarReserve);
+        }
+    }
+
     private static boolean sidetabsCollapsedOn(@NotNull FileEditor editor) {
         return editorShowsSidetabs(editor) && !SubtabsSettings.getInstance().isSidetabsExpanded();
     }
@@ -83,11 +150,38 @@ final class ComponentSubtabsManager {
         }
     }
 
+    static @Nullable FileEditor editorHostingSubtabBar(
+            @NotNull Project project,
+            @NotNull ComponentSubtabBarPanel panel
+    ) {
+        FileEditorManager manager = FileEditorManager.getInstance(project);
+        for (FileEditor editor : manager.getAllEditors()) {
+            if (editor.getUserData(SUBTAB_BAR_KEY) == panel) {
+                return editor;
+            }
+        }
+        return null;
+    }
+
     static void attachIfNeeded(@NotNull Project project, @NotNull VirtualFile file) {
         SubtabsSettings settings = SubtabsSettings.getInstance();
         if (!settings.isFamiliaEnabled()) {
             return;
         }
+
+        ComponentSubtabEditorSplitRegistry splitRegistry =
+                ComponentSubtabEditorSplitRegistry.getInstance(project);
+        ComponentSubtabEditorSplitRegistry.SplittabPair activeSplittab = splitRegistry.activePair();
+        if (activeSplittab != null && activeSplittab.covers(file)) {
+            if (ComponentSubtabEditorSplitNavigation.shouldPresentSplittabChrome(project, activeSplittab)) {
+                ComponentSubtabsSplittabUi.attachIfNeeded(project, file);
+                return;
+            }
+            if (!ComponentSubtabNavigation.isSwitchInProgress(project)) {
+                ComponentSubtabsSplittabUi.detachForFile(project, file);
+            }
+        }
+
         if (!settings.isSubtabsActive() && !settings.isShowCollapseButton()) {
             return;
         }
@@ -167,6 +261,7 @@ final class ComponentSubtabsManager {
             updateTabPresentations(manager);
             refreshProjectViewGroupingOverlay(project);
             SidetabsManager.applyPresentationState(project);
+            ComponentSubtabsSplittabUi.applyPresentationForProject(project);
             return;
         }
 
@@ -195,6 +290,7 @@ final class ComponentSubtabsManager {
         refreshProjectViewGroupingOverlay(project);
         SidetabsManager.applyPresentationState(project);
         ComponentSubtabMainTabColors.refresh(project);
+        ComponentSubtabsSplittabUi.applyPresentationForProject(project);
     }
 
     private static void refreshEditorCollapsePresentation(
@@ -202,12 +298,31 @@ final class ComponentSubtabsManager {
             @NotNull FileEditorManager manager,
             @NotNull FileEditor editor
     ) {
-        ComponentSubtabBarPanel panel = editor.getUserData(SUBTAB_BAR_KEY);
-            if (panel == null) {
-                SubtabsExpandOverlay.hide(editor);
-                RuleSwitchOverlay.hide(editor);
+        VirtualFile file = editor.getFile();
+        if (file != null) {
+            ComponentSubtabEditorSplitRegistry registry =
+                    ComponentSubtabEditorSplitRegistry.getInstance(project);
+            ComponentSubtabEditorSplitRegistry.SplittabPair activeSplittab = registry.activePair();
+            if (activeSplittab != null
+                    && activeSplittab.covers(file)
+                    && ComponentSubtabEditorSplitNavigation.shouldPresentSplittabChrome(project, activeSplittab)) {
+                ComponentSubtabsSplittabUi.attachIfNeeded(project, file);
                 return;
             }
+        }
+        if (editor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_SWITCH_BAR_KEY) != null
+                || editor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_HEADER_KEY) != null) {
+            if (file != null) {
+                ComponentSubtabsSplittabUi.attachIfNeeded(project, file);
+            }
+            return;
+        }
+        ComponentSubtabBarPanel panel = editor.getUserData(SUBTAB_BAR_KEY);
+        if (panel == null) {
+            SubtabsExpandOverlay.hide(editor);
+            RuleSwitchOverlay.hide(editor);
+            return;
+        }
         installBar(project, manager, editor, panel);
     }
 
@@ -255,6 +370,13 @@ final class ComponentSubtabsManager {
         ComponentSubtabGroupRegistry.getInstance(project).clearGroups();
 
         SubtabsSettings settings = SubtabsSettings.getInstance();
+        if (!settings.isSplittabsEnabled()
+                || settings.getSplittabBehaviorMode() != SplittabBehaviorMode.DEDICATED_VIEW) {
+            SplittabDedicatedViewService dedicatedView = SplittabDedicatedViewService.getInstance(project);
+            if (dedicatedView.isDedicatedViewActive()) {
+                dedicatedView.exitDedicatedView(true);
+            }
+        }
         FileEditorManager manager = FileEditorManager.getInstance(project);
         if (!settings.isSubtabsActive() && !settings.isShowCollapseButton()) {
             applyPresentationState(project);
@@ -272,9 +394,14 @@ final class ComponentSubtabsManager {
             if (panel == null) {
                 SubtabsExpandOverlay.hide(editor);
                 RuleSwitchOverlay.hide(editor);
-                continue;
+            } else {
+                panel.refreshRuleSwitchButton();
             }
-            panel.refreshRuleSwitchButton();
+            SplittabSwitchBarPanel switchBar =
+                    editor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_SWITCH_BAR_KEY);
+            if (switchBar != null) {
+                switchBar.applyOverflowSettings();
+            }
         }
 
         updateTabPresentations(manager);
@@ -283,6 +410,22 @@ final class ComponentSubtabsManager {
         ComponentSubtabMainTabColors.refresh(project);
         SidetabsManager.applyPresentationState(project);
         SubtabsPresentation.refreshTypography();
+    }
+
+    static void detachSubtabBarFromEditor(
+            @NotNull Project project,
+            @NotNull FileEditor editor
+    ) {
+        ComponentSubtabBarPanel panel = editor.getUserData(SUBTAB_BAR_KEY);
+        if (panel == null) {
+            return;
+        }
+        FileEditorManager manager = FileEditorManager.getInstance(project);
+        SubtabsExpandOverlay.hide(editor);
+        RuleSwitchOverlay.hide(editor);
+        editor.putUserData(SUBTAB_BAR_KEY, null);
+        detachFromSwing(panel);
+        manager.removeTopComponent(editor, panel);
     }
 
     static void prepareTransfer(
@@ -348,6 +491,24 @@ final class ComponentSubtabsManager {
 
     static void refreshOpenStates(@NotNull Project project) {
         for (ComponentSubtabBarPanel panel : visibleBars(project)) {
+            panel.refreshOpenStates();
+        }
+    }
+
+    /** Refreshes subtab bars attached to {@code file} (typical after an in-tab subtab swap). */
+    static void refreshOpenStatesForFile(@NotNull Project project, @NotNull VirtualFile file) {
+        if (ComponentFileNaming.componentBaseName(file.getName()) == null) {
+            return;
+        }
+        LinkedHashSet<ComponentSubtabBarPanel> panels = new LinkedHashSet<>();
+        FileEditorManager manager = FileEditorManager.getInstance(project);
+        for (FileEditor editor : editorsFor(manager, file)) {
+            ComponentSubtabBarPanel panel = editor.getUserData(SUBTAB_BAR_KEY);
+            if (panel != null) {
+                panels.add(panel);
+            }
+        }
+        for (ComponentSubtabBarPanel panel : panels) {
             panel.refreshOpenStates();
         }
     }
@@ -473,7 +634,9 @@ final class ComponentSubtabsManager {
             @NotNull ComponentSubtabBarPanel panel
     ) {
         SubtabsSettings settings = SubtabsSettings.getInstance();
-        boolean active = settings.isSubtabsActive();
+        VirtualFile file = editor.getFile();
+        boolean active = settings.isSubtabsActive()
+                && (file == null || ComponentSubtabsScopedVisibility.subtabsVisibleForFile(project, file));
         boolean showCollapseButton = settings.isShowCollapseButton();
         boolean reserveTopRightCollapseIcons = showCollapseButton;
 
@@ -524,14 +687,20 @@ final class ComponentSubtabsManager {
             manager.addTopComponent(editor, panel);
         }
         ensureCollapseIconRelayoutOnBarResize(editor, panel);
+        refreshOverlayIconReserve(project, editor);
         relayoutCollapseIcons(editor);
         SidetabBarOverlay.relayout(editor);
         placeRuleSwitchIcon(project, editor);
     }
 
+    static void relayoutEditorOverlayIcons(@NotNull FileEditor editor) {
+        relayoutCollapseIcons(editor);
+    }
+
     private static void relayoutCollapseIcons(@NotNull FileEditor editor) {
         SidetabsToggleOverlay.relayout(editor);
         SubtabsCollapseOverlay.relayout(editor);
+        SplittabRestoreOverlay.relayout(editor);
         SubtabsExpandOverlay.relayout(editor);
         RuleSwitchOverlay.relayout(editor);
     }

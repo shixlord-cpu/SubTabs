@@ -18,6 +18,10 @@ final class SubtabHoverView {
         return !isEnabled();
     }
 
+    static boolean isEditorHighlightEnabled() {
+        return isEnabled() && SubtabsSettings.getInstance().isHoverViewProjectToEditorEnabled();
+    }
+
     static void runIfEnabled(@NotNull Runnable action) {
         if (isEnabled()) {
             action.run();

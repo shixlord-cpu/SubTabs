@@ -165,7 +165,7 @@ public class SubtabGroupTabHighlightTest extends RealEditorWindowTestCase {
     }
 
     public void testDirectoryModeOnlyHighlightsMainTabFileWithGroupTint() throws Exception {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(false);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(false);
 
         VirtualFile effects = createSourceFile("checkout.effects.ts");
         WriteAction.run(() -> effects.setBinaryContent("export {}".getBytes(StandardCharsets.UTF_8)));
@@ -190,7 +190,8 @@ public class SubtabGroupTabHighlightTest extends RealEditorWindowTestCase {
     }
 
     public void testGroupedProjectViewMarksPrimaryFileForGroupTint() throws Exception {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(true);
 
         VirtualFile effects = createSourceFile("checkout.effects.ts");
         WriteAction.run(() -> effects.setBinaryContent("export {}".getBytes(StandardCharsets.UTF_8)));

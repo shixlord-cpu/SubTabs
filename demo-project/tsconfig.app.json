@@ -3,5 +3,8 @@
   "compilerOptions": {
     "outDir": "./dist/app"
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "sidetabs-examples/**/*.ts"
+  ]
 }

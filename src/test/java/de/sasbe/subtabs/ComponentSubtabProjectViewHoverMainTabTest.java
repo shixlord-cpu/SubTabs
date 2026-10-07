@@ -14,7 +14,7 @@ import java.util.Set;
 
 public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTestCase {
     public void testDirectoryModeMarksEveryRelatedFile() throws Exception {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(false);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(false);
 
         VirtualFile rootDir = getVirtualFile(createTempDir("project"));
         WriteAction.computeAndWait(() -> rootDir.createChildData(this, "header.component.html"));
@@ -37,7 +37,7 @@ public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTes
     }
 
     public void testDirectoryModeExternalHoverMarksEveryRelatedFile() throws Exception {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(false);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(false);
 
         VirtualFile rootDir = getVirtualFile(createTempDir("project"));
         VirtualFile html = WriteAction.computeAndWait(() -> rootDir.createChildData(this, "header.component.html"));
@@ -63,7 +63,8 @@ public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTes
     }
 
     public void testGroupingModeMarksGroupAndActiveTabFile() throws Exception {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(true);
 
         VirtualFile rootDir = getVirtualFile(createTempDir("project"));
         VirtualFile html = WriteAction.computeAndWait(() -> rootDir.createChildData(this, "header.component.html"));
@@ -89,7 +90,7 @@ public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTes
     }
 
     public void testStaleExitFromPreviousTabDoesNotClearCurrentHover() throws Exception {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(false);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(false);
 
         VirtualFile rootDir = getVirtualFile(createTempDir("project"));
         VirtualFile headerHtml = WriteAction.computeAndWait(() -> rootDir.createChildData(this, "header.component.html"));
@@ -129,6 +130,37 @@ public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTes
         assertTrue(isExternalHoverRow(tree, productTs));
     }
 
+    public void testSplittabPairHoverMarksBothFilesWithSideGlyphs() throws Exception {
+        VirtualFile rootDir = getVirtualFile(createTempDir("project"));
+        VirtualFile html = WriteAction.computeAndWait(() -> rootDir.createChildData(this, "header.component.html"));
+        VirtualFile scss = WriteAction.computeAndWait(() -> rootDir.createChildData(this, "header.component.scss"));
+
+        JTree tree = flatTree(rootDir, html, scss);
+        ComponentSubtabEditorSplitRegistry.SplittabPair pair = new ComponentSubtabEditorSplitRegistry.SplittabPair(
+                html.getPath() + "|" + scss.getPath(),
+                html,
+                scss,
+                System.currentTimeMillis(),
+                null,
+                null
+        );
+        JPanel source = new JPanel();
+        ComponentSubtabProjectViewHover.activateSplittabPairHoverForTest(source, tree, pair, html);
+
+        int htmlRow = rowForFile(tree, html);
+        int scssRow = rowForFile(tree, scss);
+        assertTrue(isExternalHoverRow(tree, html));
+        assertTrue(isExternalHoverRow(tree, scss));
+        assertEquals(
+                ComponentSubtabProjectViewHover.SPLITTAB_HOVER_MARKER_LEFT,
+                ComponentSubtabProjectViewHover.splittabHoverMarkerForRow(tree, htmlRow)
+        );
+        assertEquals(
+                ComponentSubtabProjectViewHover.SPLITTAB_HOVER_MARKER_RIGHT,
+                ComponentSubtabProjectViewHover.splittabHoverMarkerForRow(tree, scssRow)
+        );
+    }
+
     public void testSingleFileMainTabHoverMarksOnlyThatFile() throws Exception {
         VirtualFile rootDir = getVirtualFile(createTempDir("project"));
         VirtualFile readme = WriteAction.computeAndWait(() -> rootDir.createChildData(this, "readme.md"));
@@ -144,7 +176,8 @@ public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTes
     }
 
     public void testSingleFileHoverReplacesGroupHoverFromOtherOwner() throws Exception {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(true);
 
         VirtualFile rootDir = getVirtualFile(createTempDir("project"));
         VirtualFile html = WriteAction.computeAndWait(() -> rootDir.createChildData(this, "header.component.html"));
@@ -173,7 +206,8 @@ public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTes
     }
 
     public void testSwitchingPopupEntryUpdatesGroupingHoverOwner() throws Exception {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(true);
 
         VirtualFile rootDir = getVirtualFile(createTempDir("project"));
         VirtualFile html = WriteAction.computeAndWait(() -> rootDir.createChildData(this, "header.component.html"));
@@ -209,7 +243,7 @@ public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTes
     }
 
     public void testDirectoryHoverIsVisibleOnScreenshot() throws Exception {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(false);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(false);
         HeaderFiles files = createHeaderFiles();
         JTree tree = flatTree(files.root, files.html, files.scss, files.spec, files.ts, files.other);
         ProjectViewTreeOverlayPanel overlay = overlayOf(tree);
@@ -232,7 +266,8 @@ public class ComponentSubtabProjectViewHoverMainTabTest extends HeavyPlatformTes
     }
 
     public void testGroupedHoverIsVisibleOnScreenshot() throws Exception {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(true);
         HeaderFiles files = createHeaderFiles();
         JTree tree = groupedTree(files.root, files.html, files.scss, files.spec, files.ts);
         ProjectViewTreeOverlayPanel overlay = overlayOf(tree);

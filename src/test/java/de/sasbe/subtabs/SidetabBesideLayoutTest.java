@@ -1,6 +1,7 @@
 package de.sasbe.subtabs;
 
 import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.mock.MockVirtualFile;
 import com.intellij.openapi.fileEditor.FileEditorLocation;
 import com.intellij.openapi.fileEditor.FileEditorState;
 import com.intellij.openapi.util.Key;
@@ -15,7 +16,7 @@ import java.beans.PropertyChangeListener;
 import java.util.List;
 
 public class SidetabBesideLayoutTest extends HeavyPlatformTestCase {
-    public void testBesideColumnWidthMatchesLongestSectionLabel() {
+    public void testBesideColumnUsesConfiguredDefaultWidth() {
         SidetabBarPanel panel = new SidetabBarPanel(getProject(), new TestFileEditor(new JPanel()));
         panel.bind(
                 List.of(
@@ -29,16 +30,15 @@ public class SidetabBesideLayoutTest extends HeavyPlatformTestCase {
                 20
         );
 
-        int expected = ComponentSubtabUi.preferredLabelWidth("Configuration");
+        int expected = SubtabsSettings.getInstance().getSidetabBesideColumnWidth();
         assertEquals(expected, panel.getPreferredSize().width);
-        assertTrue(expected > ComponentSubtabUi.preferredLabelWidth("Head"));
     }
 
-    public void testBesideColumnWidthUpdatesImmediatelyWhenTextSizeChanges() {
+    public void testBesideColumnWidthFollowsUserResizeSetting() {
         SubtabsSettings settings = SubtabsSettings.getInstance();
-        int originalTextSize = settings.getTextSizePercent();
+        int originalWidth = settings.getSidetabBesideColumnWidth();
         try {
-            settings.setTextSizePercent(60);
+            settings.setSidetabBesideColumnWidth(originalWidth + com.intellij.util.ui.JBUI.scale(40));
             SidetabBarPanel panel = new SidetabBarPanel(getProject(), new TestFileEditor(new JPanel()));
             panel.bind(
                     List.of(new SidetabSection("Configuration", 0, 20)),
@@ -48,17 +48,52 @@ public class SidetabBesideLayoutTest extends HeavyPlatformTestCase {
                     0,
                     20
             );
-            int narrow = panel.getPreferredSize().width;
-
-            settings.setTextSizePercent(100);
-            panel.refreshAppearance();
-            int wide = panel.getPreferredSize().width;
-
-            assertTrue("SideTab column must grow with text size", wide > narrow);
-            assertEquals(ComponentSubtabUi.preferredLabelWidth("Configuration"), wide);
+            assertEquals(settings.getSidetabBesideColumnWidth(), panel.getPreferredSize().width);
         } finally {
-            settings.setTextSizePercent(originalTextSize);
+            settings.setSidetabBesideColumnWidth(originalWidth);
         }
+    }
+
+    public void testPerFileBesideColumnWidthOverridesGlobalOnlyForThatFile() {
+        VirtualFile fileA = new MockVirtualFile("per-file-width-a.html");
+        VirtualFile fileB = new MockVirtualFile("per-file-width-b.html");
+        int globalWidth = SubtabsSettings.getInstance().getSidetabBesideColumnWidth();
+        int fileAWidth = globalWidth + com.intellij.util.ui.JBUI.scale(55);
+
+        ComponentSubtabsScopedVisibility.setSidetabBesideColumnWidthForFile(getProject(), fileA, fileAWidth);
+
+        SidetabBarPanel panelA = new SidetabBarPanel(getProject(), new TestFileEditor(new JPanel(), fileA));
+        SidetabBarPanel panelB = new SidetabBarPanel(getProject(), new TestFileEditor(new JPanel(), fileB));
+        List<SidetabSection> sections = List.of(new SidetabSection("Configuration", 0, 20));
+        panelA.bind(sections, SidetabLayoutMode.BESIDE, true, null, 0, 20);
+        panelB.bind(sections, SidetabLayoutMode.BESIDE, true, null, 0, 20);
+
+        assertEquals(fileAWidth, panelA.getPreferredSize().width);
+        assertEquals(globalWidth, panelB.getPreferredSize().width);
+
+        ComponentSubtabsScopedVisibility.clearSidetabBesideColumnWidthForFile(getProject(), fileA);
+        panelA.applyLiveBesideColumnWidth(globalWidth);
+        assertEquals(globalWidth, panelA.getPreferredSize().width);
+        assertEquals(
+                globalWidth,
+                ComponentSubtabsScopedVisibility.sidetabBesideColumnWidthForFile(getProject(), fileA)
+        );
+    }
+
+    public void testLiveBesideColumnWidthUpdatesPanelWidthImmediately() {
+        SidetabBarPanel panel = new SidetabBarPanel(getProject(), new TestFileEditor(new JPanel()));
+        panel.bind(
+                List.of(new SidetabSection("Configuration", 0, 20)),
+                SidetabLayoutMode.BESIDE,
+                true,
+                null,
+                0,
+                20
+        );
+        int base = panel.getPreferredSize().width;
+        int wider = base + com.intellij.util.ui.JBUI.scale(40);
+        panel.applyLiveBesideColumnWidth(wider);
+        assertEquals(wider, panel.getPreferredSize().width);
     }
 
     public void testBesideColumnWidthUpdatesImmediatelyWhenFontStyleChanges() {
@@ -81,7 +116,7 @@ public class SidetabBesideLayoutTest extends HeavyPlatformTestCase {
             panel.refreshAppearance();
             int monospaceWidth = panel.getPreferredSize().width;
 
-            assertTrue("SideTab column must reflow when font style changes", monospaceWidth != standardWidth);
+            assertEquals("SideTab column width stays user-controlled when font style changes", standardWidth, monospaceWidth);
         } finally {
             settings.setTabFontStyle(original);
         }
@@ -89,9 +124,15 @@ public class SidetabBesideLayoutTest extends HeavyPlatformTestCase {
 
     private static final class TestFileEditor implements FileEditor {
         private final JComponent component;
+        private final @Nullable VirtualFile file;
 
         private TestFileEditor(JComponent component) {
+            this(component, null);
+        }
+
+        private TestFileEditor(JComponent component, @Nullable VirtualFile file) {
             this.component = component;
+            this.file = file;
         }
 
         @Override
@@ -150,7 +191,7 @@ public class SidetabBesideLayoutTest extends HeavyPlatformTestCase {
 
         @Override
         public @Nullable VirtualFile getFile() {
-            return null;
+            return file;
         }
 
         @Override

@@ -101,6 +101,24 @@ final class ComponentSubtabUi {
         return value instanceof VirtualFile file ? file : null;
     }
 
+    static @NotNull String fitText(@NotNull FontMetrics metrics, @NotNull String text, int maxWidth) {
+        if (maxWidth <= 0 || text.isEmpty()) {
+            return "";
+        }
+        if (metrics.stringWidth(text) <= maxWidth) {
+            return text;
+        }
+        String ellipsis = "…";
+        int ellipsisWidth = metrics.stringWidth(ellipsis);
+        for (int length = text.length() - 1; length > 0; length--) {
+            String candidate = text.substring(0, length);
+            if (metrics.stringWidth(candidate) + ellipsisWidth <= maxWidth) {
+                return candidate + ellipsis;
+            }
+        }
+        return ellipsis;
+    }
+
     static @NotNull JToggleButton createSubtabButton(@NotNull String label, boolean selected) {
         JToggleButton button = new ComponentSubtabToggleButton(label);
         button.setSelected(selected);

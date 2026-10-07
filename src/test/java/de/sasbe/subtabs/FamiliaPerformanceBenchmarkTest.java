@@ -78,7 +78,8 @@ public class FamiliaPerformanceBenchmarkTest extends RealEditorWindowTestCase {
         settings.setSubtabsActive(true);
         settings.setSidetabsActive(true);
         settings.setSidetabsExpanded(true);
-        settings.setGroupRelatedFilesInProjectView(true);
+        settings.setProjectViewGroupingEnabled(true);
+        settings.setProjectViewGroupingActive(true);
 
         htmlFile = createSourceFile("product-list.component.html");
         tsFile = createSourceFile("product-list.component.ts");

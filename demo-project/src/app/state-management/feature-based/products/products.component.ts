@@ -20,7 +20,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   pageIndex = 0;
   selectedId: string | null = null;
   draftTitle = '';
-  draftSummary = '';
+  draftSummary : number = '';
   draftPriceCents = 0;
   form: FormGroup;
   rows: Array<{ id: string; sku: string; title: string; summary: string; priceCents: number; stock: number; status: string; updatedAt: string }> = [];

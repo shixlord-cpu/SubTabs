@@ -55,7 +55,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-final class ComponentSubtabBarPanel extends JPanel {
+final class ComponentSubtabBarPanel extends JPanel implements ComponentSubtabReorderStripHost {
     private final Project project;
     private final TabStrip tabsHost;
     private final JBScrollPane scrollPane;
@@ -86,6 +86,7 @@ final class ComponentSubtabBarPanel extends JPanel {
     private SubtabFitScale.Result fit = SubtabFitScale.Result.FULL;
     private int naturalStripWidth;
     private int topSpacerHeight;
+    private int overlayIconRightReserve;
     private @Nullable String boundActiveRuleName;
 
     ComponentSubtabBarPanel(
@@ -206,6 +207,18 @@ final class ComponentSubtabBarPanel extends JPanel {
         repaint();
     }
 
+    void setOverlayIconRightReserve(int pixels) {
+        int next = Math.max(0, pixels);
+        if (overlayIconRightReserve == next) {
+            return;
+        }
+        overlayIconRightReserve = next;
+        updateScrollReserve();
+        revalidate();
+        updateFitToEditorWidth();
+        repaint();
+    }
+
     private void updateTrailingPanelVisibility() {
         trailingPanel.setVisible(collapseButton.isVisible() || closeSideButton.isVisible());
         updateScrollReserve();
@@ -248,7 +261,7 @@ final class ComponentSubtabBarPanel extends JPanel {
     }
 
     private int reservedEastWidth() {
-        int width = 0;
+        int width = overlayIconRightReserve;
         if (ruleSwitchPanel.isVisible()) {
             width += Math.max(
                     ruleSwitchPanel.getPreferredSize().width,
@@ -318,16 +331,20 @@ final class ComponentSubtabBarPanel extends JPanel {
         boundActiveRuleName = activeRuleName;
         rebuildButtonsIfNeeded();
         updateSelection(displayedFile);
-        refreshOpenStates();
-        refreshRuleSwitchButton();
-        watchAllDocuments();
+        if (!ComponentSubtabNavigation.isSwitchInProgress(project)) {
+            refreshOpenStates();
+            refreshRuleSwitchButton();
+            watchAllDocuments();
+        }
     }
 
     void setDisplayedFile(@NotNull VirtualFile displayedFile) {
         this.displayedFile = displayedFile;
         updateSelection(displayedFile);
-        refreshOpenStates();
-        refreshRuleSwitchButton();
+        if (!ComponentSubtabNavigation.isSwitchInProgress(project)) {
+            refreshOpenStates();
+            refreshRuleSwitchButton();
+        }
     }
 
     void refreshRelatedFiles(@NotNull ComponentSubtabGroup group, @NotNull VirtualFile displayedFile) {
@@ -375,7 +392,8 @@ final class ComponentSubtabBarPanel extends JPanel {
         updateReorderDragState(index, draggedFile, null);
     }
 
-    void updateReorderDragState(
+    @Override
+    public void updateReorderDragState(
             int index,
             @Nullable VirtualFile draggedFile,
             @Nullable Point pointerInTabsHost
@@ -418,7 +436,8 @@ final class ComponentSubtabBarPanel extends JPanel {
         }
     }
 
-    void clearReorderPreview() {
+    @Override
+    public void clearReorderPreview() {
         updateReorderDragState(-1, null, null);
     }
 
@@ -435,7 +454,8 @@ final class ComponentSubtabBarPanel extends JPanel {
         }
     }
 
-    @NotNull Point pointerInTabsHostFromEvent(@NotNull MouseEvent event) {
+    @Override
+    public @NotNull Point pointerInTabsHostFromEvent(@NotNull MouseEvent event) {
         Point inPanel = SwingUtilities.convertPoint(event.getComponent(), event.getPoint(), this);
         Point inTabs = SwingUtilities.convertPoint(this, inPanel, tabsHost);
         if (tabsHost.getHeight() > 0) {
@@ -613,7 +633,8 @@ final class ComponentSubtabBarPanel extends JPanel {
         return reorderDragPointer != null && reorderDraggedFile != null;
     }
 
-    int resolveReorderDropIndex(@NotNull Point pointerInTabsHost, @NotNull VirtualFile draggedFile) {
+    @Override
+    public int resolveReorderDropIndex(@NotNull Point pointerInTabsHost, @NotNull VirtualFile draggedFile) {
         captureVisualOrderIfNeeded();
         int draggedIndex = tabIndexForFile(draggedFile);
         int fromBounds = dropIndexFromCurrentBounds(pointerInTabsHost.x, draggedIndex);
@@ -663,7 +684,8 @@ final class ComponentSubtabBarPanel extends JPanel {
         );
     }
 
-    int tabIndexForFile(@NotNull VirtualFile file) {
+    @Override
+    public int tabIndexForFile(@NotNull VirtualFile file) {
         JToggleButton button = buttonsByFile.get(file);
         return button == null ? -1 : orderedVisibleTabButtons().indexOf(button);
     }
@@ -878,6 +900,10 @@ final class ComponentSubtabBarPanel extends JPanel {
     }
 
     void refreshOpenStates() {
+        if (ComponentSubtabNavigation.isSwitchInProgress(project)) {
+            updateSelection(displayedFile);
+            return;
+        }
         FileEditorManager manager = FileEditorManager.getInstance(project);
         ComponentSubtabGroupSplitRegistry.SplitState splitState = findActiveSplitState();
         SubtabGroupPopupPresentation.Context mainTabPresentation =
@@ -1012,7 +1038,9 @@ final class ComponentSubtabBarPanel extends JPanel {
     private void rebuildButtonsIfNeeded() {
         if (!buttonsByFile.isEmpty()) {
             updateSelection(displayedFile);
-            refreshOpenStates();
+            if (!ComponentSubtabNavigation.isSwitchInProgress(project)) {
+                refreshOpenStates();
+            }
             return;
         }
 
@@ -1051,13 +1079,16 @@ final class ComponentSubtabBarPanel extends JPanel {
                     return;
                 }
                 ComponentSubtabNavigation.switchToRelatedFile(project, displayedFile, target);
-                updateSelection(displayedFile);
+                updateSelection(target);
             });
             button.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseEntered(MouseEvent event) {
                     VirtualFile target = relatedFile.file();
                     if (SubtabHoverView.isEnabled()) {
+                        if (enterSplittabPairProjectViewHover(project, target, button)) {
+                            return;
+                        }
                         ComponentSubtabProjectViewHover.onEnter(project, target, button);
                         FileEditorManager manager = FileEditorManager.getInstance(project);
                         if (manager.isFileOpen(target) && !displayedFile.equals(target)) {
@@ -1185,6 +1216,27 @@ final class ComponentSubtabBarPanel extends JPanel {
         button.getAccessibleContext().setAccessibleName("SubTabs einklappen");
         button.addActionListener(event -> SubtabsCollapseState.getInstance(project).toggle(project));
         return button;
+    }
+
+    /**
+     * @return true when splittab pair hover sync was applied (Split-A subtabs)
+     */
+    private boolean enterSplittabPairProjectViewHover(
+            @NotNull Project project,
+            @NotNull VirtualFile hoveredSubtabFile,
+            @NotNull JComponent source
+    ) {
+        if (!ComponentSubtabEditorSplitNavigation.editorSplittabUiEngaged(project)) {
+            return false;
+        }
+        ComponentSubtabEditorSplitRegistry.SplittabPair pair =
+                ComponentSubtabEditorSplitRegistry.getInstance(project).activePair();
+        if (pair == null
+                || !displayedFile.equals(pair.leftFile())
+                || !ComponentSubtabEditorSplitMainTab.isForeground(project, pair)) {
+            return false;
+        }
+        return ComponentSubtabProjectViewHover.onEnterSplittabPair(project, pair, hoveredSubtabFile, source);
     }
 
     private @NotNull ComponentSubtabIconButton createRuleSwitchButton() {

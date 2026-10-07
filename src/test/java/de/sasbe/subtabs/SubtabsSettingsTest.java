@@ -20,8 +20,10 @@ class SubtabsSettingsTest {
     }
 
     @Test
-    void groupsRelatedFilesInProjectViewByDefault() {
-        assertTrue(new SubtabsSettings.State().groupRelatedFilesInProjectView);
+    void offersProjectViewGroupingByDefault() {
+        SubtabsSettings.State state = new SubtabsSettings.State();
+        assertTrue(state.projectViewGroupingEnabled);
+        assertTrue(state.projectViewGroupingActive);
     }
 
     @Test
@@ -255,5 +257,22 @@ class SubtabsSettingsTest {
         assertEquals("Ordner", new SubtabsSettings.State().rules.get(9).name);
         assertTrue(new SubtabsSettings.State().rules.get(9).enabled);
         assertTrue(new SubtabsSettings.State().rules.get(9).builtin);
+    }
+
+    @Test
+    void opensOtherSavedSplitPairFileNormallyByDefault() {
+        assertEquals(
+                SplittabOtherPairFileMode.OPEN_NORMALLY.name(),
+                new SubtabsSettings.State().splittabOtherPairFileMode
+        );
+        assertEquals(SplittabOtherPairFileMode.OPEN_NORMALLY, new SubtabsSettings().getSplittabOtherPairFileMode());
+        assertEquals(
+                "Zum Split Pair wechseln, zu dem die Datei gehört",
+                SplittabOtherPairFileMode.SWITCH_TO_PAIR.label()
+        );
+        assertEquals(
+                "Split Pair verlassen und die Datei normal öffnen",
+                SplittabOtherPairFileMode.OPEN_NORMALLY.label()
+        );
     }
 }

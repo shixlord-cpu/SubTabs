@@ -164,6 +164,9 @@ final class ComponentSubtabGroupSplitNavigation {
      * the platform recreates tab strips when panes are rebuilt.
      */
     static void reapplyAll(@NotNull Project project) {
+        if (!ENABLED) {
+            return;
+        }
         ComponentSubtabGroupSplitRegistry registry = ComponentSubtabGroupSplitRegistry.getInstance(project);
         for (ComponentSubtabGroupSplitRegistry.SplitState state : registry.all()) {
             applySplitPresentation(project, state);

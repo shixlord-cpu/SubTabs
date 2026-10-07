@@ -2,7 +2,12 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ES2022",
-    "strict": true
-  },
-  "files": []
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false
+  }
 }

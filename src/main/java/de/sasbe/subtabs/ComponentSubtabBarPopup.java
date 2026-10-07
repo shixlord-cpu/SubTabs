@@ -1,11 +1,13 @@
 package de.sasbe.subtabs;
 
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.ActionPopupMenu;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.actionSystem.impl.ActionMenuItem;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -197,7 +199,16 @@ final class ComponentSubtabBarPopup {
             @NotNull VirtualFile targetFile,
             boolean revealOnly
     ) {
-        return buildMenuWithActions(project, anchorFile, targetFile, revealOnly, null).group();
+        return buildMenuWithActions(project, anchorFile, targetFile, revealOnly, null, true).group();
+    }
+
+    static @NotNull DefaultActionGroup buildAnchorContextMenu(
+            @NotNull Project project,
+            @NotNull VirtualFile anchorFile,
+            @NotNull VirtualFile targetFile,
+            boolean revealOnly
+    ) {
+        return buildMenuWithActions(project, anchorFile, targetFile, revealOnly, null, false).group();
     }
 
     private static @NotNull MenuBuildResult buildMenuWithActions(
@@ -206,6 +217,17 @@ final class ComponentSubtabBarPopup {
             @NotNull VirtualFile targetFile,
             boolean revealOnly,
             @Nullable ComponentSubtabBarPanel barPanel
+    ) {
+        return buildMenuWithActions(project, anchorFile, targetFile, revealOnly, barPanel, barPanel != null);
+    }
+
+    private static @NotNull MenuBuildResult buildMenuWithActions(
+            @NotNull Project project,
+            @NotNull VirtualFile anchorFile,
+            @NotNull VirtualFile targetFile,
+            boolean revealOnly,
+            @Nullable ComponentSubtabBarPanel barPanel,
+            boolean subtabBarMenu
     ) {
         if (ComponentRelatedFiles.find(targetFile) == null) {
             return new MenuBuildResult(new DefaultActionGroup(), null, null);
@@ -224,10 +246,18 @@ final class ComponentSubtabBarPopup {
             group.add(moveLeft);
             group.add(moveRight);
         }
+        if (canOfferSplittabCreate(project, anchorFile, targetFile, subtabBarMenu)) {
+            group.addSeparator();
+            group.add(new CreateEditorSplitAction(project, anchorFile, targetFile));
+        }
         if (!revealOnly) {
             group.addSeparator();
             group.add(new OpenInNewTabAction(project, targetFile));
             group.add(new OpenInNewWindowAction(project, targetFile));
+        }
+        if (SubtabsSettings.getInstance().isFamiliaEnabled()) {
+            ComponentSubtabEditorSplitFamiliaMenu.addOpenSavedSplittabActions(
+                    group, project, targetFile, null);
         }
         return new MenuBuildResult(group, moveLeft, moveRight);
     }
@@ -304,6 +334,9 @@ final class ComponentSubtabBarPopup {
             @NotNull VirtualFile anchorFile,
             @NotNull VirtualFile targetFile
     ) {
+        if (!ComponentSubtabGroupSplitNavigation.ENABLED) {
+            return;
+        }
         ComponentSubtabGroupSplitRegistry.SplitState split = activeSplitFor(project, targetFile);
         if (split != null) {
             group.add(new CloseGroupSplitSideAction(project, split, targetFile));
@@ -320,6 +353,126 @@ final class ComponentSubtabBarPopup {
             @NotNull VirtualFile file
     ) {
         return ComponentSubtabGroupSplitRegistry.getInstance(project).findByFile(file);
+    }
+
+    private static boolean canOfferSplittabCreate(
+            @NotNull Project project,
+            @NotNull VirtualFile anchorFile,
+            @NotNull VirtualFile targetFile,
+            boolean fromSubtabBar
+    ) {
+        if (anchorFile.equals(targetFile)) {
+            return false;
+        }
+        if (isSplittabLinkedFile(project, targetFile)) {
+            return false;
+        }
+        if (!SubtabsSettings.getInstance().isSplittabsEnabled()) {
+            return false;
+        }
+        if (ComponentRelatedFiles.find(targetFile) == null) {
+            return false;
+        }
+        if (fromSubtabBar) {
+            return ComponentSubtabNavigation.sameSubtabGroup(anchorFile, targetFile);
+        }
+        return FileEditorManager.getInstance(project).isFileOpen(anchorFile);
+    }
+
+    private static boolean isSplittabLinkedFile(
+            @NotNull Project project,
+            @NotNull VirtualFile file
+    ) {
+        ComponentSubtabEditorSplitRegistry.SplittabPair pair =
+                ComponentSubtabEditorSplitRegistry.getInstance(project).findByFile(file);
+        return pair != null
+                && ComponentSubtabEditorSplitNavigation.isSplittabWorkspace(project, pair);
+    }
+
+    static final String SPLITTAB_PAIR_ID_KEY = "componentSubtabs.splittabContextPairId";
+    static final String SPLITTAB_HEADER_POPUP_INSTALLED = "componentSubtabs.splittabHeaderPopupInstalled";
+
+    static void installSplittabPopup(
+            @NotNull Project project,
+            @NotNull JToggleButton button,
+            @NotNull String pairId,
+            @NotNull SplittabSwitchBarPanel barPanel
+    ) {
+        PopupHandler popupHandler = new PopupHandler() {
+            @Override
+            public void invokePopup(@NotNull Component comp, int x, int y) {
+                showSplittabContextMenu(project, pairId, barPanel, comp, x, y);
+            }
+        };
+        button.addMouseListener(popupHandler);
+    }
+
+    static void showSplittabContextMenu(
+            @NotNull Project project,
+            @NotNull String pairId,
+            @NotNull SplittabSwitchBarPanel barPanel,
+            @NotNull Component component,
+            int x,
+            int y
+    ) {
+        ComponentSubtabEditorSplitRegistry.SplittabPair pair =
+                ComponentSubtabEditorSplitRegistry.getInstance(project).findById(pairId);
+        if (pair == null) {
+            return;
+        }
+
+        DefaultActionGroup group = buildSplittabSwitchBarContextGroup(project, pairId, barPanel, pair);
+        ActionPopupMenu popupMenu = ActionManager.getInstance()
+                .createActionPopupMenu("SubTabs.SplittabContextMenu", group);
+        popupMenu.getComponent().show(component, x, y);
+    }
+
+    static void showSplittabHeaderContextMenu(
+            @NotNull Project project,
+            @NotNull String pairId,
+            @NotNull Component component,
+            int x,
+            int y
+    ) {
+        ComponentSubtabEditorSplitRegistry.SplittabPair pair =
+                ComponentSubtabEditorSplitRegistry.getInstance(project).findById(pairId);
+        if (pair == null) {
+            return;
+        }
+
+        DefaultActionGroup group = new DefaultActionGroup();
+        group.add(new RenameSplittabHeaderLabelAction(project, pairId));
+        group.add(new RevealInProjectViewAction(project, pair.leftFile()));
+        group.addSeparator();
+        group.add(new DissolveSplittabAction(project, pairId, null));
+
+        ActionPopupMenu popupMenu = ActionManager.getInstance()
+                .createActionPopupMenu("SubTabs.SplittabHeaderContextMenu", group);
+        popupMenu.getComponent().show(component, x, y);
+    }
+
+    private static @NotNull DefaultActionGroup buildSplittabSwitchBarContextGroup(
+            @NotNull Project project,
+            @NotNull String pairId,
+            @NotNull SplittabSwitchBarPanel barPanel,
+            @NotNull ComponentSubtabEditorSplitRegistry.SplittabPair pair
+    ) {
+        DefaultActionGroup group = new DefaultActionGroup();
+        group.add(new RenameSplittabLinkAction(project, pairId, barPanel));
+        group.add(new RevealInProjectViewAction(project, pair.leftFile()));
+        if (ComponentSubtabEditorSplitOrder.canMoveLeft(project, pairId)
+                || ComponentSubtabEditorSplitOrder.canMoveRight(project, pairId)) {
+            group.addSeparator();
+            if (ComponentSubtabEditorSplitOrder.canMoveLeft(project, pairId)) {
+                group.add(new MoveSplittabLeftAction(project, pairId, barPanel));
+            }
+            if (ComponentSubtabEditorSplitOrder.canMoveRight(project, pairId)) {
+                group.add(new MoveSplittabRightAction(project, pairId, barPanel));
+            }
+        }
+        group.addSeparator();
+        group.add(new DissolveSplittabAction(project, pairId, barPanel));
+        return group;
     }
 
     private record MenuBuildResult(
@@ -445,6 +598,135 @@ final class ComponentSubtabBarPopup {
         }
     }
 
+    private static final class RenameSplittabLinkAction extends AnAction {
+        private final Project project;
+        private final String pairId;
+        private final SplittabSwitchBarPanel barPanel;
+
+        private RenameSplittabLinkAction(
+                @NotNull Project project,
+                @NotNull String pairId,
+                @NotNull SplittabSwitchBarPanel barPanel
+        ) {
+            super("Splittab umbenennen…");
+            this.project = project;
+            this.pairId = pairId;
+            this.barPanel = barPanel;
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent event) {
+            ComponentSubtabEditorSplitNaming.renameLinkName(project, pairId, barPanel);
+        }
+    }
+
+    private static final class RenameSplittabHeaderLabelAction extends AnAction {
+        private final Project project;
+        private final String pairId;
+
+        private RenameSplittabHeaderLabelAction(@NotNull Project project, @NotNull String pairId) {
+            super("Label umbenennen…");
+            this.project = project;
+            this.pairId = pairId;
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent event) {
+            ComponentSubtabEditorSplitNaming.renameHeaderLabel(project, pairId);
+        }
+    }
+
+    private static final class DissolveSplittabAction extends AnAction {
+        private final Project project;
+        private final String pairId;
+        private final @Nullable SplittabSwitchBarPanel barPanel;
+
+        private DissolveSplittabAction(
+                @NotNull Project project,
+                @NotNull String pairId,
+                @Nullable SplittabSwitchBarPanel barPanel
+        ) {
+            super("Splittab auflösen");
+            this.project = project;
+            this.pairId = pairId;
+            this.barPanel = barPanel;
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent event) {
+            ComponentSubtabEditorSplitPresentation.dissolvePair(project, pairId);
+            if (barPanel != null) {
+                barPanel.refresh();
+            }
+        }
+    }
+
+    private static final class MoveSplittabLeftAction extends AnAction {
+        private final Project project;
+        private final String pairId;
+        private final SplittabSwitchBarPanel barPanel;
+
+        private MoveSplittabLeftAction(
+                @NotNull Project project,
+                @NotNull String pairId,
+                @NotNull SplittabSwitchBarPanel barPanel
+        ) {
+            super("Nach links verschieben");
+            this.project = project;
+            this.pairId = pairId;
+            this.barPanel = barPanel;
+        }
+
+        @Override
+        public @NotNull ActionUpdateThread getActionUpdateThread() {
+            return ActionUpdateThread.EDT;
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent event) {
+            event.getPresentation().setEnabled(ComponentSubtabEditorSplitOrder.canMoveLeft(project, pairId));
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent event) {
+            ComponentSubtabEditorSplitOrder.moveLeft(project, pairId);
+            barPanel.refresh();
+        }
+    }
+
+    private static final class MoveSplittabRightAction extends AnAction {
+        private final Project project;
+        private final String pairId;
+        private final SplittabSwitchBarPanel barPanel;
+
+        private MoveSplittabRightAction(
+                @NotNull Project project,
+                @NotNull String pairId,
+                @NotNull SplittabSwitchBarPanel barPanel
+        ) {
+            super("Nach rechts verschieben");
+            this.project = project;
+            this.pairId = pairId;
+            this.barPanel = barPanel;
+        }
+
+        @Override
+        public @NotNull ActionUpdateThread getActionUpdateThread() {
+            return ActionUpdateThread.EDT;
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent event) {
+            event.getPresentation().setEnabled(ComponentSubtabEditorSplitOrder.canMoveRight(project, pairId));
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent event) {
+            ComponentSubtabEditorSplitOrder.moveRight(project, pairId);
+            barPanel.refresh();
+        }
+    }
+
     private static final class OpenInNewWindowAction extends AnAction {
         private final Project project;
         private final VirtualFile targetFile;
@@ -480,6 +762,28 @@ final class ComponentSubtabBarPopup {
         @Override
         public void actionPerformed(@NotNull AnActionEvent event) {
             ComponentSubtabGroupSplitNavigation.closeSide(project, state, paneFile);
+        }
+    }
+
+    private static final class CreateEditorSplitAction extends AnAction {
+        private final Project project;
+        private final VirtualFile initiatingPaneFile;
+        private final VirtualFile linkedFile;
+
+        private CreateEditorSplitAction(
+                @NotNull Project project,
+                @NotNull VirtualFile initiatingPaneFile,
+                @NotNull VirtualFile linkedFile
+        ) {
+            super("Splittab erstellen");
+            this.project = project;
+            this.initiatingPaneFile = initiatingPaneFile;
+            this.linkedFile = linkedFile;
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent event) {
+            ComponentSubtabEditorSplitNavigation.createSplit(project, initiatingPaneFile, linkedFile);
         }
     }
 

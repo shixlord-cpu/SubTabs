@@ -10,8 +10,10 @@ import com.intellij.ui.tabs.TabInfo;
 import com.intellij.ui.tabs.impl.JBTabsImpl;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.Color;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -22,6 +24,34 @@ final class ComponentSubtabMainTabColors {
     static final float INACTIVE_MIX = 0.12f;
 
     private ComponentSubtabMainTabColors() {
+    }
+
+    static void refreshForFile(@NotNull Project project, @NotNull VirtualFile file) {
+        if (project.isDisposed()) {
+            return;
+        }
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        Set<VirtualFile> groupOpenFiles = openGroupFiles(manager, file);
+        if (groupOpenFiles.isEmpty()) {
+            return;
+        }
+
+        if (SubtabGroupColors.isEnabled()) {
+            SubtabGroupMainTabColorRegistry registry = SubtabGroupMainTabColorRegistry.getInstance(project);
+            Set<VirtualFile> affectedFiles = new LinkedHashSet<>();
+            collectRegistryEntries(manager, registry, affectedFiles, groupOpenFiles);
+            for (VirtualFile affected : affectedFiles) {
+                if (groupOpenFiles.contains(affected)) {
+                    manager.updateFileColor(affected);
+                }
+            }
+        }
+
+        applyDirectTabColors(manager, groupOpenFiles);
+        for (VirtualFile openFile : groupOpenFiles) {
+            ComponentSubtabMainTabIcons.refreshFile(project, openFile);
+        }
+        SidetabsManager.refreshSeparatorBorders(project);
     }
 
     static void refresh(@NotNull Project project) {
@@ -49,22 +79,49 @@ final class ComponentSubtabMainTabColors {
             return;
         }
 
-        applyDirectTabColors(manager);
+        applyDirectTabColors(manager, null);
         ComponentSubtabMainTabIcons.refresh(project);
         SidetabsManager.refreshSeparatorBorders(project);
         ApplicationManager.getApplication().invokeLater(() -> {
             if (!project.isDisposed()) {
-                applyDirectTabColors(FileEditorManagerEx.getInstanceEx(project));
+                applyDirectTabColors(FileEditorManagerEx.getInstanceEx(project), null);
                 ComponentSubtabMainTabIcons.refresh(project);
                 SidetabsManager.refreshSeparatorBorders(project);
             }
         });
     }
 
+    private static @NotNull Set<VirtualFile> openGroupFiles(
+            @NotNull FileEditorManagerEx manager,
+            @NotNull VirtualFile file
+    ) {
+        ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(file);
+        if (match == null) {
+            return Set.of();
+        }
+        Set<VirtualFile> open = new HashSet<>();
+        for (ComponentRelatedFiles.Entry entry : match.relatedFiles()) {
+            VirtualFile related = entry.file();
+            if (manager.isFileOpen(related)) {
+                open.add(related);
+            }
+        }
+        return open;
+    }
+
     private static void collectRegistryEntries(
             @NotNull FileEditorManagerEx manager,
             @NotNull SubtabGroupMainTabColorRegistry registry,
             @NotNull Set<VirtualFile> affectedFiles
+    ) {
+        collectRegistryEntries(manager, registry, affectedFiles, null);
+    }
+
+    private static void collectRegistryEntries(
+            @NotNull FileEditorManagerEx manager,
+            @NotNull SubtabGroupMainTabColorRegistry registry,
+            @NotNull Set<VirtualFile> affectedFiles,
+            @Nullable Set<VirtualFile> onlyFiles
     ) {
         EditorWindow currentWindow = manager.getCurrentWindow();
         Color background = UIUtil.getPanelBackground();
@@ -80,6 +137,9 @@ final class ComponentSubtabMainTabColors {
 
             for (TabInfo tabInfo : tabsImpl.getTabs()) {
                 if (!(tabInfo.getObject() instanceof VirtualFile file)) {
+                    continue;
+                }
+                if (onlyFiles != null && !onlyFiles.contains(file)) {
                     continue;
                 }
 
@@ -102,14 +162,19 @@ final class ComponentSubtabMainTabColors {
             return;
         }
 
-        for (VirtualFile openFile : manager.getOpenFiles()) {
-            if (SubtabGroupColors.colorKey(openFile) != null) {
-                affectedFiles.add(openFile);
+        if (onlyFiles == null) {
+            for (VirtualFile openFile : manager.getOpenFiles()) {
+                if (SubtabGroupColors.colorKey(openFile) != null) {
+                    affectedFiles.add(openFile);
+                }
             }
         }
     }
 
-    private static void applyDirectTabColors(@NotNull FileEditorManagerEx manager) {
+    private static void applyDirectTabColors(
+            @NotNull FileEditorManagerEx manager,
+            @Nullable Set<VirtualFile> onlyFiles
+    ) {
         EditorWindow currentWindow = manager.getCurrentWindow();
         Color background = UIUtil.getPanelBackground();
 
@@ -126,6 +191,9 @@ final class ComponentSubtabMainTabColors {
                 if (!(tabInfo.getObject() instanceof VirtualFile file)) {
                     continue;
                 }
+                if (onlyFiles != null && !onlyFiles.contains(file)) {
+                    continue;
+                }
 
                 Color groupColor = SubtabGroupColors.colorForFile(file);
                 if (groupColor == null) {
@@ -140,7 +208,20 @@ final class ComponentSubtabMainTabColors {
                 applyTabColor(tabInfo, blend(groupColor, background, mix));
             }
 
-            tabsImpl.revalidateAndRepaint(false);
+            if (onlyFiles == null) {
+                tabsImpl.revalidateAndRepaint(false);
+            } else {
+                boolean touched = false;
+                for (TabInfo tabInfo : tabsImpl.getTabs()) {
+                    if (tabInfo.getObject() instanceof VirtualFile file && onlyFiles.contains(file)) {
+                        touched = true;
+                        break;
+                    }
+                }
+                if (touched) {
+                    tabsImpl.revalidateAndRepaint(false);
+                }
+            }
         }
     }
 

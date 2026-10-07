@@ -28,6 +28,16 @@ final class ComponentTabTitles {
         return groupedTitle;
     }
 
+    static @NotNull String displaySubtabLabel(@NotNull VirtualFile file) {
+        String label = subtabLabelFor(file);
+        return label != null ? label : file.getPresentableName();
+    }
+
+    static @NotNull String displayGroupName(@NotNull VirtualFile file) {
+        String grouped = displayGroupedTitle(file);
+        return grouped != null ? grouped : file.getPresentableName();
+    }
+
     static @Nullable String displayGroupedTitle(@NotNull VirtualFile file) {
         String baseName = ComponentFileNaming.componentBaseName(file.getName());
         if (baseName == null) {

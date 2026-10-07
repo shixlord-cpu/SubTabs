@@ -22,7 +22,8 @@ public class SubtabsRulesChangePerformanceTest extends RealEditorWindowTestCase 
         super.setUp();
         SubtabsSettings settings = SubtabsSettings.getInstance();
         settings.setSubtabsActive(true);
-        settings.setGroupRelatedFilesInProjectView(true);
+        settings.setProjectViewGroupingEnabled(true);
+        settings.setProjectViewGroupingActive(true);
 
         htmlFile = createSourceFile("product-list.component.html");
         tsFile = createSourceFile("product-list.component.ts");
@@ -71,7 +72,7 @@ public class SubtabsRulesChangePerformanceTest extends RealEditorWindowTestCase 
     }
 
     public void testRulesChangeSkipsProjectViewRebuildWhenGroupingIsDisabled() {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(false);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(false);
         openAndSettle(htmlFile);
 
         List<CustomSubtabRule> toggledRules = toggleKomponenteRule();
@@ -86,7 +87,7 @@ public class SubtabsRulesChangePerformanceTest extends RealEditorWindowTestCase 
     }
 
     public void testRulesChangeRefreshesProjectViewWhenGroupingIsEnabled() {
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(true);
         assertTrue(SubtabsPresentation.refreshesProjectViewOnSettingsChange());
     }
 

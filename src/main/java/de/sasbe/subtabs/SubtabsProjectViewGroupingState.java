@@ -11,16 +11,17 @@ public final class SubtabsProjectViewGroupingState {
     }
 
     public boolean isCollapsed() {
-        return !SubtabsSettings.getInstance().isGroupRelatedFilesInProjectView();
+        return !SubtabsSettings.getInstance().isProjectViewGroupingActive();
     }
 
     public void setCollapsed(@NotNull Project project, boolean collapsed) {
-        boolean grouped = !collapsed;
-        if (SubtabsSettings.getInstance().isGroupRelatedFilesInProjectView() == grouped) {
+        boolean active = !collapsed;
+        if (SubtabsSettings.getInstance().isProjectViewGroupingActive() == active) {
             return;
         }
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(grouped);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(active);
         SubtabsPresentation.refreshProjectViewGrouping(project);
+        SubtabsProjectViewGroupingOverlay.refresh(project);
     }
 
     public void toggle(@NotNull Project project) {

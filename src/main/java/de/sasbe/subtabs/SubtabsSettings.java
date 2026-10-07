@@ -32,6 +32,19 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         state.subtabsActive = active;
     }
 
+    /**
+     * When enabled, opening a file that belongs to a subtab group reuses an already open main tab of
+     * that group (in-tab swap) instead of adding another main tab. Does not apply during an active
+     * splittab pair session ({@link ComponentSubtabEditorSplitNavigation#blocksExternalFileOpen}).
+     */
+    public boolean isReuseOpenSubtabGroupMainTab() {
+        return state.reuseOpenSubtabGroupMainTab;
+    }
+
+    public void setReuseOpenSubtabGroupMainTab(boolean reuse) {
+        state.reuseOpenSubtabGroupMainTab = reuse;
+    }
+
     public boolean isFamiliaEnabled() {
         return state.familiaEnabled;
     }
@@ -73,12 +86,35 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         state.tabFontStyle = style.name();
     }
 
-    public boolean isGroupRelatedFilesInProjectView() {
-        return state.groupRelatedFilesInProjectView;
+    /** Whether the project-view grouping control (Gruppenverzeichnis) is offered. */
+    public boolean isProjectViewGroupingEnabled() {
+        return state.projectViewGroupingEnabled;
     }
 
+    public void setProjectViewGroupingEnabled(boolean enabled) {
+        state.projectViewGroupingEnabled = enabled;
+    }
+
+    /** Whether related files are currently grouped in the project view (icon toggle). */
+    public boolean isProjectViewGroupingActive() {
+        return state.projectViewGroupingActive;
+    }
+
+    public void setProjectViewGroupingActive(boolean active) {
+        state.projectViewGroupingActive = active;
+    }
+
+    /** @deprecated use {@link #isProjectViewGroupingEnabled()} and {@link #isProjectViewGroupingActive()} */
+    @Deprecated
+    public boolean isGroupRelatedFilesInProjectView() {
+        return isProjectViewGroupingEnabled() && isProjectViewGroupingActive();
+    }
+
+    /** @deprecated use {@link #setProjectViewGroupingEnabled(boolean)} / {@link #setProjectViewGroupingActive(boolean)} */
+    @Deprecated
     public void setGroupRelatedFilesInProjectView(boolean group) {
-        state.groupRelatedFilesInProjectView = group;
+        state.projectViewGroupingEnabled = group;
+        state.projectViewGroupingActive = group;
     }
 
     public boolean isFitTabsToEditorWidth() {
@@ -127,6 +163,14 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
 
     public void setHoverViewEnabled(boolean enabled) {
         state.hoverViewEnabled = enabled;
+    }
+
+    public boolean isHoverViewProjectToEditorEnabled() {
+        return state.hoverViewProjectToEditorEnabled;
+    }
+
+    public void setHoverViewProjectToEditorEnabled(boolean enabled) {
+        state.hoverViewProjectToEditorEnabled = enabled;
     }
 
     public boolean isShowSubtabNameInMainTab() {
@@ -232,6 +276,72 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         state.sidetabLayoutMode = mode.name();
     }
 
+    public int getSidetabBesideColumnWidth() {
+        int min = com.intellij.util.ui.JBUI.scale(48);
+        int max = com.intellij.util.ui.JBUI.scale(480);
+        int stored = state.sidetabBesideColumnWidth;
+        if (stored <= 0) {
+            stored = SidetabBarPanel.defaultBesideColumnWidth();
+        }
+        return Math.max(min, Math.min(max, stored));
+    }
+
+    public void setSidetabBesideColumnWidth(int width) {
+        state.sidetabBesideColumnWidth = width;
+    }
+
+    public boolean isSplittabsEnabled() {
+        return state.splittabsEnabled;
+    }
+
+    public void setSplittabsEnabled(boolean enabled) {
+        state.splittabsEnabled = enabled;
+    }
+
+    public @NotNull SplittabBehaviorMode getSplittabBehaviorMode() {
+        return SplittabBehaviorMode.fromPersisted(state.splittabBehaviorMode);
+    }
+
+    public void setSplittabBehaviorMode(@NotNull SplittabBehaviorMode mode) {
+        state.splittabBehaviorMode = mode.name();
+    }
+
+    public boolean isRestoreSwitchSplittabSessionOnProjectOpen() {
+        return state.restoreSwitchSplittabSessionOnProjectOpen;
+    }
+
+    public void setRestoreSwitchSplittabSessionOnProjectOpen(boolean restore) {
+        state.restoreSwitchSplittabSessionOnProjectOpen = restore;
+    }
+
+    public @Nullable String getSettingsDialogSelectedTabTitle() {
+        return state.settingsDialogSelectedTabTitle;
+    }
+
+    public void setSettingsDialogSelectedTabTitle(@Nullable String title) {
+        if (title == null || title.isBlank()) {
+            state.settingsDialogSelectedTabTitle = null;
+        } else {
+            state.settingsDialogSelectedTabTitle = title.trim();
+        }
+    }
+
+    public @NotNull SplittabDissolveMode getSplittabDissolveMode() {
+        return SplittabDissolveMode.fromPersisted(state.splittabDissolveMode);
+    }
+
+    public void setSplittabDissolveMode(@NotNull SplittabDissolveMode mode) {
+        state.splittabDissolveMode = mode.name();
+    }
+
+    public @NotNull SplittabOtherPairFileMode getSplittabOtherPairFileMode() {
+        return SplittabOtherPairFileMode.fromPersisted(state.splittabOtherPairFileMode);
+    }
+
+    public void setSplittabOtherPairFileMode(@NotNull SplittabOtherPairFileMode mode) {
+        state.splittabOtherPairFileMode = mode.name();
+    }
+
     public boolean isSidetabsCombineComments() {
         CustomSidetabRule family = SidetabRulesDefaults.findTopRule(getSidetabRules());
         return family != null && family.familyMode == TopCommentMode.COMBINE;
@@ -285,7 +395,18 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
             this.state.sidetabRules = new ArrayList<>();
         }
         migrateFamiliaEnabledIfNeeded();
+        migrateProjectViewGroupingIfNeeded();
         migrateRulesIfNeeded();
+    }
+
+    private void migrateProjectViewGroupingIfNeeded() {
+        if (state.projectViewGroupingSplitKnown) {
+            return;
+        }
+        boolean legacy = state.groupRelatedFilesInProjectView;
+        state.projectViewGroupingEnabled = legacy;
+        state.projectViewGroupingActive = legacy;
+        state.projectViewGroupingSplitKnown = true;
     }
 
     private void migrateFamiliaEnabledIfNeeded() {
@@ -322,6 +443,15 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         }
         if (state.sidetabLayoutMode == null || state.sidetabLayoutMode.isBlank()) {
             migrateSidetabLayoutMode();
+        }
+        if (state.splittabBehaviorMode == null || state.splittabBehaviorMode.isBlank()) {
+            state.splittabBehaviorMode = SplittabBehaviorMode.INTEGRATED.name();
+        }
+        if (state.splittabDissolveMode == null || state.splittabDissolveMode.isBlank()) {
+            state.splittabDissolveMode = SplittabDissolveMode.DISSOLVE.name();
+        }
+        if (state.splittabOtherPairFileMode == null || state.splittabOtherPairFileMode.isBlank()) {
+            state.splittabOtherPairFileMode = SplittabOtherPairFileMode.OPEN_NORMALLY.name();
         }
         migrateSidetabRulesIfNeeded();
     }
@@ -500,16 +630,21 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
 
     public static final class State {
         public boolean subtabsActive = true;
+        public boolean reuseOpenSubtabGroupMainTab = true;
         public boolean familiaEnabled = true;
         public boolean familiaEnabledKnown = false;
         public boolean showCollapseButton = true;
         public boolean groupRelatedFilesInProjectView = true;
+        public boolean projectViewGroupingEnabled = true;
+        public boolean projectViewGroupingActive = true;
+        public boolean projectViewGroupingSplitKnown = false;
         public boolean fitTabsToEditorWidth = true;
         public String overflowMode = "SCROLLBAR";
         public String groupTreeControlStyle = "DEFAULT";
         public boolean invertGroupTreeControlFill = false;
         public boolean groupColorsEnabled = true;
         public boolean hoverViewEnabled = true;
+        public boolean hoverViewProjectToEditorEnabled = true;
         public boolean showSubtabNameInMainTab = false;
         public Map<String, String> groupColorHexes = new LinkedHashMap<>();
         public Map<String, List<String>> subtabGroupOrders = new LinkedHashMap<>();
@@ -527,5 +662,12 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
         public boolean sidetabsCombineComments = true;
         public int sidetabRulesVersion = SidetabRulesDefaults.VERSION;
         public List<CustomSidetabRule> sidetabRules = SidetabRulesDefaults.createDefaults();
+        public int sidetabBesideColumnWidth = 0;
+        public boolean splittabsEnabled = true;
+        public String splittabBehaviorMode = SplittabBehaviorMode.INTEGRATED.name();
+        public boolean restoreSwitchSplittabSessionOnProjectOpen = false;
+        public @Nullable String settingsDialogSelectedTabTitle;
+        public String splittabDissolveMode = SplittabDissolveMode.DISSOLVE.name();
+        public String splittabOtherPairFileMode = SplittabOtherPairFileMode.OPEN_NORMALLY.name();
     }
 }

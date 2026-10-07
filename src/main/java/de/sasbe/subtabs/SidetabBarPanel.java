@@ -1,6 +1,7 @@
 package de.sasbe.subtabs;
 
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.ex.FoldingListener;
@@ -39,6 +40,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -48,6 +50,7 @@ import java.util.List;
 final class SidetabBarPanel extends JPanel {
     static final String FOLDED_KEY = "componentSubtabs.sidetabFolded";
     static final String BLANK_KEY = "componentSubtabs.sidetabBlank";
+    static final String SEGMENT_HOVER_KEY = "componentSubtabs.segmentHover";
     static final String SECTION_INDEX_KEY = "componentSubtabs.sidetabSectionIndex";
     private static final int OVERLAY_HIT_WIDTH = 40;
     private static final int OVERLAY_LINE_WIDTH = 12;
@@ -61,30 +64,29 @@ final class SidetabBarPanel extends JPanel {
     static final String DEPTH_KEY = "componentSubtabs.sidetabDepth";
     private static final String OVERLAY_TABS_ON_RIGHT_KEY = "componentSubtabs.overlayTabsOnRight";
 
-    static int subDepthDotSize() {
-        return JBUI.scale(4);
+    static int defaultBesideColumnWidth() {
+        return JBUI.scale(120);
     }
 
+    static int subDepthIndentStep() {
+        return JBUI.scale(DEPTH_INDENT);
+    }
+
+    static int subDepthTextIndent(int depth) {
+        if (depth <= 0) {
+            return 0;
+        }
+        return JBUI.scale(4) + depth * subDepthIndentStep();
+    }
+
+    /** @deprecated tests only — use {@link #subDepthTextIndent(int)} */
+    @Deprecated
     static int subDepthDotBaseX() {
         return JBUI.scale(4);
     }
 
-    static int subDepthDotSpacing() {
-        return JBUI.scale(DEPTH_INDENT);
-    }
-
-    static int subDepthDotClusterWidth(int depth) {
-        if (depth <= 0) {
-            return 0;
-        }
-        return subDepthDotBaseX() + subDepthDotSize() + (depth - 1) * subDepthDotSpacing();
-    }
-
     static int subDepthDotOffset(int depth) {
-        if (depth <= 0) {
-            return -1;
-        }
-        return (depth - 1) * subDepthDotSpacing();
+        return subDepthTextIndent(Math.max(0, depth));
     }
 
     private final Project project;
@@ -97,13 +99,22 @@ final class SidetabBarPanel extends JPanel {
     private int topIconReserve;
     private List<SidetabSection> sections = List.of();
     private SidetabLayoutMode layoutMode = SidetabLayoutMode.BESIDE;
+    private @Nullable JPanel overlaySectionStack;
     private boolean onRight = true;
     private final ComponentAdapter resizeListener = new ComponentAdapter() {
         @Override
         public void componentResized(ComponentEvent event) {
             updateSegmentSizes();
+            if (layoutMode == SidetabLayoutMode.BESIDE) {
+                ComponentSubtabsManager.refreshOverlayIconReserve(project, fileEditor);
+            }
         }
     };
+    private boolean besideResizeInstalled;
+    private boolean besideResizeActive;
+    private int besideResizeStartX;
+    private int besideResizeStartWidth;
+    private boolean besideResizePerFile;
 
     SidetabBarPanel(@NotNull Project project, @NotNull FileEditor fileEditor) {
         super(new BorderLayout(0, 0));
@@ -138,6 +149,102 @@ final class SidetabBarPanel extends JPanel {
         overflowStrip = new SidetabOverflowStrip(scrollPane, () -> tabsHost.getPreferredSize().height);
         overflowStrip.attachWheel(tabsHost);
         add(overflowStrip, BorderLayout.CENTER);
+        installBesideColumnResizeHandle();
+    }
+
+    private void installBesideColumnResizeHandle() {
+        if (besideResizeInstalled) {
+            return;
+        }
+        besideResizeInstalled = true;
+        MouseAdapter resize = new MouseAdapter() {
+            @Override
+            public void mousePressed(@NotNull MouseEvent event) {
+                if (!isBesideResizeZone(event)) {
+                    return;
+                }
+                if (!SwingUtilities.isLeftMouseButton(event) && !SwingUtilities.isRightMouseButton(event)) {
+                    return;
+                }
+                event.consume();
+                besideResizeActive = true;
+                besideResizeStartX = event.getXOnScreen();
+                VirtualFile file = fileEditor.getFile();
+                if (SwingUtilities.isLeftMouseButton(event) && file != null) {
+                    besideResizePerFile = true;
+                    besideResizeStartWidth = ComponentSubtabsScopedVisibility.sidetabBesideColumnWidthForFile(
+                            project,
+                            file
+                    );
+                } else if (SwingUtilities.isRightMouseButton(event)) {
+                    besideResizePerFile = false;
+                    if (file != null) {
+                        ComponentSubtabsScopedVisibility.clearSidetabBesideColumnWidthForFile(project, file);
+                    }
+                    besideResizeStartWidth = SubtabsSettings.getInstance().getSidetabBesideColumnWidth();
+                    applyLiveBesideColumnWidth(besideResizeStartWidth);
+                } else {
+                    besideResizeActive = false;
+                }
+            }
+
+            @Override
+            public void mouseDragged(@NotNull MouseEvent event) {
+                if (!besideResizeActive) {
+                    return;
+                }
+                event.consume();
+                int delta = event.getXOnScreen() - besideResizeStartX;
+                int next = ComponentSubtabsScopedVisibility.clampSidetabBesideColumnWidth(
+                        onRight ? besideResizeStartWidth - delta : besideResizeStartWidth + delta
+                );
+                if (besideResizePerFile) {
+                    VirtualFile file = fileEditor.getFile();
+                    if (file == null) {
+                        return;
+                    }
+                    ComponentSubtabsScopedVisibility.storeSidetabBesideColumnWidthForFile(project, file, next);
+                    applyLiveBesideColumnWidth(next);
+                    ComponentSubtabsManager.refreshOverlayIconReserve(project, fileEditor);
+                } else {
+                    SubtabsSettings.getInstance().setSidetabBesideColumnWidth(next);
+                    SidetabsManager.applyBesideColumnWidth(project);
+                }
+            }
+
+            @Override
+            public void mouseReleased(@NotNull MouseEvent event) {
+                if (!besideResizeActive) {
+                    return;
+                }
+                besideResizeActive = false;
+                besideResizeStartWidth = 0;
+                besideResizePerFile = false;
+                ComponentSubtabsManager.refreshOverlayIconReserve(project, fileEditor);
+            }
+
+            @Override
+            public void mouseMoved(@NotNull MouseEvent event) {
+                setCursor(isBesideResizeZone(event)
+                        ? Cursor.getPredefinedCursor(Cursor.E_RESIZE_CURSOR)
+                        : Cursor.getDefaultCursor());
+            }
+
+            @Override
+            public void mouseExited(@NotNull MouseEvent event) {
+                setCursor(Cursor.getDefaultCursor());
+            }
+        };
+        addMouseListener(resize);
+        addMouseMotionListener(resize);
+    }
+
+    private boolean isBesideResizeZone(@NotNull MouseEvent event) {
+        if (layoutMode != SidetabLayoutMode.BESIDE) {
+            return false;
+        }
+        int zone = JBUI.scale(5);
+        return onRight ? event.getX() <= zone : event.getX() >= getWidth() - zone;
     }
 
     void setTopIconReserve(int height) {
@@ -290,6 +397,13 @@ final class SidetabBarPanel extends JPanel {
         return layoutMode == SidetabLayoutMode.OVERLAY;
     }
 
+    void refreshOverlayStackLayout() {
+        if (!overlayMode()) {
+            return;
+        }
+        updateSegmentSizes();
+    }
+
     @NotNull List<SidetabSection> sections() {
         return sections;
     }
@@ -355,6 +469,28 @@ final class SidetabBarPanel extends JPanel {
         }
     }
 
+    void applyLiveBesideColumnWidth(int columnWidth) {
+        if (layoutMode != SidetabLayoutMode.BESIDE) {
+            return;
+        }
+        columnWidth = ComponentSubtabsScopedVisibility.clampSidetabBesideColumnWidth(columnWidth);
+        int height = getPreferredSize().height;
+        if (height <= 0) {
+            height = 1;
+        }
+        setPreferredSize(new Dimension(columnWidth, height));
+        setMinimumSize(new Dimension(Math.min(columnWidth, JBUI.scale(48)), 0));
+        setMaximumSize(new Dimension(columnWidth, Integer.MAX_VALUE));
+        layoutBesideButtons();
+        revalidate();
+        repaint();
+        Container parent = getParent();
+        if (parent != null) {
+            parent.revalidate();
+            parent.repaint();
+        }
+    }
+
     void refreshAppearance() {
         tabsHost.setBorder(BorderFactory.createEmptyBorder(
                 ComponentSubtabUi.verticalGap(),
@@ -385,16 +521,13 @@ final class SidetabBarPanel extends JPanel {
 
     private void applyLayoutChrome() {
         overflowStrip.setMode(SubtabsSettings.getInstance().getOverflowMode());
-        overflowStrip.setOverflowEnabled(layoutMode == SidetabLayoutMode.BESIDE);
+        overflowStrip.setOverflowEnabled(true);
         if (layoutMode == SidetabLayoutMode.OVERLAY) {
-            scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-            scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
             setBorder(BorderFactory.createEmptyBorder());
             setOpaque(false);
             tabsHost.setOpaque(false);
-            tabsHost.setLayout(new BoxLayout(tabsHost, BoxLayout.Y_AXIS));
             tabsHost.setBorder(BorderFactory.createEmptyBorder());
-            ensureOverlayDirectLayout();
+            ensureOverlayScrollLayout();
             int barWidth = JBUI.scale(OVERLAY_HIT_WIDTH);
             setPreferredSize(new Dimension(barWidth, overlayStackHeight(Math.max(sections.size(), buttons.size()))));
             setMinimumSize(new Dimension(barWidth, 0));
@@ -439,13 +572,19 @@ final class SidetabBarPanel extends JPanel {
         ));
     }
 
-    private void ensureOverlayDirectLayout() {
-        if (overflowStrip.getParent() == this) {
-            remove(overflowStrip);
+    private void ensureOverlayScrollLayout() {
+        if (tabsHost.getParent() == this) {
+            remove(tabsHost);
         }
-        if (tabsHost.getParent() != this) {
-            scrollPane.setViewportView(null);
-            add(tabsHost, BorderLayout.CENTER);
+        if (scrollPane.getViewport().getView() != tabsHost) {
+            scrollPane.setViewportView(tabsHost);
+        }
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        if (overflowStrip.getParent() != this) {
+            add(overflowStrip, BorderLayout.CENTER);
         }
     }
 
@@ -462,21 +601,11 @@ final class SidetabBarPanel extends JPanel {
     }
 
     private int besideColumnWidth() {
-        return Math.max(JBUI.scale(48), preferredBesideWidth());
-    }
-
-    private int preferredBesideWidth() {
-        int maxWidth = 0;
-        for (SidetabSection section : sections) {
-            maxWidth = Math.max(
-                    maxWidth,
-                    ComponentSubtabUi.preferredLabelWidth(section.name())
-            );
+        VirtualFile file = fileEditor.getFile();
+        if (file != null) {
+            return ComponentSubtabsScopedVisibility.sidetabBesideColumnWidthForFile(project, file);
         }
-        for (JToggleButton button : buttons) {
-            maxWidth = Math.max(maxWidth, button.getPreferredSize().width);
-        }
-        return maxWidth;
+        return SubtabsSettings.getInstance().getSidetabBesideColumnWidth();
     }
 
     private static int depthIndent(int depth) {
@@ -513,28 +642,20 @@ final class SidetabBarPanel extends JPanel {
                 stackPanel.add(Box.createVerticalStrut(JBUI.scale(OVERLAY_SEGMENT_GAP)));
             }
         }
-        mountTopAlignedStack(stackPanel);
+        mountSectionStack(stackPanel);
         updateSegmentSizes();
         refreshSectionPresentation();
     }
 
-    static int stackTopInset() {
-        return SidetabIconLayout.iconGap() + ComponentSubtabUi.verticalGap();
-    }
-
-    private void mountTopAlignedStack(@NotNull JPanel stackPanel) {
+    private void mountSectionStack(@NotNull JPanel stackPanel) {
         if (layoutMode == SidetabLayoutMode.OVERLAY) {
-            tabsHost.setLayout(new GridBagLayout());
-            GridBagConstraints constraints = new GridBagConstraints();
-            constraints.gridx = 0;
-            constraints.gridy = 0;
-            constraints.weightx = 1;
-            constraints.weighty = 1;
-            constraints.anchor = GridBagConstraints.NORTH;
-            constraints.insets = new Insets(stackTopInset(), 0, 0, 0);
-            tabsHost.add(stackPanel, constraints);
+            overlaySectionStack = stackPanel;
+            tabsHost.removeAll();
+            tabsHost.setLayout(null);
+            tabsHost.add(stackPanel);
             return;
         }
+        overlaySectionStack = null;
         tabsHost.setLayout(new BoxLayout(tabsHost, BoxLayout.Y_AXIS));
         tabsHost.add(stackPanel);
         tabsHost.add(Box.createVerticalGlue());
@@ -566,7 +687,8 @@ final class SidetabBarPanel extends JPanel {
             button.putClientProperty(ComponentSubtabUi.FILE_KEY, editorFile);
         }
         ComponentSubtabUi.setVerticalPlacement(button, onRight);
-        button.setAlignmentX(Component.CENTER_ALIGNMENT);
+        button.setHorizontalAlignment(SwingConstants.LEFT);
+        button.setAlignmentX(Component.LEFT_ALIGNMENT);
         button.setToolTipText(section.name());
         button.putClientProperty(SECTION_INDEX_KEY, index);
         button.putClientProperty(BLANK_KEY, blank);
@@ -742,17 +864,21 @@ final class SidetabBarPanel extends JPanel {
             button.setMaximumSize(size);
             button.setAlignmentX(Component.CENTER_ALIGNMENT);
         }
-        Dimension stackSize = new Dimension(hitWidth, overlayStackHeight(buttons.size()));
-        int hostHeight = Math.max(getHeight(), stackSize.height);
-        tabsHost.setPreferredSize(new Dimension(hitWidth, hostHeight));
-        tabsHost.setMinimumSize(stackSize);
-        tabsHost.setMaximumSize(new Dimension(hitWidth, Integer.MAX_VALUE));
-        setPreferredSize(new Dimension(hitWidth, stackSize.height));
+        int stackHeight = overlayStackHeight(buttons.size());
+        Dimension stackSize = new Dimension(hitWidth, stackHeight);
+        int viewportHeight = scrollPane.getViewport().getHeight();
+        if (viewportHeight <= 0) {
+            viewportHeight = Math.max(getHeight(), stackHeight);
+        }
+        updateOverlayTabsHostSize(hitWidth, stackHeight, viewportHeight);
+        int panelHeight = getHeight() > 0 ? getHeight() : stackHeight;
+        setPreferredSize(new Dimension(hitWidth, panelHeight));
         setMinimumSize(new Dimension(hitWidth, 0));
         setMaximumSize(new Dimension(hitWidth, Integer.MAX_VALUE));
         layoutOverlayTabsHost();
         tabsHost.revalidate();
         tabsHost.repaint();
+        overflowStrip.revalidate();
         revalidate();
     }
 
@@ -763,20 +889,58 @@ final class SidetabBarPanel extends JPanel {
     }
 
     private void layoutOverlayTabsHost() {
-        if (layoutMode != SidetabLayoutMode.OVERLAY || tabsHost.getParent() != this || getHeight() <= 0) {
+        if (layoutMode != SidetabLayoutMode.OVERLAY || getHeight() <= 0 || buttons.isEmpty()) {
             return;
         }
-        tabsHost.setBounds(0, 0, getWidth(), getHeight());
-        tabsHost.doLayout();
+        int hitWidth = getWidth() > 0 ? getWidth() : JBUI.scale(OVERLAY_HIT_WIDTH);
+        int stackHeight = overlayStackHeight(buttons.size());
+        int viewportHeight = scrollPane.getViewport().getHeight();
+        if (viewportHeight <= 0) {
+            viewportHeight = overflowStrip.getHeight();
+        }
+        if (viewportHeight <= 0) {
+            viewportHeight = getHeight();
+        }
+        updateOverlayTabsHostSize(hitWidth, stackHeight, viewportHeight);
+        layoutOverlaySectionStack(hitWidth, stackHeight);
+        scrollPane.getViewport().revalidate();
+        tabsHost.revalidate();
+    }
+
+    private void layoutOverlaySectionStack(int hitWidth, int stackHeight) {
+        JPanel stack = overlaySectionStack;
+        if (stack == null) {
+            return;
+        }
+        int hostWidth = Math.max(tabsHost.getWidth(), hitWidth);
+        int hostHeight = Math.max(tabsHost.getHeight(), tabsHost.getPreferredSize().height);
+        int y = stackHeight <= hostHeight ? (hostHeight - stackHeight) / 2 : 0;
+        stack.setBounds(0, y, hostWidth, stackHeight);
+        stack.doLayout();
+    }
+
+    /**
+     * Keeps the overlay marker stack vertically centered in the code window while it fits; once the stack
+     * is taller than the viewport, scrolling or overflow arrows take over at the strip edge.
+     */
+    private void updateOverlayTabsHostSize(int hitWidth, int stackHeight, int viewportHeight) {
+        int viewHeight = Math.max(stackHeight, Math.max(viewportHeight, 0));
+        Dimension viewSize = new Dimension(hitWidth, viewHeight);
+        tabsHost.setPreferredSize(viewSize);
+        tabsHost.setMinimumSize(new Dimension(hitWidth, stackHeight));
+        tabsHost.setMaximumSize(new Dimension(hitWidth, Integer.MAX_VALUE));
+        if (viewHeight > stackHeight) {
+            tabsHost.setSize(viewSize);
+            scrollPane.getViewport().setViewSize(viewSize);
+        }
+        layoutOverlaySectionStack(hitWidth, stackHeight);
     }
 
     private void layoutBesideButtons() {
         int columnWidth = besideColumnWidth();
         for (int index = 0; index < buttons.size(); index++) {
             JToggleButton button = buttons.get(index);
-            int depth = index < sections.size() ? sections.get(index).depth() : 0;
-            int width = Math.max(JBUI.scale(48), columnWidth - depthIndent(depth));
-            Dimension size = new Dimension(width, ComponentSubtabUi.tabHeight());
+            Dimension size = new Dimension(columnWidth, ComponentSubtabUi.tabHeight());
             button.setPreferredSize(size);
             button.setMinimumSize(size);
             button.setMaximumSize(size);
@@ -908,11 +1072,13 @@ final class SidetabBarPanel extends JPanel {
             addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseEntered(MouseEvent event) {
+                    putClientProperty(SEGMENT_HOVER_KEY, Boolean.TRUE);
                     repaint();
                 }
 
                 @Override
                 public void mouseExited(MouseEvent event) {
+                    putClientProperty(SEGMENT_HOVER_KEY, Boolean.FALSE);
                     repaint();
                 }
             });
@@ -931,14 +1097,14 @@ final class SidetabBarPanel extends JPanel {
                 boolean blank = Boolean.TRUE.equals(getClientProperty(BLANK_KEY));
                 boolean modified = Boolean.TRUE.equals(getClientProperty(ComponentSubtabUi.MODIFIED_KEY));
                 boolean hasErrors = Boolean.TRUE.equals(getClientProperty(ComponentSubtabUi.ERROR_KEY));
-                boolean hovered = getModel().isRollover();
+                boolean hovered = segmentHovered();
                 boolean selected = isSelected();
                 Object lineWidthValue = getClientProperty("overlayLineWidth");
                 int barHeight = lineWidthValue instanceof Integer value
                         ? Math.max(1, JBUI.scale(value))
                         : JBUI.scale(OVERLAY_LINE_WIDTH);
-                if (selected && !folded) {
-                    barHeight = Math.max(barHeight, JBUI.scale(OVERLAY_LINE_WIDTH + 1));
+                if (!folded && (selected || hovered)) {
+                    barHeight = Math.max(barHeight, JBUI.scale(OVERLAY_LINE_WIDTH + (selected ? 1 : 0)));
                 }
 
                 g.setColor(overlayMarkerColor(this, selected, hovered, blank, modified, hasErrors));
@@ -1003,12 +1169,19 @@ final class SidetabBarPanel extends JPanel {
             }
             Color base;
             if (selected) {
-                Color groupColor = SubtabGroupColors.colorForFile(ComponentSubtabUi.tabFile(button));
-                base = groupColor != null ? groupColor : UIUtil.getLabelForeground();
+                Color groupColor = null;
+                if (ApplicationManager.getApplication() != null) {
+                    groupColor = SubtabGroupColors.colorForFile(ComponentSubtabUi.tabFile(button));
+                }
+                Color foreground = UIUtil.getLabelForeground();
+                base = groupColor != null ? groupColor : foreground != null ? foreground : Color.GRAY;
             } else if (hovered) {
                 base = JBUI.CurrentTheme.TabbedPane.HOVER_COLOR;
             } else {
                 Color muted = UIUtil.getInactiveTextColor();
+                if (muted == null) {
+                    muted = Color.GRAY;
+                }
                 base = blank
                         ? new Color(muted.getRed(), muted.getGreen(), muted.getBlue(), 120)
                         : muted;
@@ -1021,6 +1194,10 @@ final class SidetabBarPanel extends JPanel {
                 return color;
             }
             return new Color(color.getRed(), color.getGreen(), color.getBlue(), 128);
+        }
+
+        private boolean segmentHovered() {
+            return Boolean.TRUE.equals(getClientProperty(SEGMENT_HOVER_KEY)) || getModel().isRollover();
         }
     }
 }

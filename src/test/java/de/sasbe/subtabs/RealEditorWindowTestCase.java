@@ -35,17 +35,23 @@ public abstract class RealEditorWindowTestCase extends HeavyPlatformTestCase {
                 getProject(), FileEditorManager.class, real, getTestRootDisposable());
         manager = FileEditorManagerEx.getInstanceEx(getProject());
         sourceDir = getVirtualFile(createTempDir("app"));
+        ComponentSubtabsFileEditorListener.attachToAlreadyOpenFiles(getProject());
     }
 
     @Override
     protected void tearDown() throws Exception {
         try {
             ComponentSubtabGroupSplitRegistry.getInstance(getProject()).clear();
+            ComponentSubtabEditorSplitRegistry.getInstance(getProject()).clear();
+            ComponentSubtabsScopedVisibility.getInstance(getProject()).clear();
             if (manager != null) {
                 // Editor panes are built asynchronously, so the manager has to be shut down explicitly
                 // or the framework reports the editors it still holds as leaked.
                 manager.closeAllFiles();
-                PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+                ComponentSubtabEditorSplitNavigation.collapseEmptyEditorWindows(getProject());
+                for (int attempt = 0; attempt < 30; attempt++) {
+                    PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+                }
                 CoroutineScopeKt.cancel(managerScope, null);
                 PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
             }
@@ -60,7 +66,36 @@ public abstract class RealEditorWindowTestCase extends HeavyPlatformTestCase {
 
     protected void openAndSettle(VirtualFile file) {
         manager.openFile(file, true);
-        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+        drainDeferredEditorEvents();
+    }
+
+    protected void drainDeferredEditorEvents() {
+        for (int attempt = 0; attempt < 40; attempt++) {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+        }
+        // Plugin opens do not await the editor composite; its editors are built in the background.
+        long deadline = System.currentTimeMillis() + 10_000L;
+        while (!allOpenFilesHaveEditors() && System.currentTimeMillis() < deadline) {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+            try {
+                Thread.sleep(5);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        for (int attempt = 0; attempt < 40; attempt++) {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+        }
+    }
+
+    private boolean allOpenFilesHaveEditors() {
+        for (VirtualFile file : manager.getOpenFiles()) {
+            if (manager.getEditors(file).length == 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     protected EditorWindow windowOf(VirtualFile file) {

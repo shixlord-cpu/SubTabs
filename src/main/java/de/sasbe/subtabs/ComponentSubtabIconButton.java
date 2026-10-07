@@ -21,6 +21,7 @@ final class ComponentSubtabIconButton extends JButton {
     private static final int LOADING_ARC_DEGREES = 270;
 
     private boolean hovered;
+    private boolean dropTargetHighlight;
     private boolean loading;
     private float loadingAngle;
     private @Nullable Timer loadingTimer;
@@ -56,6 +57,14 @@ final class ComponentSubtabIconButton extends JButton {
         setMaximumSize(dimension);
     }
 
+    void setDropTargetHighlight(boolean highlight) {
+        if (dropTargetHighlight == highlight) {
+            return;
+        }
+        dropTargetHighlight = highlight;
+        repaint();
+    }
+
     void setLoading(boolean loading) {
         if (this.loading == loading) {
             return;
@@ -86,15 +95,29 @@ final class ComponentSubtabIconButton extends JButton {
             paintLoadingIndicator(graphics);
             return;
         }
-        if (hovered && isEnabled()) {
+        if ((hovered || dropTargetHighlight) && isEnabled()) {
             Graphics2D g2 = (Graphics2D) graphics.create();
             try {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(com.intellij.util.ui.JBUI.CurrentTheme.ActionButton.hoverBackground());
+                g2.setColor(
+                        dropTargetHighlight
+                                ? new Color(0x60A5FA)
+                                : com.intellij.util.ui.JBUI.CurrentTheme.ActionButton.hoverBackground()
+                );
                 int diameter = Math.min(getWidth(), getHeight());
                 int x = (getWidth() - diameter) / 2;
                 int y = (getHeight() - diameter) / 2;
                 g2.fillOval(x, y, diameter, diameter);
+                if (dropTargetHighlight) {
+                    g2.setColor(LOADING_ARC_COLOR);
+                    g2.setStroke(new BasicStroke(
+                            Math.max(1.5f, com.intellij.util.ui.JBUI.scale(2f)),
+                            BasicStroke.CAP_ROUND,
+                            BasicStroke.JOIN_ROUND
+                    ));
+                    int ringInset = com.intellij.util.ui.JBUI.scale(2);
+                    g2.drawOval(x + ringInset, y + ringInset, diameter - ringInset * 2, diameter - ringInset * 2);
+                }
             } finally {
                 g2.dispose();
             }

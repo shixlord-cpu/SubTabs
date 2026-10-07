@@ -10,8 +10,8 @@ import java.awt.Component;
 
 public class SubtabsProjectViewGroupingOverlayTest extends LightPlatformTestCase {
     public void testGroupingButtonIsVisibleInsideProjectTreeScrollPane() {
-        SubtabsSettings.getInstance().setShowCollapseButton(true);
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(true);
 
         ApplicationManager.getApplication().invokeAndWait(() -> {
             JTree tree = new JTree();
@@ -52,7 +52,7 @@ public class SubtabsProjectViewGroupingOverlayTest extends LightPlatformTestCase
     }
 
     public void testProjectTreeRemainsScrollableWithGroupingOverlay() {
-        SubtabsSettings.getInstance().setShowCollapseButton(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
 
         ApplicationManager.getApplication().invokeAndWait(() -> {
             JTree tree = new JTree();
@@ -78,7 +78,7 @@ public class SubtabsProjectViewGroupingOverlayTest extends LightPlatformTestCase
 
     public void testFamiliaToggleRemovesAndRestoresGroupingButton() {
         SubtabsSettings.getInstance().setFamiliaEnabled(true);
-        SubtabsSettings.getInstance().setShowCollapseButton(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
 
         ApplicationManager.getApplication().invokeAndWait(() -> {
             JTree tree = new JTree();
@@ -113,9 +113,10 @@ public class SubtabsProjectViewGroupingOverlayTest extends LightPlatformTestCase
         });
     }
 
-    public void testGroupingButtonStaysVisibleWhenGroupingIsDisabled() {
+    public void testGroupingButtonStaysVisibleWhenGroupingIsCollapsed() {
         SubtabsSettings.getInstance().setFamiliaEnabled(true);
-        SubtabsSettings.getInstance().setGroupRelatedFilesInProjectView(false);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(false);
 
         ApplicationManager.getApplication().invokeAndWait(() -> {
             JTree tree = new JTree();
@@ -131,16 +132,43 @@ public class SubtabsProjectViewGroupingOverlayTest extends LightPlatformTestCase
             scrollPane.validate();
 
             ComponentSubtabIconButton button = SubtabsProjectViewGroupingOverlay.installedGroupingButtonForTree(tree);
-            assertNotNull("disabled grouping must still show the control", button);
-            assertTrue("disabled grouping control must stay visible", button.isVisible());
+            assertNotNull("collapsed grouping must still show the control", button);
+            assertTrue("collapsed grouping control must stay visible", button.isVisible());
             assertEquals(SubtabsIcons.GROUPING_COLLAPSED, button.getIcon());
 
             frame.dispose();
         });
     }
 
+    public void testGroupingButtonHiddenWhenGruppierungDisabled() {
+        SubtabsSettings.getInstance().setFamiliaEnabled(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(false);
+        SubtabsSettings.getInstance().setProjectViewGroupingActive(true);
+
+        ApplicationManager.getApplication().invokeAndWait(() -> {
+            JTree tree = new JTree();
+            JBScrollPane scrollPane = new JBScrollPane(tree);
+            JFrame frame = new JFrame();
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            frame.setContentPane(scrollPane);
+            frame.setSize(420, 320);
+            frame.setVisible(true);
+            frame.validate();
+
+            SubtabsProjectViewGroupingOverlay.attachForTest(getProject(), scrollPane);
+            scrollPane.validate();
+
+            assertNull(
+                    "Gruppierung off must hide the project-view control",
+                    SubtabsProjectViewGroupingOverlay.installedButtonForTree(tree)
+            );
+
+            frame.dispose();
+        });
+    }
+
     public void testGroupingButtonShowsLoadingSpinnerWhileProjectViewRebuilds() {
-        SubtabsSettings.getInstance().setShowCollapseButton(true);
+        SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
 
         ApplicationManager.getApplication().invokeAndWait(() -> {
             JTree tree = new JTree();

@@ -20,9 +20,6 @@ final class SubtabsProjectViewGroupingBusyWatcher implements Disposable {
     private static final int SETTLE_QUIET_MS = 450;
     private static final int POLL_MS = 100;
     private static final int MAX_WAIT_MS = 15000;
-    private static final int UNIT_TEST_SETTLE_QUIET_MS = 80;
-    private static final int UNIT_TEST_POLL_MS = 20;
-    private static final int UNIT_TEST_MAX_WAIT_MS = 2000;
 
     private final @NotNull Project project;
     private @Nullable Timer pollTimer;
@@ -44,10 +41,10 @@ final class SubtabsProjectViewGroupingBusyWatcher implements Disposable {
         pendingCompletion = onComplete;
         long now = System.currentTimeMillis();
         lastChangeAtMs = now;
-        deadlineAtMs = now + maxWaitMs();
+        deadlineAtMs = now + MAX_WAIT_MS;
         lastSnapshot = snapshotProjectTrees();
 
-        pollTimer = new Timer(pollIntervalMs(), event -> pollForSettledState());
+        pollTimer = new Timer(POLL_MS, event -> pollForSettledState());
         pollTimer.start();
     }
 
@@ -64,7 +61,7 @@ final class SubtabsProjectViewGroupingBusyWatcher implements Disposable {
             lastChangeAtMs = now;
         }
 
-        if (now - lastChangeAtMs >= settleQuietMs() || now >= deadlineAtMs) {
+        if (now - lastChangeAtMs >= SETTLE_QUIET_MS || now >= deadlineAtMs) {
             completePending();
         }
     }
@@ -104,22 +101,6 @@ final class SubtabsProjectViewGroupingBusyWatcher implements Disposable {
             snapshot[index++] = tree.isShowing() ? 1 : 0;
         }
         return snapshot;
-    }
-
-    private static int settleQuietMs() {
-        return unitTestMode() ? UNIT_TEST_SETTLE_QUIET_MS : SETTLE_QUIET_MS;
-    }
-
-    private static int pollIntervalMs() {
-        return unitTestMode() ? UNIT_TEST_POLL_MS : POLL_MS;
-    }
-
-    private static int maxWaitMs() {
-        return unitTestMode() ? UNIT_TEST_MAX_WAIT_MS : MAX_WAIT_MS;
-    }
-
-    private static boolean unitTestMode() {
-        return ApplicationManager.getApplication().isUnitTestMode();
     }
 
     @Override

@@ -29,7 +29,7 @@ final class SidetabsToggleOverlay {
         hide(editor);
 
         JComponent editorComponent = editor.getComponent();
-        ComponentSubtabIconButton button = createButton(project, expanded);
+        ComponentSubtabIconButton button = createButton(project, editor, expanded);
         Handle handle = new Handle(editor, editorComponent, button);
         editor.putUserData(OVERLAY_KEY, handle);
         handle.install();
@@ -64,13 +64,18 @@ final class SidetabsToggleOverlay {
         return editor.getUserData(OVERLAY_KEY) != null;
     }
 
-    private static @NotNull ComponentSubtabIconButton createButton(@NotNull Project project, boolean expanded) {
+    private static @NotNull ComponentSubtabIconButton createButton(
+            @NotNull Project project,
+            @NotNull FileEditor editor,
+            boolean expanded
+    ) {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(
                 expanded ? SubtabsIcons.SIDE_ACTIVE : SubtabsIcons.SIDE_INACTIVE
         );
         button.setToolTipText(expanded ? "SideTabs einklappen" : "SideTabs ausklappen");
         button.getAccessibleContext().setAccessibleName(button.getToolTipText());
-        button.addActionListener(event -> SidetabsCollapseState.getInstance(project).toggle(project));
+        ComponentSubtabsIconContextMenu.installSidetabIconToggleClick(project, editor, button);
+        ComponentSubtabsIconContextMenu.installSidetabIconMenu(project, editor, button);
         return button;
     }
 

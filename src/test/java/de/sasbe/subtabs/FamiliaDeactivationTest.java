@@ -18,9 +18,54 @@ public class FamiliaDeactivationTest extends RealEditorWindowTestCase {
         settings.setSidetabsActive(true);
         settings.setSidetabsExpanded(true);
         settings.setShowCollapseButton(true);
-        settings.setGroupRelatedFilesInProjectView(true);
+        settings.setProjectViewGroupingEnabled(true);
+        settings.setProjectViewGroupingActive(true);
         settings.setSidetabRules(SidetabRulesDefaults.createDefaults());
+        settings.setSplittabsEnabled(true);
         ComponentSubtabsDocumentListener.install(getProject());
+    }
+
+    public void testDisablingFamiliaReleasesSplittabChrome() throws Exception {
+        VirtualFile html = createSourceFile("product-list.component.html");
+        VirtualFile spec = createSourceFile("product-list.component.spec.ts");
+        openAndSettle(html);
+        ComponentSubtabEditorSplitNavigation.createSplit(getProject(), html, spec);
+        drainDeferredEditorEvents();
+
+        FileEditor leftEditor = editorFor(html);
+        FileEditor rightEditor = editorFor(spec);
+        assertNotNull(leftEditor);
+        assertNotNull(rightEditor);
+        assertNotNull(leftEditor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_SWITCH_BAR_KEY));
+        assertNotNull(rightEditor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_HEADER_KEY));
+        assertTrue(ComponentSubtabEditorSplitNavigation.editorSplittabUiEngaged(getProject()));
+
+        SubtabsSettings.getInstance().setFamiliaEnabled(false);
+        SubtabsPresentation.applySettingsChange();
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+        assertNull(leftEditor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_SWITCH_BAR_KEY));
+        assertNull(rightEditor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_HEADER_KEY));
+        assertFalse(ComponentSubtabEditorSplitNavigation.editorSplittabUiEngaged(getProject()));
+        assertFalse(ComponentSubtabEditorSplitPresentation.isSplittabsMainTabFile(getProject(), html));
+        assertFalse(ComponentSubtabEditorSplitPresentation.isSplittabsMainTabFile(getProject(), spec));
+        assertTrue(manager.isFileOpen(html));
+        assertTrue(manager.isFileOpen(spec));
+        ComponentSubtabEditorSplitRegistry registry =
+                ComponentSubtabEditorSplitRegistry.getInstance(getProject());
+        assertTrue(registry.hasSavedSplittabs());
+        assertNotNull(registry.findPairUnordered(html, spec));
+        assertNull(registry.activePair());
+
+        SubtabsSettings.getInstance().setFamiliaEnabled(true);
+        SubtabsPresentation.applySettingsChange();
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+        assertTrue(registry.hasSavedSplittabs());
+        assertNotNull(registry.findPairUnordered(html, spec));
+        ComponentSubtabEditorSplitNavigation.activatePair(getProject(), registry.findPairUnordered(html, spec).id());
+        drainDeferredEditorEvents();
+        assertTrue(ComponentSubtabEditorSplitNavigation.editorSplittabUiEngaged(getProject()));
     }
 
     public void testDisablingFamiliaRemovesAllAttachedUi() throws Exception {
@@ -83,6 +128,11 @@ public class FamiliaDeactivationTest extends RealEditorWindowTestCase {
         FileEditor editor = FileEditorManager.getInstance(getProject()).getSelectedEditor();
         assertNotNull(editor);
         assertNull(editor.getUserData(ComponentSubtabsManager.SUBTAB_BAR_KEY));
+    }
+
+    private FileEditor editorFor(VirtualFile file) {
+        FileEditor[] editors = FileEditorManager.getInstance(getProject()).getEditors(file);
+        return editors.length == 0 ? null : editors[0];
     }
 
     @Override

@@ -114,9 +114,11 @@ final class ComponentSubtabMainTabSelectPopup {
                     if (SubtabHoverView.isEnabled()) {
                         ComponentSubtabProjectViewHover.onEnterRelatedGroup(project, currentTabFile, label);
                         ComponentSubtabBarHover.onEnterMainTab(project, currentTabFile, label);
+                        ComponentSubtabFileEditorHover.onEnterRelatedGroup(project, currentTabFile, label);
                     }
                 } else if (SubtabHoverView.isEnabled()) {
                     ComponentSubtabProjectViewHover.onEnter(project, currentTabFile, label);
+                    ComponentSubtabFileEditorHover.onEnter(project, currentTabFile, label);
                 }
             }
 
@@ -239,8 +241,10 @@ final class ComponentSubtabMainTabSelectPopup {
                 label.putClientProperty(POPUP_PANEL_KEY, null);
                 ComponentSubtabBarHover.onExit(panel);
                 ComponentSubtabMainTabHover.onExit(panel);
+                ComponentSubtabFileEditorHover.onExit(panel);
                 if (!isInHoverArea(label)) {
                     ComponentSubtabProjectViewHover.onExit(label);
+                    ComponentSubtabFileEditorHover.onExit(label);
                 }
             }
         });
@@ -412,15 +416,18 @@ final class ComponentSubtabMainTabSelectPopup {
     private static void clearHoverAreaEffects(@NotNull TabLabel label) {
         ComponentSubtabProjectViewHover.onExit(label);
         ComponentSubtabBarHover.onExitMainTab(label);
+        ComponentSubtabFileEditorHover.onExit(label);
         SubtabGroupFilePopupPanel panel = getPopupPanel(label);
         if (panel != null) {
             ComponentSubtabBarHover.onExit(panel);
             ComponentSubtabMainTabHover.onExit(panel);
+            ComponentSubtabFileEditorHover.onExit(panel);
             for (Component component : panel.getComponents()) {
                 if (component instanceof javax.swing.JComponent item) {
                     ComponentSubtabProjectViewHover.onExit(item);
                     ComponentSubtabBarHover.onExit(item);
                     ComponentSubtabMainTabHover.onExit(item);
+                    ComponentSubtabFileEditorHover.onExit(item);
                 }
             }
         }

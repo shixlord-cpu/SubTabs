@@ -88,8 +88,43 @@ final class ComponentSubtabBarHover {
                 if (label == null || label.getClientProperty(ACTIVE_MAIN_TAB_SYNC_KEY) == null) {
                     continue;
                 }
+                if (!hasSubtabBar(project, file)) {
+                    // The editor is still loading; keep the hover state until its bar is attached.
+                    continue;
+                }
                 onEnterMainTab(project, file, label);
             }
+        }
+    }
+
+    /**
+     * Moves the hover state of {@code oldFile}'s tab label to {@code newFile}'s label when a subtab swap
+     * replaces the tab, so {@link #refreshAllActiveMainTabSync} keeps following the hovered main tab.
+     */
+    static void transferMainTabSync(
+            @NotNull EditorWindow window,
+            @NotNull VirtualFile oldFile,
+            @NotNull VirtualFile newFile
+    ) {
+        if (!(window.getTabbedPane().getTabs() instanceof JBTabsImpl tabsImpl)) {
+            return;
+        }
+        TabLabel oldLabel = null;
+        TabLabel newLabel = null;
+        for (TabInfo tabInfo : tabsImpl.getTabs()) {
+            if (oldFile.equals(tabInfo.getObject())) {
+                oldLabel = tabsImpl.getTabLabel(tabInfo);
+            } else if (newFile.equals(tabInfo.getObject())) {
+                newLabel = tabsImpl.getTabLabel(tabInfo);
+            }
+        }
+        if (oldLabel == null || newLabel == null) {
+            return;
+        }
+        Object handles = oldLabel.getClientProperty(ACTIVE_MAIN_TAB_SYNC_KEY);
+        if (handles != null) {
+            newLabel.putClientProperty(ACTIVE_MAIN_TAB_SYNC_KEY, handles);
+            oldLabel.putClientProperty(ACTIVE_MAIN_TAB_SYNC_KEY, null);
         }
     }
 
@@ -152,6 +187,16 @@ final class ComponentSubtabBarHover {
 
         clear(handles);
         source.putClientProperty(ACTIVE_HOVERS_KEY, null);
+    }
+
+    private static boolean hasSubtabBar(@NotNull Project project, @NotNull VirtualFile mainTabFile) {
+        FileEditorManager manager = FileEditorManager.getInstance(project);
+        for (FileEditor editor : ComponentSubtabsManager.editorsFor(manager, mainTabFile)) {
+            if (editor.getUserData(ComponentSubtabsManager.SUBTAB_BAR_KEY) != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static @Nullable JToggleButton findSubtabButtonInMainTabEditor(

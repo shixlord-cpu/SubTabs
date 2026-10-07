@@ -13,10 +13,15 @@ public final class ComponentEditorTabTitleProvider implements EditorTabTitleProv
         if (!SubtabsSettings.getInstance().isFamiliaEnabled()) {
             return null;
         }
-        return ComponentTabTitles.mainTabTitle(
-                SubtabsCollapseState.getInstance(project).isCollapsed(),
-                file
-        );
+        String splittabTitle = ComponentSubtabEditorSplitPresentation.foregroundSplittabMainTabTitle(project, file);
+        if (splittabTitle != null) {
+            return splittabTitle;
+        }
+        boolean collapsed = SubtabsCollapseState.getInstance(project).isCollapsed();
+        if (!collapsed) {
+            collapsed = !ComponentSubtabsScopedVisibility.subtabsVisibleForFile(project, file);
+        }
+        return ComponentTabTitles.mainTabTitle(collapsed, file);
     }
 
     @Override

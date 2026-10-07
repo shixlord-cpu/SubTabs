@@ -33,6 +33,7 @@ final class FamiliaLifecycle {
             hideEditorOverlays(editor);
         }
 
+        ComponentSubtabEditorSplitPresentation.shutdownForFamilia(project);
         ComponentSubtabsManager.shutdown(project);
         SidetabsManager.shutdown(project);
         ComponentSubtabGroupSplitRegistry.getInstance(project).clear();
@@ -50,9 +51,8 @@ final class FamiliaLifecycle {
             manager.updateFilePresentation(file);
         }
 
-        if (SubtabProjectViewGrouping.isEnabled()) {
-            ProjectView.getInstance(project).refresh();
-        } else if (SubtabsSettings.getInstance().isGroupRelatedFilesInProjectView()) {
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        if (SubtabProjectViewGrouping.isEnabled() || settings.isProjectViewGroupingEnabled()) {
             ProjectView.getInstance(project).refresh();
         }
     }
@@ -68,6 +68,7 @@ final class FamiliaLifecycle {
         ComponentSubtabProjectViewEditorHover.installOn(project);
         SubtabsProjectViewGroupingOverlay.installOn(project);
         ComponentSubtabsFileEditorListener.attachToAlreadyOpenFiles(project);
+        SplittabRestoreOverlay.syncProject(project);
     }
 
     static void activateAll() {

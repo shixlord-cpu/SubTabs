@@ -4,7 +4,8 @@ import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.fileEditor.impl.EditorWindow;
-import com.intellij.openapi.fileEditor.impl.FileEditorManagerImplKt;
+import com.intellij.openapi.fileEditor.impl.EditorComposite;
+import com.intellij.openapi.fileEditor.impl.FileEditorOpenOptions;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -27,12 +28,45 @@ final class ComponentSubtabNavigation {
             @NotNull VirtualFile firstFile,
             @NotNull VirtualFile secondFile
     ) {
-        ComponentRelatedFiles.Match firstMatch = ComponentRelatedFiles.find(firstFile);
-        ComponentRelatedFiles.Match secondMatch = ComponentRelatedFiles.find(secondFile);
-        if (firstMatch == null || secondMatch == null) {
+        return sharesCurrentSubtabGrouping(firstFile, secondFile);
+    }
+
+    static boolean sharesCurrentSubtabGrouping(
+            @NotNull VirtualFile firstFile,
+            @NotNull VirtualFile secondFile
+    ) {
+        if (firstFile.equals(secondFile)) {
+            return true;
+        }
+        return isInActiveSubtabGroupOf(firstFile, secondFile)
+                || isInActiveSubtabGroupOf(secondFile, firstFile);
+    }
+
+    /**
+     * Whether {@code file} belongs to the subtab group currently shown for {@code groupHost}
+     * (respects rule rotation / alternative grouping via {@link ComponentRelatedFiles#find}).
+     */
+    static boolean isInActiveSubtabGroupOf(
+            @NotNull VirtualFile groupHost,
+            @NotNull VirtualFile file
+    ) {
+        if (groupHost.equals(file)) {
+            return true;
+        }
+        ComponentRelatedFiles.Match hostMatch = ComponentRelatedFiles.find(groupHost);
+        if (hostMatch == null) {
             return false;
         }
-        return firstMatch.key().equals(secondMatch.key());
+        ComponentRelatedFiles.Match fileMatch = ComponentRelatedFiles.find(file);
+        if (fileMatch != null && hostMatch.key().equals(fileMatch.key())) {
+            return true;
+        }
+        for (ComponentRelatedFiles.Entry entry : hostMatch.relatedFiles()) {
+            if (entry.file().equals(file)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static boolean canSwitchAdjacent(@NotNull Project project, int direction) {
@@ -92,6 +126,7 @@ final class ComponentSubtabNavigation {
             boolean requestFocus
     ) {
         runWithSwitchGuard(project, () -> focusExistingFileImpl(project, targetFile, requestFocus));
+        consolidateAfterSubtabGroupNavigation(project, targetFile);
     }
 
     static void runWithSwitchGuard(@NotNull Project project, @NotNull Runnable action) {
@@ -116,30 +151,62 @@ final class ComponentSubtabNavigation {
             @NotNull VirtualFile targetFile,
             boolean requestFocus
     ) {
+        switchInTabOf(project, anchorFile, targetFile, requestFocus, false);
+    }
+
+    static void switchInTabOf(
+            @NotNull Project project,
+            @NotNull VirtualFile anchorFile,
+            @NotNull VirtualFile targetFile,
+            boolean requestFocus,
+            boolean waitForCompositeOpen
+    ) {
         if (anchorFile.equals(targetFile)) {
             return;
         }
 
-        runWithSwitchGuard(project, () -> switchInTabOfImpl(project, anchorFile, targetFile, requestFocus));
+        runWithSwitchGuard(
+                project,
+                () -> switchInTabOfImpl(project, anchorFile, targetFile, requestFocus, waitForCompositeOpen)
+        );
+        consolidateAfterSubtabGroupNavigation(project, targetFile);
+    }
+
+    static void consolidateAfterSubtabGroupNavigation(
+            @NotNull Project project,
+            @NotNull VirtualFile keepFile
+    ) {
+        if (ComponentSubtabEditorSplitNavigation.editorSplittabUiEngaged(project)) {
+            return;
+        }
+        consolidateSiblingGroupMainTabs(project, keepFile);
     }
 
     private static void switchInTabOfImpl(
             @NotNull Project project,
             @NotNull VirtualFile anchorFile,
             @NotNull VirtualFile targetFile,
-            boolean requestFocus
+            boolean requestFocus,
+            boolean waitForCompositeOpen
     ) {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         if (manager.isFileOpen(targetFile)) {
+            ComponentSubtabsFileEditorListener.markCoalescedSubtabPlatformOpen(project, targetFile);
+            ComponentSubtabsFileEditorListener.scheduleDeferredSwitchPresentation(project, targetFile);
             focusExistingFileImpl(project, targetFile, requestFocus);
             return;
         }
 
         if (!manager.isFileOpen(anchorFile)) {
+            ComponentSubtabsFileEditorListener.markCoalescedSubtabPlatformOpen(project, targetFile);
+            ComponentSubtabsFileEditorListener.scheduleDeferredSwitchPresentation(project, targetFile);
             manager.openFile(targetFile, requestFocus);
-            ComponentSubtabsManager.syncSelectionForFile(project, targetFile);
+            ComponentSubtabsManager.updateSelectionForFile(project, targetFile);
             return;
         }
+
+        ComponentSubtabsFileEditorListener.markCoalescedSubtabPlatformOpen(project, targetFile);
+        ComponentSubtabsFileEditorListener.scheduleDeferredSwitchPresentation(project, targetFile);
 
         EditorWindow anchorWindow = ComponentSubtabEditorLookup.findWindowWithFile(manager, anchorFile);
         if (anchorWindow != null) {
@@ -152,13 +219,120 @@ final class ComponentSubtabNavigation {
             ComponentSubtabsManager.prepareTransfer(project, anchorEditor, targetFile);
         }
 
-        FileEditorManagerImplKt.reopenVirtualFileEditor(project, anchorFile, targetFile, requestFocus);
-        ComponentSubtabsManager.attachIfNeeded(project, targetFile);
-        ComponentSubtabsManager.syncSelectionForFile(project, targetFile);
-
-        if (requestFocus) {
-            focusExistingFileImpl(project, targetFile, true);
+        for (EditorWindow window : manager.getWindows()) {
+            if (window != anchorWindow && window.isFileOpen(anchorFile)) {
+                replaceFileInEditorWindow(
+                        manager,
+                        window,
+                        anchorFile,
+                        targetFile,
+                        false,
+                        waitForCompositeOpen
+                );
+            }
         }
+        if (anchorWindow != null) {
+            replaceFileInEditorWindow(
+                    manager,
+                    anchorWindow,
+                    anchorFile,
+                    targetFile,
+                    requestFocus,
+                    waitForCompositeOpen
+            );
+        }
+        ComponentSubtabsManager.attachIfNeeded(project, targetFile);
+        ComponentSubtabsManager.updateSelectionForFile(project, targetFile);
+    }
+
+    /**
+     * Replaces {@code oldFile} with {@code newFile} in a single editor pane only. The composite is not
+     * awaited: building a file editor (highlighter, language services) can take seconds, and a
+     * synchronous open blocks the EDT for that whole time.
+     */
+    private static void replaceFileInEditorWindow(
+            @NotNull FileEditorManagerEx manager,
+            @NotNull EditorWindow window,
+            @NotNull VirtualFile oldFile,
+            @NotNull VirtualFile newFile,
+            boolean requestFocus,
+            boolean waitForCompositeOpen
+    ) {
+        if (!window.isFileOpen(oldFile)) {
+            return;
+        }
+        EditorComposite selectedComposite = window.getSelectedComposite();
+        boolean active = selectedComposite != null && oldFile.equals(selectedComposite.getFile());
+        manager.setCurrentWindow(window);
+        if (!window.isFileOpen(newFile)) {
+            FileEditorOpenOptions options = waitForCompositeOpen
+                    ? blockingOpenOptions(window, oldFile, requestFocus && active)
+                    : nonBlockingOpenOptions(window, oldFile, requestFocus && active);
+            manager.openFile(newFile, window, options);
+        }
+        if (window.isFileOpen(newFile)) {
+            window.setSelectedComposite(newFile, requestFocus && active);
+            ComponentSubtabBarHover.transferMainTabSync(window, oldFile, newFile);
+            if (window.isFileOpen(oldFile)) {
+                window.closeFile(oldFile);
+            }
+        }
+    }
+
+    static @NotNull FileEditorOpenOptions nonBlockingOpenOptions(
+            @NotNull EditorWindow window,
+            @NotNull VirtualFile oldFile,
+            boolean requestFocus
+    ) {
+        return openOptions(window, oldFile, requestFocus, false);
+    }
+
+    static @NotNull FileEditorOpenOptions blockingOpenOptions(
+            @NotNull EditorWindow window,
+            @NotNull VirtualFile oldFile,
+            boolean requestFocus
+    ) {
+        return openOptions(window, oldFile, requestFocus, true);
+    }
+
+    private static @NotNull FileEditorOpenOptions openOptions(
+            @NotNull EditorWindow window,
+            @NotNull VirtualFile oldFile,
+            boolean requestFocus,
+            boolean waitForCompositeOpen
+    ) {
+        List<VirtualFile> files = List.of(window.getFiles());
+        return new FileEditorOpenOptions(
+                true,
+                false,
+                false,
+                requestFocus,
+                window.isFilePinned(oldFile),
+                files.indexOf(oldFile),
+                false,
+                null,
+                false,
+                false,
+                waitForCompositeOpen,
+                null
+        );
+    }
+
+    static @NotNull FileEditorOpenOptions nonBlockingOpenOptions(boolean requestFocus, boolean selectAsCurrent) {
+        return new FileEditorOpenOptions(
+                selectAsCurrent,
+                false,
+                false,
+                requestFocus,
+                false,
+                -1,
+                false,
+                null,
+                false,
+                false,
+                false,
+                null
+        );
     }
 
     private static void focusExistingFileImpl(
@@ -166,6 +340,10 @@ final class ComponentSubtabNavigation {
             @NotNull VirtualFile targetFile,
             boolean requestFocus
     ) {
+        if (!ComponentSubtabNavigation.isSwitchInProgress(project)) {
+            ComponentSubtabsFileEditorListener.markCoalescedSubtabPlatformOpen(project, targetFile);
+            ComponentSubtabsFileEditorListener.scheduleDeferredSwitchPresentation(project, targetFile);
+        }
         FileEditorManagerEx managerEx = FileEditorManagerEx.getInstanceEx(project);
         EditorWindow window = ComponentSubtabEditorLookup.findWindowWithFile(managerEx, targetFile);
         if (window != null) {
@@ -174,7 +352,7 @@ final class ComponentSubtabNavigation {
         } else {
             managerEx.openFile(targetFile, requestFocus);
         }
-        ComponentSubtabsManager.syncSelectionForFile(project, targetFile);
+        ComponentSubtabsManager.updateSelectionForFile(project, targetFile);
     }
 
     private static @Nullable FileEditor editorForFile(
@@ -215,5 +393,46 @@ final class ComponentSubtabNavigation {
             }
         }
         return -1;
+    }
+
+    /**
+     * After the platform opens a related file, drop other main tabs of the same group in that pane
+     * when {@link SubtabsSettings#isReuseOpenSubtabGroupMainTab()} is on.
+     */
+    static void consolidateSiblingGroupMainTabs(
+            @NotNull Project project,
+            @NotNull VirtualFile keepFile
+    ) {
+        if (!SubtabsSettings.getInstance().isSubtabsActive()
+                || !SubtabsSettings.getInstance().isReuseOpenSubtabGroupMainTab()) {
+            return;
+        }
+        if (ComponentRelatedFiles.find(keepFile) == null || isSwitchInProgress(project)) {
+            return;
+        }
+        ComponentSubtabEditorSplitRegistry.SplittabPair activeSplittab =
+                ComponentSubtabEditorSplitRegistry.getInstance(project).activePair();
+        if (activeSplittab != null
+                && ComponentSubtabEditorSplitNavigation.editorSplittabUiEngaged(project)
+                && ComponentSubtabEditorSplitNavigation.blocksExternalFileOpen(
+                project,
+                activeSplittab,
+                keepFile
+        )) {
+            return;
+        }
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        EditorWindow window = ComponentSubtabEditorLookup.findWindowWithFile(manager, keepFile);
+        if (window == null) {
+            return;
+        }
+        for (VirtualFile candidate : window.getFiles()) {
+            if (candidate.equals(keepFile)) {
+                continue;
+            }
+            if (isInActiveSubtabGroupOf(keepFile, candidate)) {
+                window.closeFile(candidate);
+            }
+        }
     }
 }

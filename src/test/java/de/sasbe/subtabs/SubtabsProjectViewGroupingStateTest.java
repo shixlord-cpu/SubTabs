@@ -7,41 +7,46 @@ public class SubtabsProjectViewGroupingStateTest extends LightPlatformTestCase {
     public void testGroupingStaysEnabledWhenSubtabsAreCollapsed() {
         SubtabsSettings settings = SubtabsSettings.getInstance();
         settings.setFamiliaEnabled(true);
-        settings.setGroupRelatedFilesInProjectView(true);
+        settings.setProjectViewGroupingEnabled(true);
+        settings.setProjectViewGroupingActive(true);
         settings.setSubtabsActive(false);
 
         assertTrue(SubtabProjectViewGrouping.isEnabled());
-        assertTrue(SubtabsProjectViewGroupingState.getInstance(getProject()).isCollapsed() == false);
+        assertFalse(SubtabsProjectViewGroupingState.getInstance(getProject()).isCollapsed());
     }
 
-    public void testToggleUpdatesGroupingSetting() {
+    public void testToggleUpdatesActiveStateNotEnabledFlag() {
         SubtabsSettings settings = SubtabsSettings.getInstance();
-        settings.setGroupRelatedFilesInProjectView(true);
+        settings.setProjectViewGroupingEnabled(true);
+        settings.setProjectViewGroupingActive(true);
 
         SubtabsProjectViewGroupingState state = SubtabsProjectViewGroupingState.getInstance(getProject());
         state.toggle(getProject());
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
 
-        assertFalse(settings.isGroupRelatedFilesInProjectView());
+        assertTrue(settings.isProjectViewGroupingEnabled());
+        assertFalse(settings.isProjectViewGroupingActive());
         assertTrue(state.isCollapsed());
 
         state.toggle(getProject());
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
 
-        assertTrue(settings.isGroupRelatedFilesInProjectView());
+        assertTrue(settings.isProjectViewGroupingEnabled());
+        assertTrue(settings.isProjectViewGroupingActive());
         assertFalse(state.isCollapsed());
     }
 
     public void testCollapsingSubtabsDoesNotChangeProjectViewGrouping() {
         SubtabsSettings settings = SubtabsSettings.getInstance();
         settings.setFamiliaEnabled(true);
-        settings.setGroupRelatedFilesInProjectView(true);
+        settings.setProjectViewGroupingEnabled(true);
+        settings.setProjectViewGroupingActive(true);
         settings.setSubtabsActive(true);
 
         SubtabsCollapseState.getInstance(getProject()).toggle(getProject());
 
         assertFalse(settings.isSubtabsActive());
-        assertTrue(settings.isGroupRelatedFilesInProjectView());
+        assertTrue(settings.isProjectViewGroupingActive());
         assertTrue(SubtabProjectViewGrouping.isEnabled());
     }
 
@@ -49,6 +54,8 @@ public class SubtabsProjectViewGroupingStateTest extends LightPlatformTestCase {
     protected void tearDown() throws Exception {
         try {
             SubtabsSettings.getInstance().setFamiliaEnabled(true);
+            SubtabsSettings.getInstance().setProjectViewGroupingEnabled(true);
+            SubtabsSettings.getInstance().setProjectViewGroupingActive(true);
             com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
             SubtabsProjectViewGroupingBusyState.getInstance(getProject()).reset();
         } finally {

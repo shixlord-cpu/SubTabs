@@ -28,6 +28,7 @@ import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.MouseEvent;
@@ -40,12 +41,28 @@ final class ComponentSubtabEditorDragSupport {
     private ComponentSubtabEditorDragSupport() {
     }
 
+    @FunctionalInterface
+    interface ReorderCommit {
+        void reorder(@NotNull Project project, @NotNull VirtualFile file, int dropIndex);
+    }
+
     static void install(
             @NotNull Project project,
             @NotNull JComponent host,
-            @NotNull ComponentSubtabBarPanel barPanel,
+            @NotNull ComponentSubtabReorderStripHost barPanel,
             @NotNull Map<VirtualFile, JToggleButton> buttonsByFile,
             @NotNull AtomicBoolean ignoreNextClick
+    ) {
+        install(project, host, barPanel, buttonsByFile, ignoreNextClick, ComponentSubtabOrder::reorder);
+    }
+
+    static void install(
+            @NotNull Project project,
+            @NotNull JComponent host,
+            @NotNull ComponentSubtabReorderStripHost barPanel,
+            @NotNull Map<VirtualFile, JToggleButton> buttonsByFile,
+            @NotNull AtomicBoolean ignoreNextClick,
+            @NotNull ReorderCommit reorderCommit
     ) {
         MouseDragHelper<JComponent> helper = new MouseDragHelper<>(project, host) {
             private VirtualFile dragFile;
@@ -74,6 +91,11 @@ final class ComponentSubtabEditorDragSupport {
                 if (dragFile == null) {
                     return false;
                 }
+                if (barPanel instanceof ComponentSubtabBarPanel subtabBar
+                        && SplittabSubtabDragDrop.keepsDragInEditor(event, subtabBar)) {
+                    SplittabSubtabDragDrop.updatePointer(event);
+                    return false;
+                }
                 return !isPointerInReorderZone(event);
             }
 
@@ -88,6 +110,10 @@ final class ComponentSubtabEditorDragSupport {
                 JToggleButton button = findButtonAt(host, buttonsByFile, pointInHost);
                 dragSourceComponent = button != null ? button : host;
                 pendingDropIndex = -1;
+                if (SplittabSubtabDragDrop.isSplittabPairingDrag(barPanel, dragFile, buttonsByFile)
+                        && barPanel instanceof ComponentSubtabBarPanel subtabBar) {
+                    SplittabSubtabDragDrop.begin(project, subtabBar, dragFile);
+                }
             }
 
             @Override
@@ -110,6 +136,9 @@ final class ComponentSubtabEditorDragSupport {
                         ? -1
                         : dropIndex;
                 barPanel.updateReorderDragState(dropIndex, dragFile, pointerInTabsHost);
+                if (SplittabSubtabDragDrop.isSplittabPairingDrag(barPanel, dragFile, buttonsByFile)) {
+                    SplittabSubtabDragDrop.updatePointer(event);
+                }
             }
 
             @Override
@@ -136,29 +165,44 @@ final class ComponentSubtabEditorDragSupport {
                     }
                     ignoreNextClick.set(true);
                 }
+                if (SplittabSubtabDragDrop.isSplittabPairingDrag(barPanel, dragFile, buttonsByFile)) {
+                    SplittabSubtabDragDrop.updatePointer(event);
+                }
                 processDockEvent(event);
                 event.consume();
             }
 
             @Override
             protected void processDragOutFinish(@NotNull MouseEvent event) {
+                if (SplittabSubtabDragDrop.tryCompleteDrop(event)) {
+                    cancelDockSessionForReorderReturn();
+                    ignoreNextClick.set(true);
+                    SplittabSubtabDragDrop.end();
+                    resetSession();
+                    return;
+                }
                 finishDockSession(event, false);
+                SplittabSubtabDragDrop.end();
             }
 
             @Override
             protected void processDragOutCancel() {
                 finishDockSession(null, true);
+                SplittabSubtabDragDrop.end();
             }
 
             @Override
             protected boolean canFinishDragging(@NotNull JComponent component, @NotNull RelativePoint point) {
-                if (dragSession == null && dragFile != null && pendingDropIndex >= 0) {
-                    ComponentSubtabOrder.reorder(project, dragFile, pendingDropIndex);
+                if (SplittabSubtabDragDrop.tryCompleteDropAtScreen(MouseInfo.getPointerInfo().getLocation())) {
+                    ignoreNextClick.set(true);
+                } else if (dragSession == null && dragFile != null && pendingDropIndex >= 0) {
+                    reorderCommit.reorder(project, dragFile, pendingDropIndex);
                     ignoreNextClick.set(true);
                 }
                 pendingDropIndex = -1;
                 barPanel.clearReorderPreview();
                 dragFile = null;
+                SplittabSubtabDragDrop.end();
                 return true;
             }
 

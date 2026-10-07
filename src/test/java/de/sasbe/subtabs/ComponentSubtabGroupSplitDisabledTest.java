@@ -33,14 +33,14 @@ public class ComponentSubtabGroupSplitDisabledTest extends RealEditorWindowTestC
         );
     }
 
-    public void testTheContextMenuOffersNoSplit() {
+    public void testTheContextMenuOffersNoLegacyGroupSplit() {
         openAndSettle(htmlFile);
 
         List<String> texts = menuTexts();
 
         assertFalse(
-                "no menu entry may offer a split: " + texts,
-                texts.stream().anyMatch(text -> text.contains("Split"))
+                "legacy group split entries must stay hidden: " + texts,
+                texts.stream().anyMatch(text -> text.contains("Im Split"))
         );
     }
 

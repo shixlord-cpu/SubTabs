@@ -152,11 +152,12 @@ final class SidetabsManager {
             SidetabsToggleOverlay.hide(editor);
             SidetabBarOverlay.hide(editor);
             editor.putUserData(ATTACH_STATE_KEY, null);
+            ComponentSubtabsManager.refreshOverlayIconReserve(project, editor);
             ComponentSubtabsManager.placeRuleSwitchIcon(project, editor);
             return;
         }
 
-        boolean expanded = settings.isSidetabsExpanded();
+        boolean expanded = ComponentSubtabsScopedVisibility.sidetabsExpandedForFile(project, file);
         boolean showCollapse = settings.isShowCollapseButton();
         SidetabLayoutMode layoutMode = settings.getSidetabLayoutMode();
         boolean onRight = settings.isSidetabsOnRight();
@@ -170,6 +171,7 @@ final class SidetabsManager {
             }
             SidetabBarOverlay.hide(editor);
             editor.putUserData(ATTACH_STATE_KEY, null);
+            ComponentSubtabsManager.refreshOverlayIconReserve(project, editor);
             ComponentSubtabsManager.placeRuleSwitchIcon(project, editor);
             return;
         }
@@ -193,6 +195,7 @@ final class SidetabsManager {
             }
             relayoutCollapseIcons(editor);
             SidetabBarOverlay.relayout(editor);
+            ComponentSubtabsManager.refreshOverlayIconReserve(project, editor);
             ComponentSubtabsManager.placeRuleSwitchIcon(project, editor);
             return;
         }
@@ -216,6 +219,7 @@ final class SidetabsManager {
         SidetabBarPanel.installFoldingListener(editor, panel);
         relayoutCollapseIcons(editor);
         SidetabBarOverlay.relayout(editor);
+        ComponentSubtabsManager.refreshOverlayIconReserve(project, editor);
         ComponentSubtabsManager.placeRuleSwitchIcon(project, editor);
     }
 
@@ -245,6 +249,17 @@ final class SidetabsManager {
             }
             relayoutCollapseIcons(editor);
             SidetabBarOverlay.relayout(editor);
+        }
+    }
+
+    static void applyBesideColumnWidth(@NotNull Project project) {
+        FileEditorManager manager = FileEditorManager.getInstance(project);
+        for (FileEditor editor : manager.getAllEditors()) {
+            SidetabBarPanel panel = editor.getUserData(SIDETAB_BAR_KEY);
+            if (panel != null) {
+                panel.refreshAppearance();
+            }
+            ComponentSubtabsManager.refreshOverlayIconReserve(project, editor);
         }
     }
 

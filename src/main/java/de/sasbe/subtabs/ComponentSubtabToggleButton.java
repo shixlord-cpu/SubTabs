@@ -65,31 +65,7 @@ final class ComponentSubtabToggleButton extends JToggleButton {
             if (getBorder() != null) {
                 getBorder().paintBorder(this, g2, 0, 0, getWidth(), getHeight());
             }
-            paintSubDepthDot(g2);
             paintLabelText(g2);
-        } finally {
-            g2.dispose();
-        }
-    }
-
-    private void paintSubDepthDot(@NotNull Graphics graphics) {
-        int depth = subDepth();
-        if (depth <= 0) {
-            return;
-        }
-        int dotSize = SidetabBarPanel.subDepthDotSize();
-        int dotSpacing = SidetabBarPanel.subDepthDotSpacing();
-        int baseX = SidetabBarPanel.subDepthDotBaseX();
-        int centerY = getHeight() / 2;
-
-        Graphics2D g2 = (Graphics2D) graphics.create();
-        try {
-            g2.setClip(0, 0, getWidth(), getHeight());
-            g2.setColor(getForeground());
-            for (int dotIndex = 0; dotIndex < depth; dotIndex++) {
-                int dotX = baseX + dotIndex * dotSpacing;
-                g2.fillOval(dotX, centerY - dotSize / 2, dotSize, dotSize);
-            }
         } finally {
             g2.dispose();
         }
@@ -110,18 +86,24 @@ final class ComponentSubtabToggleButton extends JToggleButton {
             g2.setFont(getFont());
             FontMetrics metrics = g2.getFontMetrics();
             Insets insets = getInsets();
+            int depth = subDepth();
+            int depthIndent = SidetabBarPanel.subDepthTextIndent(depth);
             Rectangle textRect = new Rectangle();
             Rectangle viewRect = new Rectangle(
-                    insets.left,
+                    insets.left + depthIndent,
                     insets.top,
-                    Math.max(0, getWidth() - insets.left - insets.right),
+                    Math.max(0, getWidth() - insets.left - insets.right - depthIndent),
                     Math.max(0, getHeight() - insets.top - insets.bottom)
             );
             Rectangle iconRect = new Rectangle();
+            String drawLabel = plainLabel;
+            if (viewRect.width > 0 && metrics.stringWidth(drawLabel) > viewRect.width) {
+                drawLabel = ComponentSubtabUi.fitText(metrics, drawLabel, viewRect.width);
+            }
             SwingUtilities.layoutCompoundLabel(
                     this,
                     metrics,
-                    plainLabel,
+                    drawLabel,
                     null,
                     getVerticalAlignment(),
                     getHorizontalAlignment(),
@@ -136,7 +118,7 @@ final class ComponentSubtabToggleButton extends JToggleButton {
             ComponentSubtabTextPainter.paint(
                     g2,
                     getFont(),
-                    plainLabel,
+                    drawLabel,
                     textRect.x,
                     textRect.y + metrics.getAscent(),
                     color,
