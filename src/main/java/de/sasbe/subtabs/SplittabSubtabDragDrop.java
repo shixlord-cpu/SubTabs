@@ -41,8 +41,12 @@ final class SplittabSubtabDragDrop {
         if (editor == null) {
             return;
         }
-        active = new Active(project, barPanel, barPanel.displayedFile(), dragFile, editor);
-        SplittabRestoreOverlay.showForSubtabDragDrop(project, editor);
+        FileEditor iconHost = ComponentSubtabEditorSplitNavigation.findSplitPairIconHostEditor(project);
+        if (iconHost == null) {
+            iconHost = editor;
+        }
+        active = new Active(project, barPanel, barPanel.displayedFile(), dragFile, iconHost);
+        SplittabRestoreOverlay.showForSubtabDragDrop(project, iconHost);
     }
 
     static void updatePointer(@NotNull MouseEvent event) {

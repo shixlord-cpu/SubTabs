@@ -487,7 +487,7 @@ final class ComponentSubtabBarPopup {
         private final VirtualFile file;
 
         private RevealInProjectViewAction(@NotNull Project project, @NotNull VirtualFile file) {
-            super("Im Projektbaum anzeigen");
+            super("Show in Project view");
             this.project = project;
             this.file = file;
         }
@@ -503,7 +503,7 @@ final class ComponentSubtabBarPopup {
         private final VirtualFile targetFile;
 
         private OpenInNewTabAction(@NotNull Project project, @NotNull VirtualFile targetFile) {
-            super("Sub-Tab im neuen Tab öffnen");
+            super("Open subtab in new tab");
             this.project = project;
             this.targetFile = targetFile;
         }
@@ -524,7 +524,7 @@ final class ComponentSubtabBarPopup {
                 @NotNull VirtualFile file,
                 @Nullable ComponentSubtabBarPanel barPanel
         ) {
-            super("Nach links verschieben");
+            super("Move left");
             this.project = project;
             this.file = file;
             this.barPanel = barPanel;
@@ -566,7 +566,7 @@ final class ComponentSubtabBarPopup {
                 @NotNull VirtualFile file,
                 @Nullable ComponentSubtabBarPanel barPanel
         ) {
-            super("Nach rechts verschieben");
+            super("Move right");
             this.project = project;
             this.file = file;
             this.barPanel = barPanel;
@@ -608,7 +608,7 @@ final class ComponentSubtabBarPopup {
                 @NotNull String pairId,
                 @NotNull SplittabSwitchBarPanel barPanel
         ) {
-            super("Splittab umbenennen…");
+            super("Rename split pair…");
             this.project = project;
             this.pairId = pairId;
             this.barPanel = barPanel;
@@ -625,7 +625,7 @@ final class ComponentSubtabBarPopup {
         private final String pairId;
 
         private RenameSplittabHeaderLabelAction(@NotNull Project project, @NotNull String pairId) {
-            super("Label umbenennen…");
+            super("Rename label…");
             this.project = project;
             this.pairId = pairId;
         }
@@ -646,7 +646,7 @@ final class ComponentSubtabBarPopup {
                 @NotNull String pairId,
                 @Nullable SplittabSwitchBarPanel barPanel
         ) {
-            super("Splittab auflösen");
+            super("Dissolve split pair");
             this.project = project;
             this.pairId = pairId;
             this.barPanel = barPanel;
@@ -671,7 +671,7 @@ final class ComponentSubtabBarPopup {
                 @NotNull String pairId,
                 @NotNull SplittabSwitchBarPanel barPanel
         ) {
-            super("Nach links verschieben");
+            super("Move left");
             this.project = project;
             this.pairId = pairId;
             this.barPanel = barPanel;
@@ -704,7 +704,7 @@ final class ComponentSubtabBarPopup {
                 @NotNull String pairId,
                 @NotNull SplittabSwitchBarPanel barPanel
         ) {
-            super("Nach rechts verschieben");
+            super("Move right");
             this.project = project;
             this.pairId = pairId;
             this.barPanel = barPanel;
@@ -732,7 +732,7 @@ final class ComponentSubtabBarPopup {
         private final VirtualFile targetFile;
 
         private OpenInNewWindowAction(@NotNull Project project, @NotNull VirtualFile targetFile) {
-            super("Sub-Tab im neuen Fenster öffnen");
+            super("Open subtab in new window");
             this.project = project;
             this.targetFile = targetFile;
         }
@@ -753,7 +753,7 @@ final class ComponentSubtabBarPopup {
                 @NotNull ComponentSubtabGroupSplitRegistry.SplitState state,
                 @NotNull VirtualFile paneFile
         ) {
-            super("Sub-Tab \"" + paneFile.getName() + "\" im Split schließen");
+            super("Close subtab \"" + paneFile.getName() + "\" in split");
             this.project = project;
             this.state = state;
             this.paneFile = paneFile;
@@ -775,7 +775,7 @@ final class ComponentSubtabBarPopup {
                 @NotNull VirtualFile initiatingPaneFile,
                 @NotNull VirtualFile linkedFile
         ) {
-            super("Splittab erstellen");
+            super("Create split pair");
             this.project = project;
             this.initiatingPaneFile = initiatingPaneFile;
             this.linkedFile = linkedFile;
@@ -800,8 +800,8 @@ final class ComponentSubtabBarPopup {
                 @NotNull ComponentSubtabGroupSplitNavigation.SplitSide side
         ) {
             super(side == ComponentSubtabGroupSplitNavigation.SplitSide.LEFT
-                    ? "Im Split links öffnen"
-                    : "Im Split rechts öffnen");
+                    ? "Open on left in split"
+                    : "Open on right in split");
             this.project = project;
             this.anchorFile = anchorFile;
             this.targetFile = targetFile;

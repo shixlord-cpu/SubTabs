@@ -100,7 +100,10 @@ final class SubtabsRulesPanel {
         }
 
         table.getColumnModel().getColumn(6).setCellEditor(
-                new DefaultCellEditor(new ComboBox<>(new String[]{"Ordner", "Nachbarn"}))
+                new DefaultCellEditor(new ComboBox<>(new String[]{
+                        SubtabRulesDefaults.SEARCH_FOLDER_LABEL,
+                        SubtabRulesDefaults.SEARCH_NEIGHBORS_LABEL
+                }))
         );
 
         var dragColumn = table.getColumnModel().getColumn(DRAG_COLUMN);
@@ -427,7 +430,7 @@ final class SubtabsRulesPanel {
             label.setText("");
             label.setIcon(AllIcons.Actions.Edit);
             label.setHorizontalAlignment(SwingConstants.CENTER);
-            label.setToolTipText("Regel bearbeiten");
+            label.setToolTipText("Edit rule");
             applyRowAppearance(table, label, row);
             return label;
         }
@@ -468,14 +471,14 @@ final class SubtabsRulesPanel {
         @Override
         public String getColumnName(int column) {
             return switch (column) {
-                case 0 -> "An";
+                case 0 -> "On";
                 case 1 -> "Name";
                 case 2 -> "Suffix";
-                case 3 -> "Muster";
-                case 4 -> "Subtab Label";
-                case 5 -> "Name Rule";
-                case 6 -> "Suche";
-                case 7 -> "Ausnahme";
+                case 3 -> "Patterns";
+                case 4 -> "Subtab label";
+                case 5 -> "Name rule";
+                case 6 -> "Search";
+                case 7 -> "Exclude";
                 case 8 -> "";
                 case 9 -> "";
                 default -> "";
@@ -509,7 +512,7 @@ final class SubtabsRulesPanel {
                 case 3 -> rule.patterns;
                 case 4 -> rule.nameSegments;
                 case 5 -> rule.isSpecial() ? "" : rule.groupNameSegments;
-                case 6 -> rule.isSpecial() ? "" : (rule.searchNeighbors ? "Nachbarn" : "Ordner");
+                case 6 -> rule.isSpecial() ? "" : SubtabRulesDefaults.searchScopeLabel(rule.searchNeighbors);
                 case 7 -> rule.isSpecial() ? "" : rule.excludePatterns;
                 case 8 -> "";
                 case 9 -> "";
@@ -527,7 +530,7 @@ final class SubtabsRulesPanel {
                 case 3 -> rule.patterns = String.valueOf(value).trim();
                 case 4 -> rule.nameSegments = String.valueOf(value).trim();
                 case 5 -> rule.groupNameSegments = String.valueOf(value).trim();
-                case 6 -> rule.searchNeighbors = "Nachbarn".equals(String.valueOf(value));
+                case 6 -> rule.searchNeighbors = SubtabRulesDefaults.isNeighborsSearchLabel(String.valueOf(value));
                 case 7 -> rule.excludePatterns = String.valueOf(value).trim();
                 default -> {
                 }

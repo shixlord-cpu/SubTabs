@@ -2,13 +2,16 @@ package de.sasbe.subtabs;
 
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
+import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
 import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
 import javax.swing.JLayeredPane;
 import java.awt.Dimension;
 import java.awt.IllegalComponentStateException;
@@ -41,7 +44,10 @@ final class SplittabRestoreOverlay {
         if (project.isDisposed()) {
             return;
         }
-        FileEditorManager manager = FileEditorManager.getInstance(project);
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        if (manager.getWindows().length != 2) {
+            ComponentSubtabEditorSplitNavigation.clearTwoPaneArrangementHint(project);
+        }
         for (FileEditor editor : manager.getAllEditors()) {
             syncEditor(project, editor);
         }
@@ -117,9 +123,15 @@ final class SplittabRestoreOverlay {
             return false;
         }
         if (Boolean.TRUE.equals(editor.getUserData(SUBTAB_DRAG_DROP_KEY))) {
-            return true;
+            return ComponentSubtabEditorSplitNavigation.isSplitPairIconHostEditor(project, editor);
         }
-        return ComponentSubtabEditorSplitRegistry.getInstance(project).hasSavedSplittabs();
+        boolean showAffordance = ComponentSubtabEditorSplitRegistry.getInstance(project).hasSavedSplittabs()
+                || ComponentSubtabEditorSplitNavigation.hasNativeTwoPaneSplitCandidate(project)
+                || ComponentSubtabEditorSplitNavigation.editorSplittabUiEngaged(project);
+        if (!showAffordance) {
+            return false;
+        }
+        return ComponentSubtabEditorSplitNavigation.isSplitPairIconHostEditor(project, editor);
     }
 
     private static boolean supportsSplittabIcon(@NotNull Project project, @NotNull FileEditor editor) {
@@ -132,7 +144,11 @@ final class SplittabRestoreOverlay {
         if (SidetabIconLayout.splittabRestoreSlotFromRight() <= 0) {
             return false;
         }
-        return SubtabsCollapseOverlay.isInstalled(editor) || SubtabsExpandOverlay.isInstalled(editor);
+        if (SubtabsCollapseOverlay.isInstalled(editor) || SubtabsExpandOverlay.isInstalled(editor)) {
+            return true;
+        }
+        return editor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_SWITCH_BAR_KEY) != null
+                || editor.getUserData(ComponentSubtabsSplittabUi.SPLITTAB_HEADER_KEY) != null;
     }
 
     private static void show(@NotNull Project project, @NotNull FileEditor editor) {
@@ -144,19 +160,20 @@ final class SplittabRestoreOverlay {
         }
         hide(editor);
         JComponent editorComponent = editor.getComponent();
-        ComponentSubtabIconButton button = createButton(project);
+        ComponentSubtabIconButton button = createButton(project, editor);
         Handle handle = new Handle(editor, editorComponent, button);
         editor.putUserData(OVERLAY_KEY, handle);
         handle.install();
     }
 
-    private static @NotNull ComponentSubtabIconButton createButton(@NotNull Project project) {
+    private static @NotNull ComponentSubtabIconButton createButton(
+            @NotNull Project project,
+            @NotNull FileEditor editor
+    ) {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(
                 iconForProject(project)
         );
-        button.setToolTipText(tooltipForProject(project));
-        button.getAccessibleContext().setAccessibleName(tooltipForProject(project));
-        button.addActionListener(event -> SplittabDedicatedViewService.getInstance(project).toggleDedicatedView());
+        refreshButtonPresentation(project, button);
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent event) {
@@ -167,8 +184,63 @@ final class SplittabRestoreOverlay {
             public void mouseExited(MouseEvent event) {
                 SplittabRestoreSelectPopup.onButtonExit(button);
             }
+
+            @Override
+            public void mouseReleased(MouseEvent event) {
+                if (!button.isEnabled() || !button.contains(event.getPoint())) {
+                    return;
+                }
+                if (SwingUtilities.isLeftMouseButton(event)) {
+                    onRestoreIconClick(project, editor, true);
+                } else if (SwingUtilities.isRightMouseButton(event)) {
+                    onRestoreIconClick(project, editor, false);
+                }
+            }
         });
         return button;
+    }
+
+    private static void onRestoreIconClick(
+            @NotNull Project project,
+            @NotNull FileEditor editor,
+            boolean leftButton
+    ) {
+        VirtualFile paneFile = editor.getFile();
+        if (paneFile == null) {
+            return;
+        }
+        VirtualFile partnerFile = ComponentSubtabEditorSplitNavigation.nativeTwoPanePartner(project, paneFile);
+        boolean canCreate = partnerFile != null
+                && ComponentSubtabEditorSplitNavigation.canCreateSplitPairFromNativeTwoPane(
+                project,
+                paneFile,
+                partnerFile
+        );
+        boolean savedPairs = ComponentSubtabEditorSplitRegistry.getInstance(project).hasSavedSplittabs();
+
+        if (leftButton) {
+            if (!savedPairs && canCreate) {
+                ComponentSubtabEditorSplitNavigation.createSplit(project, paneFile, partnerFile);
+                syncProject(project);
+                return;
+            }
+            if (savedPairs) {
+                SplittabDedicatedViewService.getInstance(project).toggleDedicatedView();
+                syncProject(project);
+            }
+            return;
+        }
+
+        if (ComponentSubtabEditorSplitNavigation.canToggleTwoPaneSplitOrientation(project)) {
+            if (ComponentSubtabEditorSplitNavigation.toggleTwoPaneSplitOrientation(project)) {
+                syncProject(project);
+            }
+            return;
+        }
+        if (canCreate && savedPairs) {
+            ComponentSubtabEditorSplitNavigation.createSplit(project, paneFile, partnerFile);
+            syncProject(project);
+        }
     }
 
     private static @NotNull javax.swing.Icon iconForProject(@NotNull Project project) {
@@ -176,12 +248,16 @@ final class SplittabRestoreOverlay {
     }
 
     private static @NotNull String tooltipForProject(@NotNull Project project) {
+        if (!ComponentSubtabEditorSplitRegistry.getInstance(project).hasSavedSplittabs()
+                && ComponentSubtabEditorSplitNavigation.hasNativeTwoPaneSplitCandidate(project)) {
+            return "Create split pair (click). Swap split direction (right-click)";
+        }
         if (SplittabDedicatedViewService.usesDedicatedBehavior(project)) {
             return SplittabDedicatedViewService.getInstance(project).isDedicatedViewActive()
-                    ? "Zur Editor-Ansicht wechseln (Mixed beenden)"
-                    : "Zu Mixed wechseln";
+                    ? "Return to editor view (leave Switch)"
+                    : "Switch to Mixed";
         }
-        return "Gespeicherte Split Pairs";
+        return "Saved split pairs";
     }
 
     static void refreshButtonPresentation(@NotNull Project project, @NotNull ComponentSubtabIconButton button) {

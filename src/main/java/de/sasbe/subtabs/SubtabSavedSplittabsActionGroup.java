@@ -17,7 +17,7 @@ import java.util.List;
  */
 public final class SubtabSavedSplittabsActionGroup extends DefaultActionGroup implements DumbAware {
     public SubtabSavedSplittabsActionGroup() {
-        super("Splittabs öffnen", true);
+        super("Open split pairs", true);
     }
 
     @Override

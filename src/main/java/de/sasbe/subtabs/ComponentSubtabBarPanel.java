@@ -244,11 +244,11 @@ final class ComponentSubtabBarPanel extends JPanel implements ComponentSubtabReo
                 int activeIndex = indices.get(0);
                 String ruleName = activeIndex >= 0 && activeIndex < rules.size()
                         ? rules.get(activeIndex).name
-                        : "Regel";
+                        : "Rule";
                 ruleSwitchButton.setToolTipText(
-                        "Regel wechseln (aktiv: " + ruleName + ", " + indices.size() + " Treffer)"
+                        "Switch rule (active: " + ruleName + ", " + indices.size() + " matches)"
                 );
-                ruleSwitchButton.getAccessibleContext().setAccessibleName("Regel wechseln");
+                ruleSwitchButton.getAccessibleContext().setAccessibleName("Switch rule");
             }
         }
         updateScrollReserve();
@@ -1055,7 +1055,7 @@ final class ComponentSubtabBarPanel extends JPanel implements ComponentSubtabReo
             button.putClientProperty(ComponentSubtabUi.FILE_KEY, relatedFile.file());
             button.setToolTipText(relatedFile.file().getPath());
             button.getAccessibleContext().setAccessibleName(
-                    relatedFile.label() + " öffnen: " + relatedFile.file().getName()
+                    relatedFile.label() + " open: " + relatedFile.file().getName()
             );
             button.addActionListener(event -> {
                 if (ignoreNextClick.getAndSet(false)) {
@@ -1212,8 +1212,8 @@ final class ComponentSubtabBarPanel extends JPanel implements ComponentSubtabReo
 
     private @NotNull ComponentSubtabIconButton createCollapseButton() {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(SubtabsIcons.ACTIVE);
-        button.setToolTipText("SubTabs einklappen");
-        button.getAccessibleContext().setAccessibleName("SubTabs einklappen");
+        button.setToolTipText("Collapse TabZ");
+        button.getAccessibleContext().setAccessibleName("Collapse TabZ");
         button.addActionListener(event -> SubtabsCollapseState.getInstance(project).toggle(project));
         return button;
     }
@@ -1241,16 +1241,16 @@ final class ComponentSubtabBarPanel extends JPanel implements ComponentSubtabReo
 
     private @NotNull ComponentSubtabIconButton createRuleSwitchButton() {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(AllIcons.Actions.SwapPanels);
-        button.setToolTipText("Regel wechseln");
-        button.getAccessibleContext().setAccessibleName("Regel wechseln");
+        button.setToolTipText("Switch rule");
+        button.getAccessibleContext().setAccessibleName("Switch rule");
         button.addActionListener(event -> ComponentSubtabsManager.rotateSubtabRuleForFile(project, displayedFile));
         return button;
     }
 
     private @NotNull ComponentSubtabIconButton createCloseSideButton() {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(AllIcons.Actions.Close);
-        button.setToolTipText("Diese Split-Seite schließen");
-        button.getAccessibleContext().setAccessibleName("Diese Split-Seite schließen");
+        button.setToolTipText("Close this split side");
+        button.getAccessibleContext().setAccessibleName("Close this split side");
         button.addActionListener(event -> {
             ComponentSubtabGroupSplitRegistry.SplitState splitState = findActiveSplitState();
             if (splitState != null) {

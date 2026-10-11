@@ -190,7 +190,21 @@ final class CustomSubtabRuleMatcher {
     }
 
     static boolean usesSuffixMatching(@NotNull String pattern) {
-        return pattern.startsWith(".") && !isStandaloneDotFile(pattern);
+        if (pattern.startsWith(".") && !isStandaloneDotFile(pattern)) {
+            return true;
+        }
+        return usesLiteralSuffixPattern(pattern);
+    }
+
+    /** e.g. {@code Controller.java} on {@code OrderController.java} (not exact full-name rules like {@code tsconfig.json}). */
+    private static boolean usesLiteralSuffixPattern(@NotNull String pattern) {
+        if (pattern.startsWith(".") || pattern.isBlank()) {
+            return false;
+        }
+        int dot = pattern.indexOf('.');
+        return dot > 0
+                && dot == pattern.lastIndexOf('.')
+                && Character.isUpperCase(pattern.charAt(0));
     }
 
     private static @Nullable Match matchRule(
@@ -228,7 +242,7 @@ final class CustomSubtabRuleMatcher {
         String parentFileName = SubtabFileNestingGroups.parentFileName(nestingKey);
         String displayName = parentFileName != null && !parentFileName.isBlank()
                 ? parentFileName
-                : (!rule.name.isBlank() ? rule.name : "Eigene Gruppen");
+                : (!rule.name.isBlank() ? rule.name : "Custom groups");
         return new Match(
                 groupKey(index, nestingKey),
                 displayName,
@@ -267,7 +281,7 @@ final class CustomSubtabRuleMatcher {
     }
 
     private static @NotNull Match buildFolderMatch(@NotNull CustomSubtabRule rule, int index) {
-        String displayName = !rule.name.isBlank() ? rule.name : "Ordner";
+        String displayName = !rule.name.isBlank() ? rule.name : "Folder";
         return new Match(
                 groupKey(index, FOLDER_GROUP_MARKER),
                 displayName,
@@ -461,6 +475,9 @@ final class CustomSubtabRuleMatcher {
             String normalized = normalizeSuffix(pattern);
             return fileName.endsWith(normalized) && fileName.length() > normalized.length();
         }
+        if (usesLiteralSuffixPattern(pattern)) {
+            return fileName.endsWith(pattern) && fileName.length() > pattern.length();
+        }
         return fileName.equals(pattern);
     }
 
@@ -496,6 +513,15 @@ final class CustomSubtabRuleMatcher {
             return rule.name.trim();
         }
         int patternIndex = matchingPatternIndex(rule, fileName);
+        if (patternIndex >= 0 && patternIndex < patterns.size()) {
+            String pattern = patterns.get(patternIndex);
+            if (usesLiteralSuffixPattern(pattern)) {
+                String suffix = normalizeSuffix(pattern);
+                if (fileName.endsWith(suffix) && fileName.length() > suffix.length()) {
+                    return fileName.substring(0, fileName.length() - suffix.length());
+                }
+            }
+        }
         return SubtabNameSegment.resolve(fileName, groupSegmentAt(rule, patternIndex));
     }
 
@@ -631,7 +657,10 @@ final class CustomSubtabRuleMatcher {
     }
 
     private static @NotNull String normalizeSuffix(@NotNull String pattern) {
-        return pattern.startsWith(".") ? pattern : "." + pattern;
+        if (pattern.startsWith(".") || usesLiteralSuffixPattern(pattern)) {
+            return pattern;
+        }
+        return "." + pattern;
     }
 
     static @NotNull List<Integer> parseNameSegments(@NotNull String raw) {

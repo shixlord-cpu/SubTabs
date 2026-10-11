@@ -39,7 +39,7 @@ class SubtabsSettingsTest {
     @Test
     void usesIdeStandardTabFontStyleByDefault() {
         assertEquals(TabFontStyle.IDE_STANDARD.name(), new SubtabsSettings.State().tabFontStyle);
-        assertEquals("IDE-Standard", TabFontStyle.IDE_STANDARD.label());
+        assertEquals("IDE default", TabFontStyle.IDE_STANDARD.label());
         assertEquals("Monospace", TabFontStyle.MONOSPACED.label());
     }
 
@@ -76,9 +76,9 @@ class SubtabsSettingsTest {
 
     @Test
     void namesArrowOverflowRandpfeile() {
-        assertEquals("Randpfeile", SubtabOverflowMode.ARROWS.label());
-        assertEquals("Randpfeile", SubtabOverflowMode.ARROWS.toString());
-        assertEquals("Scrollbalken", SubtabOverflowMode.SCROLLBAR.label());
+        assertEquals("Edge arrows", SubtabOverflowMode.ARROWS.label());
+        assertEquals("Edge arrows", SubtabOverflowMode.ARROWS.toString());
+        assertEquals("Scrollbar", SubtabOverflowMode.SCROLLBAR.label());
     }
 
     @Test
@@ -112,7 +112,7 @@ class SubtabsSettingsTest {
         assertEquals("TS-Component", rules.get(2).name);
         assertEquals("HTML", rules.get(3).name);
         assertEquals("CSS", rules.get(4).name);
-        assertEquals("Datei-Regeln überschreiben", rules.get(0).sectionsSummary());
+        assertEquals("Override file rules", rules.get(0).sectionsSummary());
         assertEquals("Setup, Tests", rules.get(1).sectionsSummary());
         assertEquals("Imports, Decorator, Fields, Methods", rules.get(2).sectionsSummary());
         assertTrue(rules.get(3).sectionsSummary().contains("Prolog"));
@@ -233,30 +233,38 @@ class SubtabsSettingsTest {
 
     @Test
     void shipsWithBuiltInRules() {
-        assertEquals(10, new SubtabsSettings.State().rules.size());
-        assertEquals("npm", new SubtabsSettings.State().rules.get(0).name);
-        assertEquals("tsconfig", new SubtabsSettings.State().rules.get(1).name);
-        assertEquals("State Central", new SubtabsSettings.State().rules.get(3).name);
-        assertEquals("State Feature", new SubtabsSettings.State().rules.get(4).name);
-        assertEquals("2, 2, 2, 2, 2, 2, 2, 2", new SubtabsSettings.State().rules.get(3).nameSegments);
-        assertEquals("1", new SubtabsSettings.State().rules.get(3).groupNameSegments);
-        assertEquals("1, 1, 1, 1, 1, 1, 1, 1", new SubtabsSettings.State().rules.get(4).nameSegments);
-        assertEquals("2", new SubtabsSettings.State().rules.get(4).groupNameSegments);
-        assertTrue(new SubtabsSettings.State().rules.get(4).searchNeighbors);
-        assertEquals("state", new SubtabsSettings.State().rules.get(4).groupSuffix);
-        assertFalse(new SubtabsSettings.State().rules.get(4).builtin);
-        assertEquals("state", new SubtabsSettings.State().rules.get(3).groupSuffix);
-        assertEquals("HTML", new SubtabsSettings.State().rules.get(6).name);
-        assertFalse(new SubtabsSettings.State().rules.get(6).builtin);
-        assertTrue(new SubtabsSettings.State().rules.get(6).excludePatterns.contains(".component.html"));
-        assertEquals("Komponente", new SubtabsSettings.State().rules.get(7).name);
-        assertTrue(new SubtabsSettings.State().rules.get(7).excludePatterns.contains(".actions.ts"));
-        assertEquals("Eigene Gruppen", new SubtabsSettings.State().rules.get(8).name);
-        assertTrue(new SubtabsSettings.State().rules.get(8).enabled);
-        assertTrue(new SubtabsSettings.State().rules.get(8).builtin);
-        assertEquals("Ordner", new SubtabsSettings.State().rules.get(9).name);
-        assertTrue(new SubtabsSettings.State().rules.get(9).enabled);
-        assertTrue(new SubtabsSettings.State().rules.get(9).builtin);
+        List<CustomSubtabRule> rules = new SubtabsSettings.State().rules;
+        assertEquals(17, rules.size());
+        assertEquals("npm", rules.get(0).name);
+        assertEquals("tsconfig", rules.get(1).name);
+        assertEquals("State Central", rules.get(3).name);
+        assertEquals("State Feature", rules.get(4).name);
+        assertEquals("2, 2, 2, 2, 2, 2, 2, 2", rules.get(3).nameSegments);
+        assertEquals("1", rules.get(3).groupNameSegments);
+        assertEquals("1, 1, 1, 1, 1, 1, 1, 1", rules.get(4).nameSegments);
+        assertEquals("2", rules.get(4).groupNameSegments);
+        assertTrue(rules.get(4).searchNeighbors);
+        assertEquals("state", rules.get(4).groupSuffix);
+        assertFalse(rules.get(4).builtin);
+        assertEquals("state", rules.get(3).groupSuffix);
+        assertEquals("Spring Boot", rules.get(6).name);
+        assertEquals("ASP.NET", rules.get(7).name);
+        assertEquals("React", rules.get(8).name);
+        assertEquals("Vue", rules.get(9).name);
+        assertEquals("Nest", rules.get(10).name);
+        assertEquals("Playwright", rules.get(11).name);
+        assertEquals("Cypress", rules.get(12).name);
+        CustomSubtabRule html = rules.stream().filter(rule -> "HTML".equals(rule.name)).findFirst().orElseThrow();
+        assertFalse(html.builtin);
+        assertTrue(html.excludePatterns.contains(".component.html"));
+        CustomSubtabRule component = rules.stream().filter(rule -> "Komponente".equals(rule.name)).findFirst().orElseThrow();
+        assertTrue(component.excludePatterns.contains(".actions.ts"));
+        CustomSubtabRule userGroups = rules.stream().filter(rule -> "Custom groups".equals(rule.name)).findFirst().orElseThrow();
+        assertTrue(userGroups.enabled);
+        assertTrue(userGroups.builtin);
+        CustomSubtabRule folder = rules.stream().filter(rule -> "Folder".equals(rule.name)).findFirst().orElseThrow();
+        assertTrue(folder.enabled);
+        assertTrue(folder.builtin);
     }
 
     @Test
@@ -267,11 +275,11 @@ class SubtabsSettingsTest {
         );
         assertEquals(SplittabOtherPairFileMode.OPEN_NORMALLY, new SubtabsSettings().getSplittabOtherPairFileMode());
         assertEquals(
-                "Zum Split Pair wechseln, zu dem die Datei gehört",
+                "Switch to the split pair that owns the file",
                 SplittabOtherPairFileMode.SWITCH_TO_PAIR.label()
         );
         assertEquals(
-                "Split Pair verlassen und die Datei normal öffnen",
+                "Leave split pair and open the file normally",
                 SplittabOtherPairFileMode.OPEN_NORMALLY.label()
         );
     }

@@ -19,8 +19,8 @@ enum SplittabOtherPairFileMode {
 
     @NotNull String label() {
         return this == SWITCH_TO_PAIR
-                ? "Zum Split Pair wechseln, zu dem die Datei gehört"
-                : "Split Pair verlassen und die Datei normal öffnen";
+                ? "Switch to the split pair that owns the file"
+                : "Leave split pair and open the file normally";
     }
 
     @Override

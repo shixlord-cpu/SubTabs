@@ -1,18 +1,18 @@
 <idea-plugin>
 
-    <id>de.sasbe.component-subtabs</id>
+    <id>com.zayax.component-subtabs</id>
 
-    <name>SubTabs</name>
+    <name>TabZ</name>
 
-    <vendor>SasBe</vendor>
+    <vendor>ZaYaX</vendor>
 
 
 
     <description><![CDATA[
 
-        Shows compact subtabs above the editor for related Angular component
+        Compact subtabs above the editor for related files (components, configs,
 
-        files, NPM/TypeScript/env configs, state-management files, and models.
+        stack-specific groups, state, models, and more) in IntelliJ-based IDEs.
 
     ]]></description>
 
@@ -36,7 +36,7 @@
                 parentId="tools"
                 instance="de.sasbe.subtabs.SubtabsConfigurable"
                 id="de.sasbe.subtabs.settings"
-                displayName="Familia"
+                displayName="TabZ"
                 icon="de.sasbe.subtabs.SubtabsIcons.ACTIVE"/>
         <treeStructureProvider implementation="de.sasbe.subtabs.SubtabGroupTreeStructureProvider"/>
     </extensions>
@@ -46,31 +46,31 @@
     <actions>
         <action id="SubTabs.SelectPreviousSubtab"
                 class="de.sasbe.subtabs.SubtabSelectPreviousAction"
-                text="Vorheriger Subtab"
-                description="Zum linken Subtab wechseln">
+                text="Previous subtab"
+                description="Switch to the subtab on the left">
             <keyboard-shortcut keymap="$default" first-keystroke="alt LEFT"/>
         </action>
         <action id="SubTabs.SelectNextSubtab"
                 class="de.sasbe.subtabs.SubtabSelectNextAction"
-                text="Nächster Subtab"
-                description="Zum rechten Subtab wechseln">
+                text="Next subtab"
+                description="Switch to the subtab on the right">
             <keyboard-shortcut keymap="$default" first-keystroke="alt RIGHT"/>
         </action>
         <group id="SubTabs.Familia"
                 class="de.sasbe.subtabs.SubtabFamiliaActionGroup"
                 popup="true"
-                text="Familia">
+                text="TabZ">
             <action id="SubTabs.RevealInProjectView"
                     class="de.sasbe.subtabs.SubtabRevealInProjectViewAction"
-                    text="Im Projektbaum anzeigen"/>
+                    text="Show in Project view"/>
             <separator/>
             <action id="SubTabs.ChangeGroupColor"
                     class="de.sasbe.subtabs.SubtabGroupChangeColorAction"
-                    text="Gruppenfarbe ändern…"/>
+                    text="Change group color…"/>
             <separator/>
             <action id="SubTabs.ResetGroupColor"
                     class="de.sasbe.subtabs.SubtabGroupResetColorAction"
-                    text="Gruppenfarbe neu zuweisen"/>
+                    text="Reassign group color"/>
             <separator/>
             <group id="SubTabs.SavedSplittabs"
                     class="de.sasbe.subtabs.SubtabSavedSplittabsActionGroup"
@@ -101,4 +101,3 @@
     </applicationListeners>
 
 </idea-plugin>
-

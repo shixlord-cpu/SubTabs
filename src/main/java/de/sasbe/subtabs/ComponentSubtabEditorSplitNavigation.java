@@ -7,11 +7,15 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.fileEditor.impl.EditorWindow;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.SwingConstants;
+
+import java.awt.Point;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -21,6 +25,9 @@ import java.util.Set;
  * Opens two subtab files in a normal IDE editor split: anchor file on the left, target on the right.
  */
 final class ComponentSubtabEditorSplitNavigation {
+    private static final Key<String> TWO_PANE_ARRANGEMENT_KEY =
+            Key.create("componentSubtabs.twoPaneArrangement");
+
     private ComponentSubtabEditorSplitNavigation() {
     }
 
@@ -453,6 +460,406 @@ final class ComponentSubtabEditorSplitNavigation {
     }
 
     /**
+     * Two native IDE editor panes with different selected files, without TabZ splittab chrome active.
+     */
+    static boolean hasNativeTwoPaneSplitCandidate(@NotNull Project project) {
+        if (!SubtabsSettings.getInstance().isSplittabsEnabled()) {
+            return false;
+        }
+        if (editorSplittabUiEngaged(project)) {
+            return false;
+        }
+        return nativeTwoPaneDistinctSelections(project) != null;
+    }
+
+    static @Nullable NativeTwoPaneSelections nativeTwoPaneDistinctSelections(@NotNull Project project) {
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        EditorWindow[] windows = manager.getWindows();
+        if (windows.length != 2) {
+            return null;
+        }
+        VirtualFile first = selectedFileInWindow(windows[0]);
+        VirtualFile second = selectedFileInWindow(windows[1]);
+        if (first == null || second == null || first.equals(second)) {
+            return null;
+        }
+        EditorWindow leftWindow = windows[0];
+        EditorWindow rightWindow = windows[1];
+        if (ComponentSubtabEditorLookup.isRightSplitPane(manager, windows[0])) {
+            leftWindow = windows[1];
+            rightWindow = windows[0];
+        }
+        VirtualFile leftFile = selectedFileInWindow(leftWindow);
+        VirtualFile rightFile = selectedFileInWindow(rightWindow);
+        if (leftFile == null || rightFile == null || leftFile.equals(rightFile)) {
+            return null;
+        }
+        return new NativeTwoPaneSelections(leftFile, rightFile);
+    }
+
+    static @Nullable VirtualFile nativeTwoPanePartner(
+            @NotNull Project project,
+            @NotNull VirtualFile file
+    ) {
+        NativeTwoPaneSelections selections = nativeTwoPaneDistinctSelections(project);
+        if (selections == null) {
+            return null;
+        }
+        if (file.equals(selections.leftFile())) {
+            return selections.rightFile();
+        }
+        if (file.equals(selections.rightFile())) {
+            return selections.leftFile();
+        }
+        return null;
+    }
+
+    static boolean canCreateSplitPairFromNativeTwoPane(
+            @NotNull Project project,
+            @NotNull VirtualFile initiatingPaneFile,
+            @NotNull VirtualFile linkedFile
+    ) {
+        if (initiatingPaneFile.equals(linkedFile)) {
+            return false;
+        }
+        if (!SubtabsSettings.getInstance().isSplittabsEnabled()) {
+            return false;
+        }
+        if (isSplittabLinkedFileInWorkspace(project, linkedFile)
+                || isSplittabLinkedFileInWorkspace(project, initiatingPaneFile)) {
+            return false;
+        }
+        NativeTwoPaneSelections selections = nativeTwoPaneDistinctSelections(project);
+        if (selections == null) {
+            return false;
+        }
+        return (initiatingPaneFile.equals(selections.leftFile()) && linkedFile.equals(selections.rightFile()))
+                || (initiatingPaneFile.equals(selections.rightFile()) && linkedFile.equals(selections.leftFile()));
+    }
+
+    private static @Nullable VirtualFile selectedFileInWindow(@NotNull EditorWindow window) {
+        if (window.getTabCount() == 0) {
+            return null;
+        }
+        return window.getSelectedFile();
+    }
+
+    private static boolean isSplittabLinkedFileInWorkspace(
+            @NotNull Project project,
+            @NotNull VirtualFile file
+    ) {
+        if (!editorSplittabUiEngaged(project)) {
+            return false;
+        }
+        ComponentSubtabEditorSplitRegistry.SplittabPair pair =
+                ComponentSubtabEditorSplitRegistry.getInstance(project).findByFile(file);
+        return pair != null && isSplittabWorkspace(project, pair);
+    }
+
+    record NativeTwoPaneSelections(@NotNull VirtualFile leftFile, @NotNull VirtualFile rightFile) {
+    }
+
+    enum TwoPaneArrangement {
+        SIDE_BY_SIDE,
+        STACKED
+    }
+
+    static boolean isTwoPaneStackedVertically(@NotNull Project project) {
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        if (manager.getWindows().length != 2) {
+            return false;
+        }
+        TwoPaneArrangement arrangement = detectTwoPaneArrangement(project, manager);
+        return arrangement == TwoPaneArrangement.STACKED;
+    }
+
+    static void clearTwoPaneArrangementHint(@NotNull Project project) {
+        project.putUserData(TWO_PANE_ARRANGEMENT_KEY, null);
+    }
+
+    /**
+     * With two editor panes, the split-pair affordance lives on the top pane (stacked) or right pane (side by side).
+     */
+    static boolean isSplitPairIconHostEditor(@NotNull Project project, @NotNull FileEditor editor) {
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        EditorWindow[] windows = manager.getWindows();
+        if (windows.length != 2) {
+            return true;
+        }
+        EditorWindow host = ComponentSubtabEditorLookup.windowHostingEditor(manager, editor);
+        EditorWindow preferred = preferredSplitPairIconHostWindow(project, manager);
+        return host != null && host == preferred;
+    }
+
+    static @Nullable FileEditor findSplitPairIconHostEditor(@NotNull Project project) {
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        for (FileEditor editor : manager.getAllEditors()) {
+            if (isSplitPairIconHostEditor(project, editor)) {
+                return editor;
+            }
+        }
+        return null;
+    }
+
+    private static @NotNull EditorWindow preferredSplitPairIconHostWindow(
+            @NotNull Project project,
+            @NotNull FileEditorManagerEx manager
+    ) {
+        EditorWindow[] windows = manager.getWindows();
+        EditorWindow first = windows[0];
+        EditorWindow second = windows[1];
+        TwoPaneArrangement arrangement = detectTwoPaneArrangement(project, manager);
+        if (arrangement == TwoPaneArrangement.STACKED) {
+            return topEditorWindow(first, second);
+        }
+        return rightEditorWindow(manager, first, second);
+    }
+
+    private static @NotNull EditorWindow topEditorWindow(
+            @NotNull EditorWindow first,
+            @NotNull EditorWindow second
+    ) {
+        java.awt.Component c0 = first.getTabbedPane().getComponent();
+        java.awt.Component c1 = second.getTabbedPane().getComponent();
+        if (c0.isShowing() && c1.isShowing()) {
+            int y0 = c0.getLocationOnScreen().y;
+            int y1 = c1.getLocationOnScreen().y;
+            if (y0 != y1) {
+                return y0 < y1 ? first : second;
+            }
+            int bottom0 = y0 + c0.getHeight();
+            int bottom1 = y1 + c1.getHeight();
+            return bottom0 <= bottom1 ? first : second;
+        }
+        return first;
+    }
+
+    private static @NotNull EditorWindow rightEditorWindow(
+            @NotNull FileEditorManagerEx manager,
+            @NotNull EditorWindow first,
+            @NotNull EditorWindow second
+    ) {
+        java.awt.Component c0 = first.getTabbedPane().getComponent();
+        java.awt.Component c1 = second.getTabbedPane().getComponent();
+        if (c0.isShowing() && c1.isShowing()) {
+            return c0.getLocationOnScreen().x >= c1.getLocationOnScreen().x ? first : second;
+        }
+        if (ComponentSubtabEditorLookup.isRightSplitPane(manager, second)) {
+            return second;
+        }
+        if (ComponentSubtabEditorLookup.isRightSplitPane(manager, first)) {
+            return first;
+        }
+        return second;
+    }
+
+    static boolean canToggleTwoPaneSplitOrientation(@NotNull Project project) {
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        return twoPaneSelectionsForOrientationToggle(project) != null
+                && detectTwoPaneArrangement(project, manager) != null;
+    }
+
+    static boolean toggleTwoPaneSplitOrientation(@NotNull Project project) {
+        NativeTwoPaneSelections selections = twoPaneSelectionsForOrientationToggle(project);
+        if (selections == null) {
+            return false;
+        }
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        TwoPaneArrangement arrangement = detectTwoPaneArrangement(project, manager);
+        if (arrangement == null) {
+            return false;
+        }
+        TwoPaneArrangement nextArrangement = arrangement == TwoPaneArrangement.SIDE_BY_SIDE
+                ? TwoPaneArrangement.STACKED
+                : TwoPaneArrangement.SIDE_BY_SIDE;
+        if (!reorientTwoPaneToArrangement(project, selections.leftFile(), selections.rightFile(), nextArrangement)) {
+            return false;
+        }
+        rememberTwoPaneArrangement(project, selections.leftFile(), selections.rightFile(), nextArrangement);
+
+        if (editorSplittabUiEngaged(project)) {
+            ComponentSubtabEditorSplitRegistry.SplittabPair active =
+                    ComponentSubtabEditorSplitRegistry.getInstance(project).activePair();
+            if (active != null && isSplittabWorkspace(project, active)) {
+                ComponentSubtabEditorSplitPresentation.applySplittabPresentation(project, active);
+            }
+        }
+        return true;
+    }
+
+    static void applyPairTwoPaneArrangementIfNeeded(
+            @NotNull Project project,
+            @NotNull ComponentSubtabEditorSplitRegistry.SplittabPair pair
+    ) {
+        if (SplittabDedicatedViewService.getInstance(project).isDedicatedViewActive()) {
+            return;
+        }
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        if (manager.getWindows().length != 2) {
+            return;
+        }
+        TwoPaneArrangement preferred = preferredTwoPaneArrangement(project, pair.id());
+        TwoPaneArrangement current = detectTwoPaneArrangement(project, manager);
+        if (current == preferred) {
+            rememberTwoPaneArrangement(project, pair.leftFile(), pair.rightFile(), preferred);
+            return;
+        }
+        if (reorientTwoPaneToArrangement(project, pair.leftFile(), pair.rightFile(), preferred)) {
+            rememberTwoPaneArrangement(project, pair.leftFile(), pair.rightFile(), preferred);
+        }
+    }
+
+    private static @NotNull TwoPaneArrangement preferredTwoPaneArrangement(
+            @NotNull Project project,
+            @NotNull String pairId
+    ) {
+        String stored = ComponentSubtabEditorSplitRegistry.getInstance(project)
+                .pairTwoPaneArrangementOrDefault(pairId);
+        try {
+            return TwoPaneArrangement.valueOf(stored);
+        } catch (IllegalArgumentException ignored) {
+            return TwoPaneArrangement.SIDE_BY_SIDE;
+        }
+    }
+
+    private static void rememberTwoPaneArrangement(
+            @NotNull Project project,
+            @NotNull VirtualFile leftFile,
+            @NotNull VirtualFile rightFile,
+            @NotNull TwoPaneArrangement arrangement
+    ) {
+        project.putUserData(TWO_PANE_ARRANGEMENT_KEY, arrangement.name());
+        ComponentSubtabEditorSplitRegistry registry =
+                ComponentSubtabEditorSplitRegistry.getInstance(project);
+        ComponentSubtabEditorSplitRegistry.SplittabPair pair = registry.findPairUnordered(leftFile, rightFile);
+        if (pair != null) {
+            registry.setPairTwoPaneArrangement(pair.id(), arrangement.name());
+        }
+    }
+
+    private static boolean reorientTwoPaneToArrangement(
+            @NotNull Project project,
+            @NotNull VirtualFile leftFile,
+            @NotNull VirtualFile rightFile,
+            @NotNull TwoPaneArrangement targetArrangement
+    ) {
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        TwoPaneArrangement current = detectTwoPaneArrangement(project, manager);
+        if (current == targetArrangement) {
+            return false;
+        }
+        if (manager.getWindows().length != 2) {
+            return false;
+        }
+        int splitDirection = targetArrangement == TwoPaneArrangement.STACKED
+                ? SwingConstants.HORIZONTAL
+                : SwingConstants.VERTICAL;
+
+        EditorWindow leftWindow = ComponentSubtabEditorLookup.findWindowWithFile(manager, leftFile);
+        EditorWindow rightWindow = ComponentSubtabEditorLookup.findWindowWithFile(manager, rightFile);
+        if (leftWindow == null || rightWindow == null || leftWindow == rightWindow) {
+            return false;
+        }
+
+        ComponentSubtabNavigation.runWithSwitchGuard(project, () -> {
+            ensureFileInWindow(manager, leftFile, leftWindow);
+            ensureFileInWindow(manager, rightFile, rightWindow);
+            java.util.List<VirtualFile> rightPaneFiles = new ArrayList<>(filesInWindow(rightWindow));
+            EditorWindow paneToMerge = rightWindow;
+            if (paneToMerge != leftWindow && windowInManager(manager, paneToMerge)) {
+                paneToMerge.unsplit(true);
+            }
+            EditorWindow anchor = ComponentSubtabEditorLookup.findWindowWithFile(manager, leftFile);
+            if (anchor == null || !windowInManager(manager, anchor)) {
+                return;
+            }
+            anchor.setSelectedComposite(leftFile, true);
+            manager.setCurrentWindow(anchor);
+            EditorWindow splitPane = anchor.split(splitDirection, true, rightFile, false);
+            if (splitPane == null || splitPane == anchor) {
+                return;
+            }
+            ensureFileInWindow(manager, leftFile, anchor);
+            ensureFileInWindow(manager, rightFile, splitPane);
+            for (VirtualFile file : rightPaneFiles) {
+                if (file.equals(leftFile) || file.equals(rightFile)) {
+                    continue;
+                }
+                if (!splitPane.isFileOpen(file)) {
+                    openInWindowNonBlocking(manager, file, splitPane, false);
+                }
+            }
+        });
+        return true;
+    }
+
+    private static @Nullable NativeTwoPaneSelections twoPaneSelectionsForOrientationToggle(
+            @NotNull Project project
+    ) {
+        if (!SubtabsSettings.getInstance().isSplittabsEnabled()) {
+            return null;
+        }
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        if (manager.getWindows().length != 2) {
+            return null;
+        }
+        ComponentSubtabEditorSplitRegistry registry =
+                ComponentSubtabEditorSplitRegistry.getInstance(project);
+        if (!registry.hasSavedSplittabs()) {
+            return nativeTwoPaneDistinctSelections(project);
+        }
+        if (!editorSplittabUiEngaged(project)) {
+            return null;
+        }
+        ComponentSubtabEditorSplitRegistry.SplittabPair active = registry.activePair();
+        if (active == null || !isSplittabWorkspace(project, active)) {
+            return null;
+        }
+        return new NativeTwoPaneSelections(active.leftFile(), active.rightFile());
+    }
+
+    private static @Nullable TwoPaneArrangement detectTwoPaneArrangement(
+            @NotNull Project project,
+            @NotNull FileEditorManagerEx manager
+    ) {
+        EditorWindow[] windows = manager.getWindows();
+        if (windows.length != 2) {
+            clearTwoPaneArrangementHint(project);
+            return null;
+        }
+        java.awt.Component first = windows[0].getTabbedPane().getComponent();
+        java.awt.Component second = windows[1].getTabbedPane().getComponent();
+        if (first.isShowing() && second.isShowing()) {
+            Point firstOrigin = first.getLocationOnScreen();
+            Point secondOrigin = second.getLocationOnScreen();
+            int deltaX = Math.abs(firstOrigin.x - secondOrigin.x);
+            int deltaY = Math.abs(firstOrigin.y - secondOrigin.y);
+            TwoPaneArrangement fromGeometry = deltaX >= deltaY
+                    ? TwoPaneArrangement.SIDE_BY_SIDE
+                    : TwoPaneArrangement.STACKED;
+            project.putUserData(TWO_PANE_ARRANGEMENT_KEY, fromGeometry.name());
+            if (editorSplittabUiEngaged(project)) {
+                ComponentSubtabEditorSplitRegistry.SplittabPair active =
+                        ComponentSubtabEditorSplitRegistry.getInstance(project).activePair();
+                if (active != null && isSplittabWorkspace(project, active)) {
+                    ComponentSubtabEditorSplitRegistry.getInstance(project)
+                            .setPairTwoPaneArrangement(active.id(), fromGeometry.name());
+                }
+            }
+            return fromGeometry;
+        }
+        String stored = project.getUserData(TWO_PANE_ARRANGEMENT_KEY);
+        if (stored != null) {
+            try {
+                return TwoPaneArrangement.valueOf(stored);
+            } catch (IllegalArgumentException ignored) {
+                clearTwoPaneArrangementHint(project);
+            }
+        }
+        return TwoPaneArrangement.SIDE_BY_SIDE;
+    }
+
+    /**
      * Mixed + „Zum Split Pair wechseln“: kein aktives Pair, aber genau zwei Editor-Panes im normalen
      * IDE-Split und die jeweils fokussierte Datei im anderen Pane ist der Partner — Haupttab-Wechsel
      * aktiviert das gespeicherte Split Pair.
@@ -782,8 +1189,16 @@ final class ComponentSubtabEditorSplitNavigation {
         if (rightWindow == null || rightWindow == leftWindow) {
             rightWindow = siblingWindow(manager, leftWindow);
         }
+        TwoPaneArrangement preferredArrangement = TwoPaneArrangement.SIDE_BY_SIDE;
         if (rightWindow == null || rightWindow == leftWindow) {
-            rightWindow = splitRightNonBlocking(manager, leftWindow, leftFile, rightFile, true);
+            rightWindow = splitRightNonBlocking(
+                    manager,
+                    leftWindow,
+                    leftFile,
+                    rightFile,
+                    true,
+                    preferredArrangement
+            );
         }
         if (rightWindow == null || rightWindow == leftWindow) {
             return;
@@ -827,6 +1242,11 @@ final class ComponentSubtabEditorSplitNavigation {
 
         ComponentSubtabEditorSplitRegistry.SplittabPair pair =
                 ComponentSubtabEditorSplitRegistry.getInstance(project).register(leftFile, rightFile);
+        TwoPaneArrangement detected = detectTwoPaneArrangement(project, manager);
+        if (detected != null) {
+            rememberTwoPaneArrangement(project, leftFile, rightFile, detected);
+        }
+        applyPairTwoPaneArrangementIfNeeded(project, pair);
         ComponentSubtabEditorSplitPresentation.applySplittabPresentation(project, pair);
         closeSpareEditorFilesAfterCreate(project, pair, initiatingPaneFile, linkedFile);
         focusSplittabPair(project, pair, rightFile);
@@ -916,8 +1336,16 @@ final class ComponentSubtabEditorSplitNavigation {
         if (rightWindow == null || rightWindow == leftWindow) {
             rightWindow = siblingWindow(manager, leftWindow);
         }
+        TwoPaneArrangement preferredArrangement = preferredTwoPaneArrangement(project, pair.id());
         if (rightWindow == null || rightWindow == leftWindow) {
-            rightWindow = splitRightNonBlocking(manager, leftWindow, pair.leftFile(), pair.rightFile(), false);
+            rightWindow = splitRightNonBlocking(
+                    manager,
+                    leftWindow,
+                    pair.leftFile(),
+                    pair.rightFile(),
+                    false,
+                    preferredArrangement
+            );
         }
         if (rightWindow == null || rightWindow == leftWindow) {
             return false;
@@ -958,6 +1386,7 @@ final class ComponentSubtabEditorSplitNavigation {
             manager.setCurrentWindow(physicalRight);
         }
 
+        applyPairTwoPaneArrangementIfNeeded(project, pair);
         ComponentSubtabEditorSplitPresentation.applySplittabPresentation(project, pair);
         focusSplittabPair(project, pair, pair.rightFile());
         SplittabDedicatedViewService.getInstance(project).enforceDedicatedWorkspace();
@@ -1030,8 +1459,16 @@ final class ComponentSubtabEditorSplitNavigation {
             }
             ensureFileInWindow(manager, pair.leftFile(), leftWindow);
             EditorWindow rightWindow = dedicatedRightPane(manager, leftWindow);
+            TwoPaneArrangement preferredArrangement = preferredTwoPaneArrangement(project, pair.id());
             if (rightWindow == null || rightWindow == leftWindow) {
-                rightWindow = splitRightNonBlocking(manager, leftWindow, pair.leftFile(), pair.rightFile(), false);
+                rightWindow = splitRightNonBlocking(
+                        manager,
+                        leftWindow,
+                        pair.leftFile(),
+                        pair.rightFile(),
+                        false,
+                        preferredArrangement
+                );
             }
             if (rightWindow == null || rightWindow == leftWindow) {
                 return;
@@ -1052,6 +1489,7 @@ final class ComponentSubtabEditorSplitNavigation {
 
             dedicatedEnsureBothPairFilesOpen(manager, pair, leftWindow, rightWindow);
 
+            applyPairTwoPaneArrangementIfNeeded(project, pair);
             ComponentSubtabEditorSplitPresentation.applySplittabPresentation(project, pair);
             focusSplittabPair(project, pair, pair.rightFile());
             dedicated.enforceDedicatedWorkspace();
@@ -1197,14 +1635,18 @@ final class ComponentSubtabEditorSplitNavigation {
             @NotNull EditorWindow leftWindow,
             @NotNull VirtualFile leftFile,
             @NotNull VirtualFile rightFile,
-            boolean focusRight
+            boolean focusRight,
+            @NotNull TwoPaneArrangement arrangement
     ) {
+        int splitDirection = arrangement == TwoPaneArrangement.STACKED
+                ? SwingConstants.HORIZONTAL
+                : SwingConstants.VERTICAL;
         if (!leftWindow.isFileOpen(leftFile)) {
-            return leftWindow.split(SwingConstants.VERTICAL, true, rightFile, focusRight);
+            return leftWindow.split(splitDirection, true, rightFile, focusRight);
         }
         leftWindow.setSelectedComposite(leftFile, false);
         manager.setCurrentWindow(leftWindow);
-        EditorWindow rightWindow = leftWindow.split(SwingConstants.VERTICAL, true, leftFile, false);
+        EditorWindow rightWindow = leftWindow.split(splitDirection, true, leftFile, false);
         if (rightWindow == null || rightWindow == leftWindow) {
             return rightWindow;
         }
@@ -1335,7 +1777,14 @@ final class ComponentSubtabEditorSplitNavigation {
         if (rightWindow == null || rightWindow == leftWindow) {
             leftWindow.setSelectedComposite(leftFile, true);
             manager.setCurrentWindow(leftWindow);
-            rightWindow = splitRightNonBlocking(manager, leftWindow, leftFile, rightFile, false);
+            rightWindow = splitRightNonBlocking(
+                    manager,
+                    leftWindow,
+                    leftFile,
+                    rightFile,
+                    false,
+                    TwoPaneArrangement.SIDE_BY_SIDE
+            );
         }
         if (rightWindow == null || rightWindow == leftWindow) {
             return;

@@ -4,6 +4,6 @@ import org.jetbrains.annotations.NotNull;
 
 public final class SubtabSelectPreviousAction extends SubtabSelectAdjacentAction {
     public SubtabSelectPreviousAction() {
-        super("Vorheriger Subtab", "Zum linken Subtab wechseln", -1);
+        super("Previous subtab", "Switch to the subtab on the left", -1);
     }
 }

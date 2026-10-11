@@ -26,8 +26,8 @@ final class ComponentSubtabEditorSplitNaming {
                 : ComponentSubtabEditorSplitPresentation.linkBarText(pair, index);
         String entered = Messages.showInputDialog(
                 project,
-                "Name für diese Splittab-Verknüpfung (linke Leiste):",
-                "Splittab umbenennen",
+                "Name for this split-pair link (left bar):",
+                "Rename split pair",
                 null,
                 current,
                 null
@@ -57,8 +57,8 @@ final class ComponentSubtabEditorSplitNaming {
         String current = ComponentSubtabEditorSplitPresentation.paneHeaderText(pair);
         String entered = Messages.showInputDialog(
                 project,
-                "Label im rechten Splittab-Kopf:",
-                "Splittab-Label umbenennen",
+                "Label in the right split-pair header:",
+                "Rename split-pair label",
                 null,
                 current,
                 null

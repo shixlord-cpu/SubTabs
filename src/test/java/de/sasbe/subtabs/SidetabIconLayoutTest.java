@@ -30,8 +30,8 @@ class SidetabIconLayoutTest {
 
     @Test
     void sidetabLayoutModeLabelsMatchPresentation() {
-        assertEquals("Als Label", SidetabLayoutMode.BESIDE.label());
-        assertEquals("Als leere Balken", SidetabLayoutMode.OVERLAY.label());
+        assertEquals("As labels", SidetabLayoutMode.BESIDE.label());
+        assertEquals("Empty bars", SidetabLayoutMode.OVERLAY.label());
     }
 
     @Test

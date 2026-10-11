@@ -131,7 +131,7 @@ final class ComponentSubtabEditorSplitFamiliaMenu {
                 int index
         ) {
             super(
-                    "Splittab öffnen: "
+                    "Open split pair: "
                             + ComponentSubtabEditorSplitPresentation.linkBarText(pair, index)
             );
             this.project = project;

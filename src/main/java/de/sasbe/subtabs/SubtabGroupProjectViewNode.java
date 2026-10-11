@@ -86,7 +86,7 @@ final class SubtabGroupProjectViewNode extends ProjectViewNode<SubtabGroupProjec
         }
         presentation.setIcon(icon);
         if (fileNodes.size() > 1) {
-            presentation.setLocationString(fileNodes.size() + " Dateien");
+            presentation.setLocationString(fileNodes.size() + " files");
         }
         if (hasModifiedMember()) {
             presentation.setForcedTextForeground(ComponentSubtabModifiedUi.foreground(true, false));

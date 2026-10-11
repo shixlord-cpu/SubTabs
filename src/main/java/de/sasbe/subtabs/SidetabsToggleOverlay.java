@@ -72,7 +72,7 @@ final class SidetabsToggleOverlay {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(
                 expanded ? SubtabsIcons.SIDE_ACTIVE : SubtabsIcons.SIDE_INACTIVE
         );
-        button.setToolTipText(expanded ? "SideTabs einklappen" : "SideTabs ausklappen");
+        button.setToolTipText(expanded ? "Collapse vertical tabs" : "Expand vertical tabs");
         button.getAccessibleContext().setAccessibleName(button.getToolTipText());
         ComponentSubtabsIconContextMenu.installSidetabIconToggleClick(project, editor, button);
         ComponentSubtabsIconContextMenu.installSidetabIconMenu(project, editor, button);

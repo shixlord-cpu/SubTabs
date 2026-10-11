@@ -17,13 +17,16 @@ import javax.swing.JPanel;
 
 final class SubtabRuleEditDialog extends DialogWrapper {
     private final CustomSubtabRule rule;
-    private final JBCheckBox enabledCheckBox = new JBCheckBox("Aktiv");
+    private final JBCheckBox enabledCheckBox = new JBCheckBox("Enabled");
     private final JBTextField nameField = new JBTextField();
     private final JBTextField groupSuffixField = new JBTextField();
     private final JBTextArea patternsArea = new JBTextArea(3, 40);
     private final JBTextField nameSegmentsField = new JBTextField();
     private final JBTextField groupNameSegmentsField = new JBTextField();
-    private final ComboBox<String> searchComboBox = new ComboBox<>(new String[]{"Ordner", "Nachbarn"});
+    private final ComboBox<String> searchComboBox = new ComboBox<>(new String[]{
+            SubtabRulesDefaults.SEARCH_FOLDER_LABEL,
+            SubtabRulesDefaults.SEARCH_NEIGHBORS_LABEL
+    });
     private final JBTextArea excludePatternsArea = new JBTextArea(3, 40);
 
     SubtabRuleEditDialog(@Nullable JComponent parent, @NotNull CustomSubtabRule rule) {
@@ -35,9 +38,9 @@ final class SubtabRuleEditDialog extends DialogWrapper {
         patternsArea.setText(this.rule.patterns);
         nameSegmentsField.setText(this.rule.nameSegments);
         groupNameSegmentsField.setText(this.rule.groupNameSegments);
-        searchComboBox.setSelectedItem(this.rule.searchNeighbors ? "Nachbarn" : "Ordner");
+        searchComboBox.setSelectedItem(SubtabRulesDefaults.searchScopeLabel(this.rule.searchNeighbors));
         excludePatternsArea.setText(this.rule.excludePatterns);
-        setTitle("SubTabs-Regel bearbeiten");
+        setTitle("Edit TabZ rule");
         init();
     }
 
@@ -53,8 +56,8 @@ final class SubtabRuleEditDialog extends DialogWrapper {
         excludePatternsArea.setWrapStyleWord(true);
 
         JBLabel help = new JBLabel("""
-                <html><b>Tab</b> und <b>Gruppe</b>: Punkt-Segmente wie in der Tabelle (z. B. <code>2</code> oder <code>1, 2</code>).<br>\
-                <b>Ausnahme</b>: Dateien, die diese Regel ignorieren soll (z. B. <code>.actions.ts</code>).</html>
+                <html><b>Tab</b> and <b>Group</b>: dot segments as in the table (e.g. <code>2</code> or <code>1, 2</code>).<br>\
+                <b>Exclude</b>: files this rule should ignore (e.g. <code>.actions.ts</code>).</html>
                 """);
         help.setBorder(JBUI.Borders.emptyBottom(8));
 
@@ -62,11 +65,11 @@ final class SubtabRuleEditDialog extends DialogWrapper {
                 .addComponent(enabledCheckBox)
                 .addLabeledComponent(new JBLabel("Name:"), nameField, 1, false)
                 .addLabeledComponent(new JBLabel("Suffix:"), groupSuffixField, 1, false)
-                .addLabeledComponent(new JBLabel("Muster:"), new JBScrollPane(patternsArea), 1, false)
+                .addLabeledComponent(new JBLabel("Patterns:"), new JBScrollPane(patternsArea), 1, false)
                 .addLabeledComponent(new JBLabel("Tab:"), nameSegmentsField, 1, false)
-                .addLabeledComponent(new JBLabel("Gruppe:"), groupNameSegmentsField, 1, false)
-                .addLabeledComponent(new JBLabel("Suche:"), searchComboBox, 1, false)
-                .addLabeledComponent(new JBLabel("Ausnahme:"), new JBScrollPane(excludePatternsArea), 1, false)
+                .addLabeledComponent(new JBLabel("Group:"), groupNameSegmentsField, 1, false)
+                .addLabeledComponent(new JBLabel("Search:"), searchComboBox, 1, false)
+                .addLabeledComponent(new JBLabel("Exclude:"), new JBScrollPane(excludePatternsArea), 1, false)
                 .addComponent(help);
 
         JPanel panel = builder.getPanel();
@@ -80,7 +83,7 @@ final class SubtabRuleEditDialog extends DialogWrapper {
         searchComboBox.setEnabled(!special);
         excludePatternsArea.setEnabled(!special);
         if (special) {
-            help.setText("<html>Ordner- und Eigene-Gruppen-Regeln sind Builtin-Sonderregeln mit festen Mustern.</html>");
+            help.setText("<html>Folder and Custom groups are built-in rules with fixed patterns.</html>");
         }
         return panel;
     }
@@ -93,7 +96,7 @@ final class SubtabRuleEditDialog extends DialogWrapper {
         rule.patterns = patternsArea.getText().trim();
         rule.nameSegments = nameSegmentsField.getText().trim();
         rule.groupNameSegments = groupNameSegmentsField.getText().trim();
-        rule.searchNeighbors = "Nachbarn".equals(searchComboBox.getSelectedItem());
+        rule.searchNeighbors = SubtabRulesDefaults.isNeighborsSearchLabel(String.valueOf(searchComboBox.getSelectedItem()));
         rule.excludePatterns = excludePatternsArea.getText().trim();
         super.doOKAction();
     }

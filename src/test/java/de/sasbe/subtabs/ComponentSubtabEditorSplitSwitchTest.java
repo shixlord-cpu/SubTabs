@@ -21,6 +21,33 @@ public class ComponentSubtabEditorSplitSwitchTest extends RealEditorWindowTestCa
         scssFile = createSourceFile("product-list.component.scss");
     }
 
+    public void testSwitchBarReorderDragShowsGapLikeSubtabBar() throws Exception {
+        openAndSettle(htmlFile);
+        ComponentSubtabEditorSplitNavigation.createSplit(getProject(), htmlFile, specFile);
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+        ComponentSubtabEditorSplitRegistry.SplittabPair pairSpec =
+                ComponentSubtabEditorSplitRegistry.getInstance(getProject()).findByFiles(htmlFile, specFile);
+        assertNotNull(pairSpec);
+        ComponentSubtabEditorSplitMainTab.closeSplittabForeground(getProject(), pairSpec);
+        drainDeferredEditorEvents();
+
+        openAndSettle(htmlFile);
+        ComponentSubtabEditorSplitNavigation.createSplit(getProject(), htmlFile, scssFile);
+        drainDeferredEditorEvents();
+
+        SplittabSwitchBarPanel switchBar = switchBarOn(htmlFile);
+        assertNotNull(switchBar);
+        assertTrue(switchBar.pairTabButtonCount() >= 2);
+
+        switchBar.updateReorderDragState(1, scssFile, new java.awt.Point(120, 8));
+        switchBar.layOutTabsForTests(900);
+        assertTrue(
+                "switch-bar reorder drag must reserve a visible drop gap like the subtab bar",
+                switchBar.reorderGapWidthForTests() > 0
+        );
+        switchBar.clearReorderPreview();
+    }
+
     public void testSwitchBarActivatesOtherSavedSplittab() throws Exception {
         openAndSettle(htmlFile);
         ComponentSubtabEditorSplitNavigation.createSplit(getProject(), htmlFile, specFile);
@@ -137,10 +164,16 @@ public class ComponentSubtabEditorSplitSwitchTest extends RealEditorWindowTestCa
         assertTrue(hasHeader(scssFile));
     }
 
+    private @org.jetbrains.annotations.Nullable SplittabSwitchBarPanel switchBarOn(VirtualFile leftFile) {
+        var editors = ComponentSubtabsManager.editorsFor(manager, leftFile);
+        if (editors.length == 0) {
+            return null;
+        }
+        return editors[0].getUserData(ComponentSubtabsSplittabUi.SPLITTAB_SWITCH_BAR_KEY);
+    }
+
     private boolean hasSwitchBar(VirtualFile file) {
-        var editors = ComponentSubtabsManager.editorsFor(manager, file);
-        return editors.length > 0
-                && editors[0].getUserData(ComponentSubtabsSplittabUi.SPLITTAB_SWITCH_BAR_KEY) != null;
+        return switchBarOn(file) != null;
     }
 
     private boolean hasHeader(VirtualFile file) {

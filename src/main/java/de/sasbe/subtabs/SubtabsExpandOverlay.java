@@ -61,7 +61,6 @@ final class SubtabsExpandOverlay {
         }
         handle.dispose();
         editor.putUserData(OVERLAY_KEY, null);
-        SplittabRestoreOverlay.hide(editor);
     }
 
     static void relayout(@NotNull FileEditor editor) {
@@ -76,8 +75,8 @@ final class SubtabsExpandOverlay {
             @NotNull FileEditor editor
     ) {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(SubtabsIcons.INACTIVE);
-        button.setToolTipText("SubTabs ausklappen");
-        button.getAccessibleContext().setAccessibleName("SubTabs ausklappen");
+        button.setToolTipText("Expand TabZ");
+        button.getAccessibleContext().setAccessibleName("Expand TabZ");
         ComponentSubtabsIconContextMenu.installSubtabIconToggleClick(project, editor, button);
         ComponentSubtabsIconContextMenu.installSubtabIconMenu(project, editor, button);
         return button;

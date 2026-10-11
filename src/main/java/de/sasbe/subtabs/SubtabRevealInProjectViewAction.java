@@ -10,7 +10,7 @@ import org.jetbrains.annotations.NotNull;
 
 final class SubtabRevealInProjectViewAction extends AnAction implements DumbAware {
     SubtabRevealInProjectViewAction() {
-        super("Im Projektbaum anzeigen");
+        super("Show in Project view");
     }
 
     @Override

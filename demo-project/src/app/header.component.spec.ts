@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormBuilder } from '@angular/forms';
 import { HeaderComponent } from './header.component';
 
-function createRecord(id: string) {
+function create Record(id: string) {
   return {
     id,
     sku: id.toUpperCase(),

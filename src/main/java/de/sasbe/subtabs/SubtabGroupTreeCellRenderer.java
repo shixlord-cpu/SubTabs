@@ -164,7 +164,7 @@ final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
         SimpleTextAttributes attributes = new SimpleTextAttributes(SimpleTextAttributes.STYLE_PLAIN, color);
         for (SimpleColoredComponent.ColoredIterator iterator = colored.iterator(); iterator.hasNext(); ) {
             String fragment = iterator.next();
-            if (!fragment.isBlank() && !fragment.contains("Dateien")) {
+            if (!fragment.isBlank() && !isFileCountFragment(fragment)) {
                 iterator.setTextAttributes(attributes);
                 return;
             }
@@ -180,11 +180,15 @@ final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
         SimpleTextAttributes attributes = new SimpleTextAttributes(SimpleTextAttributes.STYLE_PLAIN, textColor);
         for (SimpleColoredComponent.ColoredIterator iterator = colored.iterator(); iterator.hasNext(); ) {
             String fragment = iterator.next();
-            if (fragment.contains("Dateien")) {
+            if (isFileCountFragment(fragment)) {
                 iterator.setTextAttributes(attributes);
                 return;
             }
         }
+    }
+
+    private static boolean isFileCountFragment(@NotNull String fragment) {
+        return fragment.contains(" files") || fragment.contains(" Dateien");
     }
 
     private static @NotNull Color withOpacity(@NotNull Color color, float opacity) {

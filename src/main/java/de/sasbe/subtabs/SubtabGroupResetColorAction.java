@@ -18,7 +18,7 @@ final class SubtabGroupResetColorAction extends AnAction implements DumbAware {
 
     SubtabGroupResetColorAction() {
 
-        super("Gruppenfarbe neu zuweisen");
+        super("Reassign group color");
 
     }
 

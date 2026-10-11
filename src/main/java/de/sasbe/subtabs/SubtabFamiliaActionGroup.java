@@ -12,7 +12,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class SubtabFamiliaActionGroup extends DefaultActionGroup implements DumbAware {
     public SubtabFamiliaActionGroup() {
-        super("Familia", true);
+        super("TabZ", true);
     }
 
     @Override

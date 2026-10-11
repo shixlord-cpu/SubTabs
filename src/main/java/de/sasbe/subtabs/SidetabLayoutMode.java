@@ -15,7 +15,7 @@ enum SidetabLayoutMode {
     }
 
     @NotNull String label() {
-        return this == OVERLAY ? "Als leere Balken" : "Als Label";
+        return this == OVERLAY ? "Empty bars" : "As labels";
     }
 
     @Override

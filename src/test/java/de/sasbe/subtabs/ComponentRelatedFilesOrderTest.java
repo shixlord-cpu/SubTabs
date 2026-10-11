@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ComponentRelatedFilesOrderTest {
+    private static final int COMPONENT_RULE_INDEX =
+            SubtabRulesDefaults.indexOfRule(SubtabRulesDefaults.createDefaults(), "Komponente");
+
     @Test
     void groupIdentityUsesGroupNameOnly() {
         assertTrue(CustomSubtabRuleMatcher.sameFolderGroupIdentity(
@@ -29,8 +32,8 @@ class ComponentRelatedFilesOrderTest {
                 "rule:4:reducer#cart"
         ));
         assertTrue(CustomSubtabRuleMatcher.sameFolderGroupIdentity(
-                "rule:7:user-card#user-card.component",
-                "rule:7:user-card#user-card"
+                "rule:" + COMPONENT_RULE_INDEX + ":user-card#user-card.component",
+                "rule:" + COMPONENT_RULE_INDEX + ":user-card#user-card"
         ));
     }
 

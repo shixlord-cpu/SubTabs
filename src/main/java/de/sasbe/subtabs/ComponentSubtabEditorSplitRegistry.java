@@ -69,11 +69,13 @@ final class ComponentSubtabEditorSplitRegistry implements PersistentStateCompone
             public long createdAt;
             public @Nullable String linkName;
             public @Nullable String headerLabel;
+            public @Nullable String twoPaneArrangement;
         }
     }
 
     private final @NotNull Project project;
     private final Map<String, SplittabPair> pairsById = new LinkedHashMap<>();
+    private final Map<String, String> pairTwoPaneArrangements = new LinkedHashMap<>();
     private @Nullable String activePairId;
     private @Nullable String lastPresentedPairId;
     private @Nullable VirtualFile backgroundAnchorFile;
@@ -101,6 +103,7 @@ final class ComponentSubtabEditorSplitRegistry implements PersistentStateCompone
             stored.createdAt = pair.createdAt();
             stored.linkName = pair.linkName();
             stored.headerLabel = pair.headerLabel();
+            stored.twoPaneArrangement = pairTwoPaneArrangements.get(pair.id());
             state.pairs.add(stored);
         }
         SplittabDedicatedViewService dedicated = SplittabDedicatedViewService.getInstance(project);
@@ -142,6 +145,9 @@ final class ComponentSubtabEditorSplitRegistry implements PersistentStateCompone
                     blankToNull(stored.headerLabel)
             );
             pairsById.put(id, pair);
+            if (stored.twoPaneArrangement != null && !stored.twoPaneArrangement.isBlank()) {
+                pairTwoPaneArrangements.put(id, stored.twoPaneArrangement.trim());
+            }
         }
         if (lastPresentedPairId != null && !pairsById.containsKey(lastPresentedPairId)) {
             lastPresentedPairId = pairsById.isEmpty() ? null : pairsById.keySet().iterator().next();
@@ -223,6 +229,21 @@ final class ComponentSubtabEditorSplitRegistry implements PersistentStateCompone
             return;
         }
         pairsById.put(pairId, pair.withHeaderLabel(blankToNull(headerLabel)));
+    }
+
+    void setPairTwoPaneArrangement(@NotNull String pairId, @NotNull String arrangement) {
+        if (!pairsById.containsKey(pairId)) {
+            return;
+        }
+        pairTwoPaneArrangements.put(pairId, arrangement);
+    }
+
+    @NotNull String pairTwoPaneArrangementOrDefault(@NotNull String pairId) {
+        String stored = pairTwoPaneArrangements.get(pairId);
+        if (stored == null || stored.isBlank()) {
+            return "SIDE_BY_SIDE";
+        }
+        return stored;
     }
 
     @Nullable SplittabPair findById(@NotNull String id) {
@@ -390,6 +411,7 @@ final class ComponentSubtabEditorSplitRegistry implements PersistentStateCompone
 
     void unregister(@NotNull String pairId) {
         pairsById.remove(pairId);
+        pairTwoPaneArrangements.remove(pairId);
         if (pairId.equals(activePairId)) {
             activePairId = null;
         }
@@ -400,6 +422,7 @@ final class ComponentSubtabEditorSplitRegistry implements PersistentStateCompone
 
     void clear() {
         pairsById.clear();
+        pairTwoPaneArrangements.clear();
         activePairId = null;
         lastPresentedPairId = null;
         backgroundAnchorFile = null;

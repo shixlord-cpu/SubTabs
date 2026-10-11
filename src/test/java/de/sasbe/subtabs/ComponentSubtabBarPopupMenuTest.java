@@ -26,30 +26,30 @@ public class ComponentSubtabBarPopupMenuTest extends HeavyPlatformTestCase {
     public void testInactiveSubtabsOfferFlatMenuWithoutFamilia() throws Exception {
         VirtualFile specFile = siblingFile("product-list.component.spec.ts");
         List<String> topLevel = topLevelTexts(specFile, false);
-        assertFalse("subtab menus must not contain Familia: " + topLevel, topLevel.contains("Familia"));
-        assertTrue(topLevel.contains("Im Projektbaum anzeigen"));
-        assertTrue(topLevel.contains("Splittab erstellen"));
-        assertTrue(topLevel.contains("Sub-Tab im neuen Tab öffnen"));
-        assertTrue(topLevel.contains("Sub-Tab im neuen Fenster öffnen"));
-        assertTrue(topLevel.contains("Nach links verschieben"));
-        assertTrue(topLevel.contains("Nach rechts verschieben"));
+        assertFalse("subtab menus must not contain TabZ: " + topLevel, topLevel.contains("TabZ"));
+        assertTrue(topLevel.contains("Show in Project view"));
+        assertTrue(topLevel.contains("Create split pair"));
+        assertTrue(topLevel.contains("Open subtab in new tab"));
+        assertTrue(topLevel.contains("Open subtab in new window"));
+        assertTrue(topLevel.contains("Move left"));
+        assertTrue(topLevel.contains("Move right"));
     }
 
     public void testFocusedOrGrayedSubtabsOfferRevealOnly() {
         List<String> topLevel = topLevelTexts(htmlFile, true);
-        assertTrue(topLevel.contains("Im Projektbaum anzeigen"));
-        assertTrue(topLevel.contains("Nach links verschieben"));
-        assertTrue(topLevel.contains("Nach rechts verschieben"));
-        assertFalse(topLevel.contains("Sub-Tab im neuen Tab öffnen"));
-        assertFalse(topLevel.contains("Sub-Tab im neuen Fenster öffnen"));
-        assertFalse(topLevel.contains("Familia"));
-        assertFalse("the active subtab must not offer split", topLevel.contains("Splittab erstellen"));
+        assertTrue(topLevel.contains("Show in Project view"));
+        assertTrue(topLevel.contains("Move left"));
+        assertTrue(topLevel.contains("Move right"));
+        assertFalse(topLevel.contains("Open subtab in new tab"));
+        assertFalse(topLevel.contains("Open subtab in new window"));
+        assertFalse(topLevel.contains("TabZ"));
+        assertFalse("the active subtab must not offer split", topLevel.contains("Create split pair"));
     }
 
     public void testGrayedSubtabsStillOfferSplitten() throws Exception {
         VirtualFile specFile = siblingFile("product-list.component.spec.ts");
         List<String> topLevel = topLevelTexts(specFile, true);
-        assertTrue("grayed subtabs must still offer split: " + topLevel, topLevel.contains("Splittab erstellen"));
+        assertTrue("grayed subtabs must still offer split: " + topLevel, topLevel.contains("Create split pair"));
     }
 
     public void testEverySubtabMenuOffersProjectTreeReveal() {
@@ -57,7 +57,7 @@ public class ComponentSubtabBarPopupMenuTest extends HeavyPlatformTestCase {
 
         assertTrue(
                 "every subtab menu must offer project-tree navigation: " + texts,
-                texts.contains("Im Projektbaum anzeigen")
+                texts.contains("Show in Project view")
         );
     }
 
@@ -65,9 +65,9 @@ public class ComponentSubtabBarPopupMenuTest extends HeavyPlatformTestCase {
         SubtabGroupColors.setEnabled(true);
         try {
             List<String> texts = menuTexts(htmlFile, false);
-            assertFalse("subtab menus must not offer group colors: " + texts, texts.contains("Familia"));
-            assertFalse(texts.contains("Gruppenfarbe ändern…"));
-            assertFalse(texts.contains("Gruppenfarbe neu zuweisen"));
+            assertFalse("subtab menus must not offer group colors: " + texts, texts.contains("TabZ"));
+            assertFalse(texts.contains("Change group color…"));
+            assertFalse(texts.contains("Reassign group color"));
         } finally {
             SubtabGroupColors.setEnabled(false);
         }

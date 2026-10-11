@@ -22,7 +22,7 @@ import java.util.List;
 
 final class SidetabSectionsDialog extends DialogWrapper {
     private final List<SidetabSectionSpec> specs;
-    private final JBCheckBox respectOrderCheckBox = new JBCheckBox("Reihenfolge beachten", true);
+    private final JBCheckBox respectOrderCheckBox = new JBCheckBox("Respect section order", true);
     private final SpecsTableModel tableModel = new SpecsTableModel();
     private final JBTable table = new JBTable(tableModel);
 
@@ -37,7 +37,7 @@ final class SidetabSectionsDialog extends DialogWrapper {
             this.specs.add(spec.copy());
         }
         respectOrderCheckBox.setSelected(respectOrder);
-        setTitle("SideTabs-Abschnitte");
+        setTitle("Vertical tab sections");
         init();
     }
 
@@ -63,17 +63,17 @@ final class SidetabSectionsDialog extends DialogWrapper {
         table.getColumnModel().getColumn(3).setPreferredWidth(60);
 
         JBLabel help = new JBLabel("""
-                <html>Jeder Abschnitt hat einen <b>Namen</b>, eine <b>Startlogik</b> und optional eine <b>Endlogik</b>.\
-                 Ohne Endlogik endet der Abschnitt, wo der nächste beginnt.<br>\
-                Start-/Endlogik: Code-Schnipsel (<code>&lt;body</code>) oder Befehle wie\
+                <html>Each section has a <b>name</b>, <b>start logic</b>, and optional <b>end logic</b>.\
+                 Without end logic, the section ends where the next one starts.<br>\
+                Start/end logic: code snippets (<code>&lt;body</code>) or commands such as\
                  <code>@start</code>, <code>@tag body</code>, <code>@close-tag body</code>,\
                  <code>@after-tag head</code>, <code>@regex</code>, <code>@after-class-open</code>,\
-                 <code>@first-method</code>, <code>@media</code>, <code>@eof</code>. Alternativen mit <code>||</code>.<br>\
-                <b>End inkl.</b>: End-Marker-Zeile zum Abschnitt zählen, statt davor zu enden.<br>\
-                <b>Reihenfolge beachten</b>: Abschnitte in Tabellenreihenfolge suchen; sonst nach Dateiposition sortieren.<br>\
-                TOP-Kommentare: <code>TOP-Name</code>, <code>TOPEND</code>/<code>TOP-END</code>,\
+                 <code>@first-method</code>, <code>@media</code>, <code>@eof</code>. Alternatives with <code>||</code>.<br>\
+                <b>End incl.</b>: include the end-marker line in the section instead of ending before it.<br>\
+                <b>Respect section order</b>: find sections in table order; otherwise sort by file position.<br>\
+                TOP comments: <code>TOP-Name</code>, <code>TOPEND</code>/<code>TOP-END</code>,\
                  <code>SUB-{{Name}}</code>, <code>SUBEND</code>/<code>SUB-END</code>,\
-                 <code>+SUB-…</code>, <code>+SUBEND</code> für tiefere Ebenen.</html>
+                 <code>+SUB-…</code>, <code>+SUBEND</code> for deeper levels.</html>
                 """);
         help.setBorder(JBUI.Borders.emptyBottom(8));
 
@@ -89,8 +89,8 @@ final class SidetabSectionsDialog extends DialogWrapper {
         panel.add(decorator.createPanel(), BorderLayout.CENTER);
         respectOrderCheckBox.setBorder(JBUI.Borders.emptyTop(8));
         respectOrderCheckBox.setToolTipText(
-                "An: Abschnitte werden in der Tabellenreihenfolge gesucht. "
-                        + "Aus: Reihenfolge der Abschnitte spielt keine Rolle, SideTabs werden nach Dateiposition sortiert."
+                "On: sections are matched in table order. "
+                        + "Off: section order is ignored; vertical tabs are sorted by file position."
         );
         panel.add(respectOrderCheckBox, BorderLayout.SOUTH);
         panel.setPreferredSize(new Dimension(JBUI.scale(820), JBUI.scale(340)));
@@ -150,9 +150,9 @@ final class SidetabSectionsDialog extends DialogWrapper {
         public String getColumnName(int column) {
             return switch (column) {
                 case 0 -> "Name";
-                case 1 -> "Startlogik";
-                case 2 -> "Endlogik";
-                case 3 -> "End inkl.";
+                case 1 -> "Start logic";
+                case 2 -> "End logic";
+                case 3 -> "End incl.";
                 default -> "";
             };
         }

@@ -135,7 +135,7 @@ final class SubtabGroupLocationHover {
     }
 
     private static int locationStartX(@NotNull JTree tree, @NotNull Rectangle rowBounds, int fileCount) {
-        String location = fileCount + " Dateien";
+        String location = fileCount + " files";
         FontMetrics metrics = tree.getFontMetrics(tree.getFont());
         int locationWidth = metrics.stringWidth(location);
         return rowBounds.x + rowBounds.width - locationWidth - JBUI.scale(8);
@@ -408,7 +408,7 @@ final class SubtabGroupLocationHover {
     static void brightenLocationFragment(@NotNull SimpleColoredComponent colored) {
         for (SimpleColoredComponent.ColoredIterator iterator = colored.iterator(); iterator.hasNext(); ) {
             String fragment = iterator.next();
-            if (fragment.contains("Dateien")) {
+            if (fragment.contains(" files") || fragment.contains(" Dateien")) {
                 iterator.setTextAttributes(SimpleTextAttributes.REGULAR_ATTRIBUTES);
             }
         }

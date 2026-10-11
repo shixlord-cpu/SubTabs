@@ -85,5 +85,6 @@ final class FamiliaLifecycle {
         RuleSwitchOverlay.hide(editor);
         SidetabsToggleOverlay.hide(editor);
         SidetabBarOverlay.hide(editor);
+        SplittabRestoreOverlay.hide(editor);
     }
 }

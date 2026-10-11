@@ -10,6 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SubtabProjectViewGroupingTest {
+    private static final int COMPONENT_RULE_INDEX =
+            SubtabRulesDefaults.indexOfRule(SubtabRulesDefaults.createDefaults(), "Komponente");
+
     @Test
     void replacesFolderWhenEveryVisibleFileBelongsToTheSameGroup() {
         assertTrue(SubtabProjectViewGrouping.shouldReplaceFolder(
@@ -88,8 +91,10 @@ class SubtabProjectViewGroupingTest {
     @Test
     void mergesFolderGroupsByRuleGroupName() {
         assertEquals(
-                "merge:rule:7:products",
-                SubtabProjectViewGrouping.mergeKey("rule:7:products#products.component")
+                "merge:rule:" + COMPONENT_RULE_INDEX + ":products",
+                SubtabProjectViewGrouping.mergeKey(
+                        "rule:" + COMPONENT_RULE_INDEX + ":products#products.component"
+                )
         );
     }
 
@@ -142,16 +147,24 @@ class SubtabProjectViewGroupingTest {
     @Test
     void keepsDistinctMergeKeysForDifferentComponentStems() {
         assertNotEquals(
-                SubtabProjectViewGrouping.mergeKey("rule:7:products#products.component"),
-                SubtabProjectViewGrouping.mergeKey("rule:7:user-card#user-card.component")
+                SubtabProjectViewGrouping.mergeKey(
+                        "rule:" + COMPONENT_RULE_INDEX + ":products#products.component"
+                ),
+                SubtabProjectViewGrouping.mergeKey(
+                        "rule:" + COMPONENT_RULE_INDEX + ":user-card#user-card.component"
+                )
         );
     }
 
     @Test
     void usesStableMergeKeyForSameComponentGroup() {
         assertEquals(
-                SubtabProjectViewGrouping.mergeKey("rule:7:products#products.component"),
-                SubtabProjectViewGrouping.mergeKey("rule:7:products#products.component")
+                SubtabProjectViewGrouping.mergeKey(
+                        "rule:" + COMPONENT_RULE_INDEX + ":products#products.component"
+                ),
+                SubtabProjectViewGrouping.mergeKey(
+                        "rule:" + COMPONENT_RULE_INDEX + ":products#products.component"
+                )
         );
     }
 }

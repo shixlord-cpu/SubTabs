@@ -16,7 +16,7 @@ import java.util.Map;
 @Service(Service.Level.APP)
 @State(name = "ComponentSubtabsSettings", storages = @Storage("componentSubtabs.xml"))
 public final class SubtabsSettings implements PersistentStateComponent<SubtabsSettings.State> {
-    private static final int CURRENT_RULES_VERSION = 18;
+    private static final int CURRENT_RULES_VERSION = 19;
 
     private State state = new State();
 
@@ -454,6 +454,20 @@ public final class SubtabsSettings implements PersistentStateComponent<SubtabsSe
             state.splittabOtherPairFileMode = SplittabOtherPairFileMode.OPEN_NORMALLY.name();
         }
         migrateSidetabRulesIfNeeded();
+        migrateGermanBuiltinRuleNames();
+    }
+
+    private void migrateGermanBuiltinRuleNames() {
+        if (state.rules == null) {
+            return;
+        }
+        for (CustomSubtabRule rule : state.rules) {
+            if ("Eigene Gruppen".equals(rule.name)) {
+                rule.name = "Custom groups";
+            } else if ("Ordner".equals(rule.name)) {
+                rule.name = "Folder";
+            }
+        }
     }
 
     private void migrateSidetabRulesIfNeeded() {

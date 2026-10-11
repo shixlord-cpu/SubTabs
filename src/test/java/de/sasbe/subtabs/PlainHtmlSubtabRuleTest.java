@@ -7,6 +7,11 @@ import com.intellij.testFramework.HeavyPlatformTestCase;
 import java.util.List;
 
 public class PlainHtmlSubtabRuleTest extends HeavyPlatformTestCase {
+    private static final int HTML_RULE_INDEX =
+            SubtabRulesDefaults.indexOfRule(SubtabRulesDefaults.createDefaults(), "HTML");
+    private static final int COMPONENT_RULE_INDEX =
+            SubtabRulesDefaults.indexOfRule(SubtabRulesDefaults.createDefaults(), "Komponente");
+
     @Override
     protected void setUp() throws Exception {
         super.setUp();
@@ -26,7 +31,7 @@ public class PlainHtmlSubtabRuleTest extends HeavyPlatformTestCase {
 
         ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(html);
         assertNotNull(match);
-        assertEquals("rule:6:catalog-page", match.baseName());
+        assertEquals("rule:" + HTML_RULE_INDEX + ":catalog-page", match.baseName());
         assertEquals("catalog-page", ComponentFileNaming.displayName(match.baseName()));
         assertEquals(2, match.relatedFiles().size());
     }
@@ -45,14 +50,14 @@ public class PlainHtmlSubtabRuleTest extends HeavyPlatformTestCase {
 
         ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(html);
         assertNotNull(match);
-        assertEquals("rule:7:header#header.component", match.baseName());
+        assertEquals("rule:" + COMPONENT_RULE_INDEX + ":header#header.component", match.baseName());
         assertEquals("header-component", ComponentFileNaming.displayName(match.baseName()));
         assertEquals(3, match.relatedFiles().size());
     }
 
     public void testComponentHtmlUsesComponentRuleEvenWithoutPartners() throws Exception {
         assertEquals(
-                "rule:7:header#header.component",
+                "rule:" + COMPONENT_RULE_INDEX + ":header#header.component",
                 ComponentFileNaming.componentBaseName("header.component.html")
         );
         assertNull(CustomSubtabRuleMatcher.match("header.component.html", List.of(SubtabRulesDefaults.htmlRule())));

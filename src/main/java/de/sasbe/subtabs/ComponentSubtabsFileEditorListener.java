@@ -191,6 +191,7 @@ final class ComponentSubtabsFileEditorListener
                 ComponentSubtabMainTabColors.refreshForFile(project, newFile);
             }
             ComponentSubtabMainTabIcons.scheduleRefreshAfterPlatformUpdate(project);
+            SplittabRestoreOverlay.syncProject(project);
         } finally {
             DEFERRED_SELECTION_CHROME_SCHEDULED.set(project, null);
         }
@@ -379,6 +380,7 @@ final class ComponentSubtabsFileEditorListener
         ComponentSubtabMainTabColors.refresh(source.getProject());
         ComponentSubtabsManager.refreshAllMainTabPresentations(source.getProject());
         ComponentSubtabEditorSplitMainTab.refreshNormalUiForOpenPairSides(project, file);
+        SplittabRestoreOverlay.syncProject(project);
     }
 
     @Override

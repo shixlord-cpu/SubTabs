@@ -26,10 +26,10 @@ final class SidetabsSideSwitchButton extends JToggleButton {
         setContentAreaFilled(false);
         setOpaque(false);
         setToolTipText(
-                "Rechtsbündig: SideTabs rechts vom Code-Fenster anzeigen. "
-                        + "Ausgeschaltet: links vom Editor."
+                "On: vertical tabs on the right of the editor. "
+                        + "Off: vertical tabs on the left."
         );
-        getAccessibleContext().setAccessibleName("SideTabs rechtsbündig");
+        getAccessibleContext().setAccessibleName("Vertical tabs on the right");
         int size = JBUI.scale(22);
         setPreferredSize(new Dimension(size, size));
         setMinimumSize(new Dimension(size, size));

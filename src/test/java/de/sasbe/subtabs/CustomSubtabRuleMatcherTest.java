@@ -283,7 +283,9 @@ class CustomSubtabRuleMatcherTest {
     @Test
     void detectsSuffixPatternsFromShape() {
         assertTrue(CustomSubtabRuleMatcher.usesSuffixMatching(".actions.ts"));
+        assertTrue(CustomSubtabRuleMatcher.usesSuffixMatching("Controller.java"));
         assertFalse(CustomSubtabRuleMatcher.usesSuffixMatching("package.json"));
+        assertFalse(CustomSubtabRuleMatcher.usesSuffixMatching("compose.yaml"));
         assertFalse(CustomSubtabRuleMatcher.usesSuffixMatching(".env"));
     }
 

@@ -17,7 +17,7 @@ enum SplittabDissolveMode {
     }
 
     @NotNull String label() {
-        return this == CLOSE_PAIR ? "Schließen" : "Umwandeln";
+        return this == CLOSE_PAIR ? "Close" : "Convert";
     }
 
     @Override

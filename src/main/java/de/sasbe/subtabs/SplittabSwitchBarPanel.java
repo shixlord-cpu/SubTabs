@@ -8,8 +8,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
@@ -33,25 +31,37 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
     static final String PAIR_ID_KEY = "componentSubtabs.splittabPairId";
 
     private final Project project;
-    private final JPanel tabsHost = new JPanel();
+    private final ComponentSubtabReorderStripSupport reorderStrip;
+    private final JPanel tabsHost;
     private final JBScrollPane scrollPane;
     private final SubtabOverflowStrip overflowStrip;
-    private final Map<VirtualFile, JToggleButton> buttonsByLeftFile = new HashMap<>();
+    /** Unique per pair tab (right file when several pairs share the same left anchor). */
+    private final Map<VirtualFile, JToggleButton> buttonsByDragKey = new HashMap<>();
     private final AtomicBoolean ignoreNextClick = new AtomicBoolean();
     private final SubtabFitScale.Result fit = SubtabFitScale.Result.FULL;
     private boolean dragInstalled;
     private int overlayIconRightReserve;
 
-    private int reorderDropIndex = -1;
-    private @Nullable VirtualFile reorderDraggedFile;
-    private @Nullable Point reorderDragPointer;
-
     SplittabSwitchBarPanel(@NotNull Project project) {
         super(new BorderLayout(0, 0));
         this.project = project;
-        tabsHost.setLayout(new BoxLayout(tabsHost, BoxLayout.X_AXIS));
-        tabsHost.setOpaque(false);
-        tabsHost.setBorder(javax.swing.BorderFactory.createEmptyBorder());
+        reorderStrip = new ComponentSubtabReorderStripSupport(
+                buttonsByDragKey,
+                (buttonsByFile) -> {
+                    List<JToggleButton> ordered = new ArrayList<>();
+                    for (ComponentSubtabEditorSplitRegistry.SplittabPair pair
+                            : ComponentSubtabEditorSplitRegistry.getInstance(project).all()) {
+                        JToggleButton button = buttonsByFile.get(pairDragKey(pair));
+                        if (button != null) {
+                            ordered.add(button);
+                        }
+                    }
+                    return ordered;
+                },
+                ComponentSubtabUi.horizontalGap(fit),
+                ComponentSubtabUi.verticalGap()
+        );
+        tabsHost = reorderStrip.tabsHost();
         scrollPane = new JBScrollPane(
                 tabsHost,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
@@ -66,6 +76,7 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
 
         overflowStrip = new SubtabOverflowStrip(scrollPane, () -> tabsHost.getPreferredSize().width);
         overflowStrip.attachWheel(tabsHost);
+        reorderStrip.setWheelForwarder(overflowStrip.wheelListener());
         add(overflowStrip, BorderLayout.CENTER);
         applyChrome();
     }
@@ -125,6 +136,30 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
         throw new IllegalStateException("No switch-bar button for pair " + pairId);
     }
 
+    @TestOnly
+    int reorderGapXForTests() {
+        return reorderStrip.reorderGapXForTests();
+    }
+
+    @TestOnly
+    int reorderGapWidthForTests() {
+        return reorderStrip.reorderGapWidthForTests();
+    }
+
+    @TestOnly
+    void layOutTabsForTests(int width) {
+        int rowHeight = ComponentSubtabUi.barRowHeight()
+                + tabsHost.getInsets().top
+                + tabsHost.getInsets().bottom
+                + 2 * ComponentSubtabUi.verticalGap();
+        setSize(width, stablePanelHeight());
+        validate();
+        doLayout();
+        tabsHost.setSize(width, rowHeight);
+        tabsHost.validate();
+        tabsHost.doLayout();
+    }
+
     void refreshActiveSelection() {
         ComponentSubtabEditorSplitRegistry.SplittabPair active =
                 ComponentSubtabEditorSplitRegistry.getInstance(project).activePair();
@@ -144,7 +179,7 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
         ComponentSubtabEditorSplitRegistry.SplittabPair active = registry.activePair();
 
         tabsHost.removeAll();
-        buttonsByLeftFile.clear();
+        buttonsByDragKey.clear();
         clearReorderPreview();
 
         int index = 0;
@@ -153,10 +188,11 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
             boolean selected = active != null && active.id().equals(pair.id());
             JToggleButton button = ComponentSubtabUi.createSubtabButton(label, selected);
             button.putClientProperty(PAIR_ID_KEY, pair.id());
-            button.putClientProperty(ComponentSubtabUi.FILE_KEY, pair.leftFile());
+            VirtualFile dragKey = pairDragKey(pair);
+            button.putClientProperty(ComponentSubtabUi.FILE_KEY, dragKey);
             button.setToolTipText(ComponentSubtabEditorSplitPresentation.paneHeaderText(pair));
             button.getAccessibleContext().setAccessibleName(
-                    label + " Splittab: " + pair.leftFile().getName() + " und " + pair.rightFile().getName()
+                    label + " split pair: " + pair.leftFile().getName() + " and " + pair.rightFile().getName()
             );
             button.addActionListener(event -> {
                 if (ignoreNextClick.getAndSet(false)) {
@@ -169,21 +205,22 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
             });
             installPairHoverSync(button, pair);
             ComponentSubtabBarPopup.installSplittabPopup(project, button, pair.id(), this);
-            buttonsByLeftFile.put(pair.leftFile(), button);
+            buttonsByDragKey.put(dragKey, button);
             tabsHost.add(button);
-            tabsHost.add(Box.createHorizontalStrut(ComponentSubtabUi.horizontalGap(fit)));
             overflowStrip.attachWheel(button);
             index++;
         }
+
+        reorderStrip.syncTabsHostChildren();
 
         if (!dragInstalled) {
             ComponentSubtabEditorDragSupport.install(
                     project,
                     this,
                     this,
-                    buttonsByLeftFile,
+                    buttonsByDragKey,
                     ignoreNextClick,
-                    ComponentSubtabEditorSplitOrder::reorderByLeftFile
+                    ComponentSubtabEditorSplitOrder::reorderByPairDragKey
             );
             dragInstalled = true;
         }
@@ -273,7 +310,7 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
 
     @Override
     public void clearReorderPreview() {
-        updateReorderDragState(-1, null, null);
+        reorderStrip.clearReorderPreview();
     }
 
     @Override
@@ -282,20 +319,7 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
             @Nullable VirtualFile draggedFile,
             @Nullable Point pointerInTabsHost
     ) {
-        reorderDropIndex = index;
-        reorderDraggedFile = draggedFile;
-        reorderDragPointer = pointerInTabsHost;
-        for (var entry : buttonsByLeftFile.entrySet()) {
-            JToggleButton button = entry.getValue();
-            boolean hide = draggedFile != null && pointerInTabsHost != null && entry.getKey().equals(draggedFile);
-            if (hide) {
-                button.putClientProperty(ComponentSubtabUi.REORDER_HIDDEN_KEY, Boolean.TRUE);
-            } else {
-                button.putClientProperty(ComponentSubtabUi.REORDER_HIDDEN_KEY, null);
-            }
-        }
-        tabsHost.revalidate();
-        tabsHost.repaint();
+        reorderStrip.updateReorderDragState(index, draggedFile, pointerInTabsHost);
     }
 
     @Override
@@ -310,45 +334,17 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
 
     @Override
     public int resolveReorderDropIndex(@NotNull Point pointerInTabsHost, @NotNull VirtualFile draggedFile) {
-        int draggedIndex = tabIndexForFile(draggedFile);
-        return ComponentSubtabReorderLayout.dropIndexForPointer(
-                pointerInTabsHost.x,
-                tabWidthsForDrag(draggedFile),
-                draggedIndex,
-                ComponentSubtabUi.horizontalGap(fit),
-                tabsHost.getInsets().left
-        );
+        return reorderStrip.resolveReorderDropIndex(pointerInTabsHost, draggedFile);
     }
 
     @Override
     public int tabIndexForFile(@NotNull VirtualFile file) {
-        int index = 0;
-        for (ComponentSubtabEditorSplitRegistry.SplittabPair pair
-                : ComponentSubtabEditorSplitRegistry.getInstance(project).all()) {
-            if (pair.leftFile().equals(file)) {
-                return index;
-            }
-            index++;
-        }
-        return -1;
+        return reorderStrip.tabIndexForFile(file);
     }
 
-    private @NotNull List<Integer> tabWidthsForDrag(@NotNull VirtualFile draggedFile) {
-        List<Integer> widths = new ArrayList<>();
-        for (Component child : tabsHost.getComponents()) {
-            if (!(child instanceof JToggleButton button)) {
-                continue;
-            }
-            VirtualFile file = ComponentSubtabUi.tabFile(button);
-            if (file == null) {
-                continue;
-            }
-            int width = Math.max(button.getPreferredSize().width, button.getWidth());
-            if (file.equals(draggedFile)) {
-                width = Math.max(width, 1);
-            }
-            widths.add(width);
-        }
-        return widths;
+    private static @NotNull VirtualFile pairDragKey(
+            @NotNull ComponentSubtabEditorSplitRegistry.SplittabPair pair
+    ) {
+        return pair.rightFile();
     }
 }

@@ -74,6 +74,41 @@ public class SplittabSubtabsVisibilityTest extends RealEditorWindowTestCase {
         assertInactiveExpandIcon(rightEditor);
     }
 
+    public void testStackedPairCollapseKeepsExpandAndRestoreIconsOnTopPane() throws Exception {
+        openAndSettle(htmlFile);
+        ComponentSubtabEditorSplitNavigation.createSplit(getProject(), htmlFile, specFile);
+        drainDeferredEditorEvents();
+        if (!ComponentSubtabEditorSplitNavigation.isTwoPaneStackedVertically(getProject())) {
+            ComponentSubtabEditorSplitNavigation.toggleTwoPaneSplitOrientation(getProject());
+            drainDeferredEditorEvents();
+        }
+        assertTrue(ComponentSubtabEditorSplitNavigation.isTwoPaneStackedVertically(getProject()));
+
+        ComponentSubtabEditorSplitRegistry.SplittabPair pair =
+                ComponentSubtabEditorSplitRegistry.getInstance(getProject()).activePair();
+        assertNotNull(pair);
+
+        ComponentSubtabsScopedVisibility.getInstance(getProject())
+                .setSplittabPairSubtabsCollapsed(getProject(), pair.id(), true);
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+
+        FileEditor hostEditor = ComponentSubtabEditorSplitNavigation.findSplitPairIconHostEditor(getProject());
+        assertNotNull(hostEditor);
+        assertInactiveExpandIcon(hostEditor);
+        assertTrue(
+                "stacked collapsed pair must keep the split-pair icon on the top pane",
+                SplittabRestoreOverlay.isVisibleOnEditor(getProject(), hostEditor)
+        );
+
+        FileEditor leftEditor = editorFor(htmlFile);
+        FileEditor rightEditor = editorFor(specFile);
+        assertNotNull(leftEditor);
+        assertNotNull(rightEditor);
+        FileEditor nonHost = hostEditor == leftEditor ? rightEditor : leftEditor;
+        assertFalse(SubtabsExpandOverlay.isInstalled(nonHost));
+        assertFalse(SplittabRestoreOverlay.isVisibleOnEditor(getProject(), nonHost));
+    }
+
     public void testPairLevelCollapseAffectsRightSplittabChromeOnlyOnLeftPane() throws Exception {
         openAndSettle(htmlFile);
         ComponentSubtabEditorSplitNavigation.createSplit(getProject(), htmlFile, specFile);

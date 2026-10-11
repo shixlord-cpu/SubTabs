@@ -40,12 +40,12 @@ enum TabFontStyle {
 
     @NotNull String label() {
         return switch (this) {
-            case IDE_STANDARD -> "IDE-Standard";
+            case IDE_STANDARD -> "IDE default";
             case SANS_SERIF -> "Sans Serif";
             case SERIF -> "Serif";
             case MONOSPACED -> "Monospace";
-            case BOLD -> "Durchgehend fett";
-            case ITALIC -> "Kursiv";
+            case BOLD -> "Always bold";
+            case ITALIC -> "Italic";
         };
     }
 

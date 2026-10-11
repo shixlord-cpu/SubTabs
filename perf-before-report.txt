@@ -1,0 +1,14 @@
+=== Familia Performance Report ===
+Scenario                                               Total (ms)  Per op (µs)
+SubTabs: related-files lookup (cached, 500x)                    1         1142
+SubTabs: related-files lookup (uncached, 500x)                118       118203
+SubTabs: rule key via settings snapshot (50k)                1038           20
+SubTabs: rule key via ComponentFileNaming (50k)               737           14
+SideTabs: HTML section split uncached (200x)                   32          163
+SideTabs: HTML section split cached (200x)                      0            2
+SideTabs: TS section split (200x)                              12           63
+SideTabs: start matcher @tag head (5k)                          7            1
+SideTabs: document refresh path (50x)                          59         1182
+Settings: legacy editor refresh                                89        89170
+Settings: consolidated editor refresh                          18        18891
+Project view: grouping toggle round-trip                        7         7875

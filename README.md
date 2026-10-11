@@ -155,12 +155,51 @@ keine TypeScript-Kringel zeigt.
 
 ## Automatisierte Tests und Build
 
+TabZ baut auf `com.intellij.modules.platform` auf und laeuft in allen gaengigen JetBrains IDEs
+(IntelliJ IDEA, WebStorm, Rider, PyCharm, PhpStorm, GoLand, CLion, RubyMine, RustRover,
+DataGrip, DataSpell, Android Studio).
+
 ```powershell
 .\gradlew.bat test
 .\gradlew.bat buildPlugin
 ```
 
+**WebStorm / Rider einmal vorbereiten** (Downloads, Sandboxes, Verifier — danach sind die IDE-Tests schnell):
+
+```powershell
+.\prepare-jetbrains.bat
+```
+
+**Tests pro IDE**:
+
+| Batch-Datei | Gradle-Task |
+|-------------|-------------|
+| `test-idea.bat` | `test` (Smoke-Unit-Tests) |
+| `test-webstorm.bat` | `checkTabzWebStorm`, danach **`runIdeWebStorm`** (Sandbox-Fenster) |
+| `test-rider.bat` | `checkTabzRider`, danach **`runIdeRider`** |
+| `start-webstorm.bat` / `start-rider.bat` | Nur IDE starten (`--skip-verify`) |
+| `test-webstorm.bat --verify-only` | Nur Plugin-Verifier, keine IDE |
+| `test-pycharm.bat` | `testIdePyCharm` |
+| `test-phpstorm.bat` | `testIdePhpStorm` |
+| `test-goland.bat` | `testIdeGoLand` |
+| `test-clion.bat` | `testIdeCLion` |
+| `test-rubymine.bat` | `testIdeRubyMine` |
+| `test-rustrover.bat` | `testIdeRustRover` |
+| `test-datagrip.bat` | `testIdeDataGrip` |
+| `test-dataspell.bat` | `testIdeDataSpell` |
+| `test-android-studio.bat` | `testIdeAndroidStudio` |
+| `test-all-jetbrains-ides.bat` | `testAllJetBrainsIdes` |
+
+Andere IDE-Version: `-PtabzIdeVersion=2025.3` an Gradle oder die Batch-Datei haengen.
+
+Demo in einer bestimmten IDE starten: Gradle-Tasks `runIdeWebStorm`, `runIdeRider`, … (analog zu `runIde` fuer IDEA).
+
 Das installierbare ZIP liegt danach unter `build\distributions\`.
+
+### Closed Test (Marketplace, nicht öffentlich)
+
+Hidden-Beta über JetBrains Marketplace (nur Einladungslink, nicht in der Suche):  
+**[docs/RELEASE-FREIGABE.md](docs/RELEASE-FREIGABE.md)** (Schritt-für-Schritt) · [CLOSED-TEST.md](docs/CLOSED-TEST.md) · `build-closed-test.bat` (nur ZIP) · `upload-closed-test.bat` (nur Upload)
 
 Zur Installation in der normalen IDE:
 
@@ -203,6 +242,5 @@ Anpassbar unter `Settings | Keymap` („Vorheriger Subtab“ / „Nächster Subt
 - Es gibt noch keine Einstellungen für eigene Suffixe oder Tab-Reihenfolgen.
 - Änderungen im Dateisystem werden beim erneuten Anzeigen des Editors sichtbar;
   eine sofortige Aktualisierung einer bereits sichtbaren Leiste folgt später.
-- Der Code verwendet ausschließlich IntelliJ-Platform-APIs. Dadurch ist die
-  spätere Anpassung für WebStorm klein; VS Code benötigt eine separate
-  TypeScript-Implementierung derselben Dateigruppierungslogik.
+- Der Code verwendet IntelliJ-Platform-APIs; optionale Abhaengigkeit `JavaScript`
+  fuer TS/JS-Dateitypen. VS Code waere eine separate Implementierung.

@@ -20,7 +20,7 @@ final class SubtabGroupColorPicker {
         return ColorChooser.chooseColor(
                 project,
                 parentComponent(project),
-                "Gruppenfarbe wählen",
+                "Choose group color",
                 current != null ? current : Color.GRAY,
                 false
         );

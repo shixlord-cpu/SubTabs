@@ -2,7 +2,7 @@
 
 **JetBrains Marketplace:** **Custom license** → **License URL:**
 
-`https://raw.githubusercontent.com/shixlord-cpu/SubTabs/main/docs/TABZ-EULA.md`
+`https://raw.githubusercontent.com/zayax-software/SubTabs/main/docs/TABZ-EULA.md`
 
 **Plugin:** TabZ  
 **Plugin ID:** `com.zayax.component-subtabs`  

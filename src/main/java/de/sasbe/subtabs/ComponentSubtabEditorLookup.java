@@ -1,10 +1,14 @@
 package de.sasbe.subtabs;
 
+import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.fileEditor.impl.EditorWindow;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
 
 final class ComponentSubtabEditorLookup {
     private ComponentSubtabEditorLookup() {
@@ -42,6 +46,21 @@ final class ComponentSubtabEditorLookup {
     /**
      * For a simple two-pane editor split, returns whether {@code window} is the right-hand pane.
      */
+    static @Nullable EditorWindow windowHostingEditor(
+            @NotNull FileEditorManagerEx manager,
+            @NotNull FileEditor editor
+    ) {
+        JComponent editorComponent = editor.getComponent();
+        for (EditorWindow window : manager.getWindows()) {
+            JComponent windowRoot = window.getTabbedPane().getComponent();
+            if (SwingUtilities.isDescendingFrom(editorComponent, windowRoot)) {
+                return window;
+            }
+        }
+        VirtualFile file = editor.getFile();
+        return file == null ? null : findWindowWithFile(manager, file);
+    }
+
     static boolean isRightSplitPane(
             @NotNull FileEditorManagerEx manager,
             @NotNull EditorWindow window

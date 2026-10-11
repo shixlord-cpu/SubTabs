@@ -49,8 +49,8 @@ final class SplittabPaneHeaderPanel extends JPanel {
         dissolveButton = new ComponentSubtabIconButton(
                 IconUtil.colorize(AllIcons.Actions.Close, DISSOLVE_ICON_COLOR)
         );
-        dissolveButton.setToolTipText("Splittab auflösen");
-        dissolveButton.getAccessibleContext().setAccessibleName("Splittab auflösen");
+        dissolveButton.setToolTipText("Dissolve split pair");
+        dissolveButton.getAccessibleContext().setAccessibleName("Dissolve split pair");
         add(dissolveButton);
 
         addComponentListener(new ComponentAdapter() {

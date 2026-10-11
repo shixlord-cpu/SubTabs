@@ -7,7 +7,7 @@ editor layout snapshots while you work in `demo-project`.
 
 | File | Purpose |
 |------|---------|
-| `latest.json` | Updated during the session (debounced). Quick read for agents. |
+| `latest.json` | Updated during the session (debounced). Quick snapshot for debugging. |
 | `last-session.txt` | Absolute path to the last full session file after IDE exit. |
 | `sessions/<sessionId>.json` | Full timeline: triggers + state snapshots. |
 

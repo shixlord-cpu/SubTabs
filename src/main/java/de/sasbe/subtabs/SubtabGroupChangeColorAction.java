@@ -26,7 +26,7 @@ final class SubtabGroupChangeColorAction extends AnAction implements DumbAware {
 
     SubtabGroupChangeColorAction() {
 
-        super("Gruppenfarbe ändern…");
+        super("Change group color…");
 
     }
 

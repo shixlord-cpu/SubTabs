@@ -163,12 +163,7 @@ final class ComponentSubtabsSplittabUi {
 
         if (!ComponentSubtabsScopedVisibility.splittabSubtabsVisibleForPair(project, pair)) {
             hideSwitchBar(manager, editor);
-            if (ComponentSubtabsScopedVisibility.splittabSubtabsHiddenByGroupOrGlobal(project, pair)) {
-                applySplittabCollapsedOverlays(project, editor);
-            } else {
-                SubtabsExpandOverlay.hide(editor);
-                SubtabsCollapseOverlay.hide(editor);
-            }
+            applySplittabCollapsedOverlays(project, editor);
             RuleSwitchOverlay.hide(editor);
             return;
         }
@@ -183,9 +178,10 @@ final class ComponentSubtabsSplittabUi {
             manager.addTopComponent(editor, bar);
         }
         ComponentSubtabsManager.refreshOverlayIconReserve(project, editor);
-        SubtabsExpandOverlay.hide(editor);
-        SubtabsCollapseOverlay.hide(editor);
+        applySplittabSubtabIconOverlays(project, editor, true);
         RuleSwitchOverlay.hide(editor);
+        SplittabRestoreOverlay.syncEditor(project, editor);
+        ComponentSubtabsManager.relayoutEditorOverlayIcons(editor);
     }
 
     private static void attachHeader(
@@ -212,17 +208,7 @@ final class ComponentSubtabsSplittabUi {
             manager.addTopComponent(editor, header);
         }
         ComponentSubtabsManager.refreshOverlayIconReserve(project, editor);
-        if (subtabsVisible) {
-            SubtabsExpandOverlay.hide(editor);
-            SubtabsSettings settings = SubtabsSettings.getInstance();
-            if (settings.isShowCollapseButton()) {
-                SubtabsCollapseOverlay.show(project, editor);
-            } else {
-                SubtabsCollapseOverlay.hide(editor);
-            }
-        } else {
-            applySplittabCollapsedOverlays(project, editor);
-        }
+        applySplittabSubtabIconOverlays(project, editor, subtabsVisible);
         RuleSwitchOverlay.hide(editor);
         SplittabRestoreOverlay.syncEditor(project, editor);
         ComponentSubtabsManager.relayoutEditorOverlayIcons(editor);
@@ -239,12 +225,64 @@ final class ComponentSubtabsSplittabUi {
         }
     }
 
+    private static void applySplittabSubtabIconOverlays(
+            @NotNull Project project,
+            @NotNull FileEditor editor,
+            boolean subtabsVisibleForPair
+    ) {
+        if (!subtabsVisibleForPair) {
+            applySplittabCollapsedOverlays(project, editor);
+            return;
+        }
+        SubtabsSettings settings = SubtabsSettings.getInstance();
+        if (!shouldShowSubtabIconOnSplittabPane(project, editor)) {
+            SubtabsCollapseOverlay.hide(editor);
+            SubtabsExpandOverlay.hide(editor);
+            SplittabRestoreOverlay.syncEditor(project, editor);
+            ComponentSubtabsManager.refreshOverlayIconReserve(project, editor);
+            ComponentSubtabsManager.relayoutEditorOverlayIcons(editor);
+            return;
+        }
+        SubtabsExpandOverlay.hide(editor);
+        if (settings.isShowCollapseButton()) {
+            SubtabsCollapseOverlay.show(project, editor);
+        } else {
+            SubtabsCollapseOverlay.hide(editor);
+        }
+    }
+
+    /**
+     * With two panes: subtab icon on the top split (stacked) or right split (side by side), same as the split-pair icon.
+     */
+    private static boolean shouldShowSubtabIconOnSplittabPane(
+            @NotNull Project project,
+            @NotNull FileEditor editor
+    ) {
+        FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+        if (manager.getWindows().length != 2) {
+            return true;
+        }
+        return ComponentSubtabEditorSplitNavigation.isSplitPairIconHostEditor(project, editor);
+    }
+
     private static void applySplittabCollapsedOverlays(
             @NotNull Project project,
             @NotNull FileEditor editor
     ) {
         SubtabsSettings settings = SubtabsSettings.getInstance();
         SubtabsCollapseOverlay.hide(editor);
+        boolean showExpandOnPane = shouldShowSubtabIconOnSplittabPane(project, editor);
+        ComponentSubtabEditorSplitRegistry.SplittabPair pair = activeSplittabPairForEditor(project, editor);
+        if (pair != null && ComponentSubtabsScopedVisibility.splittabSubtabsHiddenByGroupOrGlobal(project, pair)) {
+            showExpandOnPane = true;
+        }
+        if (!showExpandOnPane) {
+            SubtabsExpandOverlay.hide(editor);
+            SplittabRestoreOverlay.syncEditor(project, editor);
+            ComponentSubtabsManager.refreshOverlayIconReserve(project, editor);
+            ComponentSubtabsManager.relayoutEditorOverlayIcons(editor);
+            return;
+        }
         if (settings.isShowCollapseButton()) {
             SubtabsExpandOverlay.show(project, editor);
         } else {

@@ -54,6 +54,27 @@ final class ComponentSubtabEditorSplitOrder {
         refreshBar(project);
     }
 
+    /** Switch-bar tabs use a unique drag key (typically the pair's right file). */
+    static void reorderByPairDragKey(
+            @NotNull Project project,
+            @NotNull VirtualFile dragKeyFile,
+            int dropIndex
+    ) {
+        ComponentSubtabEditorSplitRegistry registry = ComponentSubtabEditorSplitRegistry.getInstance(project);
+        ComponentSubtabEditorSplitRegistry.SplittabPair pair = null;
+        for (ComponentSubtabEditorSplitRegistry.SplittabPair candidate : registry.all()) {
+            if (candidate.leftFile().equals(dragKeyFile) || candidate.rightFile().equals(dragKeyFile)) {
+                pair = candidate;
+                break;
+            }
+        }
+        if (pair == null) {
+            return;
+        }
+        registry.reorder(pair.id(), dropIndex);
+        refreshBar(project);
+    }
+
     private static int indexOf(@NotNull Project project, @NotNull String pairId) {
         int index = 0;
         for (ComponentSubtabEditorSplitRegistry.SplittabPair pair

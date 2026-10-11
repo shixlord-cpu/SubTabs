@@ -1,3 +1,4 @@
+.cursor/
 .gradle/
 .gradle-bootstrap/
 .idea/
@@ -5,3 +6,6 @@
 build/
 out/
 *.iml
+closed-test.env
+certificate/
+*.pem

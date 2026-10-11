@@ -1,0 +1,9 @@
+TabZ End User License Agreement (summary — full text: project docs/TABZ-EULA.md)
+
+Copyright (c) ZaYaX. All rights reserved.
+
+Free proprietary plugin. You may install and use TabZ in JetBrains IDEs that support it. You may not redistribute, sell, or reverse engineer the plugin except as required by law.
+
+Provided AS IS without warranty. Developer liability limited to EUR 50 to the extent permitted by law. JetBrains is not a party to this license and is not liable for the plugin.
+
+Contact: [your email on vendor profile]

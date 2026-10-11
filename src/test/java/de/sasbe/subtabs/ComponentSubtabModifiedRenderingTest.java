@@ -166,7 +166,7 @@ public class ComponentSubtabModifiedRenderingTest extends LightPlatformTestCase 
         ApplicationManager.getApplication().invokeAndWait(() -> {
             SimpleColoredComponent colored = new SimpleColoredComponent();
             colored.append("products-state", SimpleTextAttributes.GRAYED_ATTRIBUTES);
-            colored.append(" 5 Dateien", SimpleTextAttributes.GRAY_ATTRIBUTES);
+            colored.append(" 5 files", SimpleTextAttributes.GRAY_ATTRIBUTES);
             SubtabGroupTreeCellRenderer.applyModifiedMainText(
                     colored,
                     ComponentSubtabModifiedUi.foreground(true, false)
@@ -195,7 +195,7 @@ public class ComponentSubtabModifiedRenderingTest extends LightPlatformTestCase 
     public void testTreeRendererAppliesModifiedColorToMainText() {
         SimpleColoredComponent colored = new SimpleColoredComponent();
         colored.append("products-state", SimpleTextAttributes.GRAYED_ATTRIBUTES);
-        colored.append(" 5 Dateien", SimpleTextAttributes.GRAY_ATTRIBUTES);
+        colored.append(" 5 files", SimpleTextAttributes.GRAY_ATTRIBUTES);
 
         Color blue = ComponentSubtabModifiedUi.foreground(true, false);
         SubtabGroupTreeCellRenderer.applyModifiedMainText(colored, blue);

@@ -5,6 +5,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.testFramework.HeavyPlatformTestCase;
 
 public class ComponentExcludePatternsTest extends HeavyPlatformTestCase {
+    private static final int COMPONENT_RULE_INDEX =
+            SubtabRulesDefaults.indexOfRule(SubtabRulesDefaults.createDefaults(), "Komponente");
+
     @Override
     protected void setUp() throws Exception {
         super.setUp();
@@ -25,7 +28,7 @@ public class ComponentExcludePatternsTest extends HeavyPlatformTestCase {
 
         ComponentRelatedFiles.Match match = ComponentRelatedFiles.find(component);
         assertNotNull(match);
-        assertEquals("rule:7:header#header.component", match.baseName());
+        assertEquals("rule:" + COMPONENT_RULE_INDEX + ":header#header.component", match.baseName());
         assertEquals(2, match.relatedFiles().size());
         for (ComponentRelatedFiles.Entry entry : match.relatedFiles()) {
             assertFalse(entry.file().getName().endsWith(".actions.ts"));

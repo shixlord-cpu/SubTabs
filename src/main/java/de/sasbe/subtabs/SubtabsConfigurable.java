@@ -68,35 +68,35 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
 
     @Override
     public @Nls(capitalization = Nls.Capitalization.Title) String getDisplayName() {
-        return "Familia";
+        return "TabZ";
     }
 
     @Override
     public @Nullable JComponent createComponent() {
-        familiaEnabledCheckbox = new JCheckBox("Familia aktivieren");
-        hTabsActiveCheckbox = new JCheckBox("H-Tabs aktivieren");
-        hTabsActiveCheckbox.setToolTipText("Horizontale Tab-Leiste direkt über dem Editor");
+        familiaEnabledCheckbox = new JCheckBox("Enable TabZ");
+        hTabsActiveCheckbox = new JCheckBox("Enable horizontal tabs");
+        hTabsActiveCheckbox.setToolTipText("Horizontal tab strip directly above the editor");
         reuseOpenSubtabGroupMainTabCheckbox = new JCheckBox(
-                "Bestehenden Gruppen-Haupttab wiederverwenden"
+                "Reuse existing group main tab"
         );
         reuseOpenSubtabGroupMainTabCheckbox.setToolTipText(
-                "Ist bereits eine Datei derselben Subtab-Gruppe geöffnet, wird keine zweite "
-                        + "Haupttab-Leiste geöffnet, sondern in diesem Tab per Subtab gewechselt. "
-                        + "Gilt nicht während einer aktiven Split-Pair-Sitzung."
+                "When a file from the same subtab group is already open, switch subtabs in that "
+                        + "main tab instead of opening a second one. "
+                        + "Not applied during an active split-pair session."
         );
         hTabsActiveCheckbox.addActionListener(event -> updateHTabsOptions());
-        sidetabsActiveCheckbox = new JCheckBox("V-Tabs aktivieren");
-        sidetabsActiveCheckbox.setToolTipText("Vertikale Tab-Leiste am Editorrand");
+        sidetabsActiveCheckbox = new JCheckBox("Enable vertical tabs");
+        sidetabsActiveCheckbox.setToolTipText("Vertical tab strip at the editor edge");
         sidetabLayoutModeCombo = labeledEnumCombo(SidetabLayoutMode.values(), SidetabLayoutMode::label);
         sidetabLayoutModeCombo.addActionListener(event -> updateSidetabLayoutOptions());
         sidetabsSideSwitch = new SidetabsSideSwitchButton();
-        showCollapseButtonCheckbox = new JCheckBox("Einklappen-Symbole anzeigen");
+        showCollapseButtonCheckbox = new JCheckBox("Show collapse icons");
         showCollapseButtonCheckbox.setToolTipText(
-                "Zeigt das Einklappen-Symbol in der H-Tab-Leiste und bei V-Tabs"
+                "Shows the collapse icon in the horizontal tab strip and vertical tabs"
         );
-        projectViewGroupingCheckbox = new JCheckBox("Gruppierung");
+        projectViewGroupingCheckbox = new JCheckBox("Grouping");
         projectViewGroupingCheckbox.setToolTipText(
-                "Zeigt die Gruppierungsschaltfläche im Projektbaum; Ein- und Ausblenden dort unabhängig von dieser Option"
+                "Shows the grouping control in the Project view; expand/collapse there is independent of this option"
         );
         overflowModeCombo = labeledEnumCombo(SubtabOverflowMode.values(), SubtabOverflowMode::label);
         groupTreeControlStyleCombo = labeledEnumCombo(
@@ -105,27 +105,26 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         );
         groupTreeControlStyleCombo.addActionListener(event -> updateGroupTreeControlOptions());
 
-        invertGroupTreeControlFillCheckbox = new JCheckBox("Füllung invertieren (gefüllt wenn geöffnet)");
+        invertGroupTreeControlFillCheckbox = new JCheckBox("Invert fill (filled when open)");
 
-        groupColorsEnabledCheckbox = new JCheckBox("Gruppenfarben");
+        groupColorsEnabledCheckbox = new JCheckBox("Group colors");
         groupColorsEnabledCheckbox.setToolTipText(
-                "Färbt Editor-Haupttabs und „X Dateien“ im Projektbaum in der Gruppenfarbe ein"
+                "Tints editor main tabs and \"N files\" in the Project view with the group color"
         );
 
-        hoverViewEnabledCheckbox = new JCheckBox("Hover Sync aktivieren");
+        hoverViewEnabledCheckbox = new JCheckBox("Enable Hover Sync");
         hoverViewEnabledCheckbox.setToolTipText(
-                "Hebt beim Hover über Projektbaum, H-Tabs, Haupttabs und Split-Pair-Leisten die "
-                        + "zugehörigen Partner-UI hervor (z. B. H-Tabs und Haupttabs)"
+                "Highlights related UI when hovering the Project view, horizontal tabs, main tabs, "
+                        + "and split-pair bars (e.g. horizontal tabs and main tabs)"
         );
-        hoverViewProjectToEditorCheckbox = new JCheckBox("Editor highlighten");
+        hoverViewProjectToEditorCheckbox = new JCheckBox("Highlight editor");
         hoverViewProjectToEditorCheckbox.setToolTipText(
-                "Hebt beim Hover über Dateien im Projektbaum oder in der Hover-Selectbox den "
-                        + "Code-Editor offener Dateien im Vordergrund-Fenster hervor"
+                "Highlights code in open editors when hovering files in the Project view or hover picker"
         );
         hoverViewEnabledCheckbox.addActionListener(event -> updateHoverSyncOptions());
 
         showSubtabNameInMainTabCheckbox = new JCheckBox(
-                "Subtab-Namen im Haupttab in Klammern anzeigen"
+                "Show subtab name in main tab title (in parentheses)"
         );
 
         barHeightSlider = createSlider(25, 100, 75);
@@ -146,7 +145,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         tabFontStyleCombo.addActionListener(event -> previewTypography());
 
         fitTabsToEditorWidthCheckbox = new JCheckBox(
-                "Tab- und Schriftgröße an die Breite des Editors anpassen"
+                "Fit tab and font size to editor width"
         );
 
         JPanel sidetabsFlagRow = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(6), 0));
@@ -159,13 +158,13 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 .addComponent(familiaEnabledCheckbox)
                 .addComponent(showCollapseButtonCheckbox)
                 .addComponent(groupColorsEnabledCheckbox)
-                .addLabeledComponent("Gruppierung im Projektbaum", groupTreeControlStyleCombo)
+                .addLabeledComponent("Project view grouping", groupTreeControlStyleCombo)
                 .addComponent(invertGroupTreeControlFillCheckbox)
-                .addLabeledComponent("Tab-Höhe", sliderRow(barHeightSlider, barHeightValueLabel))
-                .addLabeledComponent("Schriftgröße", sliderRow(textSizeSlider, textSizeValueLabel))
-                .addLabeledComponent("Schriftstil", tabFontStyleCombo)
+                .addLabeledComponent("Tab height", sliderRow(barHeightSlider, barHeightValueLabel))
+                .addLabeledComponent("Font size", sliderRow(textSizeSlider, textSizeValueLabel))
+                .addLabeledComponent("Font style", tabFontStyleCombo)
                 .addComponent(fitTabsToEditorWidthCheckbox)
-                .addLabeledComponent("H-Tabs bei Überlauf", overflowModeCombo)
+                .addLabeledComponent("Horizontal tabs overflow", overflowModeCombo)
                 .getPanel();
 
         hoverSyncPanel = FormBuilder.createFormBuilder()
@@ -188,7 +187,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         vTabsPanel = new JPanel(new BorderLayout());
         vTabsPanel.add(vTabsOptionsPanel, BorderLayout.NORTH);
 
-        splittabsEnabledCheckbox = new JCheckBox("Split Pairs aktivieren");
+        splittabsEnabledCheckbox = new JCheckBox("Enable split pairs");
         splittabBehaviorModeCombo = labeledEnumCombo(
                 SplittabBehaviorMode.values(),
                 SplittabBehaviorMode::label
@@ -202,34 +201,34 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
                 SplittabOtherPairFileMode::label
         );
         splittabOtherPairFileModeCombo.setToolTipText(
-                "Gilt für Mixed und Switch, wenn bei offenem Split Pair eine Datei geöffnet wird, "
-                        + "die zu einem anderen gespeicherten Split Pair gehört"
+                "Applies to Mixed and Switch when opening a file that belongs to another saved split pair "
+                        + "while a split pair is active"
         );
-        restoreSwitchSplittabSessionCheckbox = new JCheckBox("Switch-Split-Pairs beim Projektstart wiederherstellen");
+        restoreSwitchSplittabSessionCheckbox = new JCheckBox("Restore Switch split pairs on project open");
         restoreSwitchSplittabSessionCheckbox.setToolTipText(
-                "Wenn Switch aktiv war und Split Pairs im Vordergrund, beim nächsten Öffnen des Projekts "
-                        + "dieselbe Switch-Sitzung laden. Aus: zuvor gespeicherte normale Editor-Tabs laden."
+                "When Switch was active with split pairs in the foreground, reload that session on next project open. "
+                        + "Off: restore previously saved normal editor tabs."
         );
         splittabsEnabledCheckbox.addActionListener(event -> updateSplittabBehaviorOptions());
         JPanel splitTabsPanel = FormBuilder.createFormBuilder()
                 .addComponent(splittabsEnabledCheckbox)
-                .addLabeledComponent("Verhalten", splittabBehaviorModeCombo)
-                .addLabeledComponent("Verhalten bei Auflösung", splittabDissolveModeCombo)
-                .addLabeledComponent("Datei eines anderen Split Pairs öffnen", splittabOtherPairFileModeCombo)
+                .addLabeledComponent("Behavior", splittabBehaviorModeCombo)
+                .addLabeledComponent("On dissolve", splittabDissolveModeCombo)
+                .addLabeledComponent("Open file from another split pair", splittabOtherPairFileModeCombo)
                 .addComponent(restoreSwitchSplittabSessionCheckbox)
                 .getPanel();
 
         JPanel aiPanel = new JPanel(new BorderLayout());
         aiPanel.setBorder(JBUI.Borders.empty(8, 0));
-        aiPanel.add(new JBLabel("Noch keine Einstellungen."), BorderLayout.NORTH);
+        aiPanel.add(new JBLabel("No settings yet."), BorderLayout.NORTH);
 
         rulesUiInitialized = false;
 
         mainTabs = new JTabbedPane();
-        mainTabs.addTab("Ansicht", ansichtPanel);
+        mainTabs.addTab("Appearance", ansichtPanel);
         mainTabs.addTab("Hover Sync", hoverSyncPanel);
-        mainTabs.addTab("H-Tabs", hTabsPanel);
-        mainTabs.addTab("V-Tabs", vTabsPanel);
+        mainTabs.addTab("Horizontal tabs", hTabsPanel);
+        mainTabs.addTab("Vertical tabs", vTabsPanel);
         mainTabs.addTab("Split Pairs", splitTabsPanel);
         mainTabs.addTab("AI", aiPanel);
         mainTabs.addChangeListener(event -> {
@@ -239,7 +238,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
             }
         });
 
-        JButton resetButton = new JButton("Alle Einstellungen zurücksetzen");
+        JButton resetButton = new JButton("Reset all settings");
         resetButton.addActionListener(event -> confirmAndResetToDefaults());
 
         JPanel resetRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
@@ -259,7 +258,7 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         if (mainTabs == null) {
             return;
         }
-        String savedTitle = SubtabsSettings.getInstance().getSettingsDialogSelectedTabTitle();
+        String savedTitle = migrateSettingsTabTitle(SubtabsSettings.getInstance().getSettingsDialogSelectedTabTitle());
         if (savedTitle == null) {
             return;
         }
@@ -485,10 +484,10 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         }
         int answer = Messages.showYesNoDialog(
                 rootPanel,
-                "Alle Familia-Einstellungen (Ansicht, H-Tabs, V-Tabs, SplitTabs, AI und Gruppenfarben) "
-                        + "werden auf die Standardwerte zurückgesetzt.\n\n"
-                        + "Eigene Regeln und Anpassungen gehen dabei verloren.",
-                "Einstellungen zurücksetzen?",
+                "All TabZ settings (Appearance, horizontal/vertical tabs, split pairs, AI, and group colors) "
+                        + "will be reset to defaults.\n\n"
+                        + "Custom rules and tweaks will be lost.",
+                "Reset settings?",
                 Messages.getWarningIcon()
         );
         if (answer != Messages.YES) {
@@ -513,6 +512,18 @@ public final class SubtabsConfigurable implements SearchableConfigurable {
         valueLabel.setPreferredSize(new Dimension(JBUI.scale(48), valueLabel.getPreferredSize().height));
         row.add(valueLabel, BorderLayout.EAST);
         return row;
+    }
+
+    private static @Nullable String migrateSettingsTabTitle(@Nullable String title) {
+        if (title == null) {
+            return null;
+        }
+        return switch (title) {
+            case "Ansicht" -> "Appearance";
+            case "H-Tabs" -> "Horizontal tabs";
+            case "V-Tabs" -> "Vertical tabs";
+            default -> title;
+        };
     }
 
     private static @NotNull String formatPercent(int value) {

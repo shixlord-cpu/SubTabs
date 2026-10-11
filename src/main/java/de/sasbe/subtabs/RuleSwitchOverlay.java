@@ -66,8 +66,8 @@ final class RuleSwitchOverlay {
             @NotNull FileEditor editor
     ) {
         ComponentSubtabIconButton button = new ComponentSubtabIconButton(AllIcons.Actions.SwapPanels);
-        button.setToolTipText("Regel wechseln");
-        button.getAccessibleContext().setAccessibleName("Regel wechseln");
+        button.setToolTipText("Switch rule");
+        button.getAccessibleContext().setAccessibleName("Switch rule");
         button.addActionListener(event -> {
             VirtualFile file = editor.getFile();
             if (file != null) {

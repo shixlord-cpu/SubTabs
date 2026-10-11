@@ -148,7 +148,7 @@ final class ComponentSubtabNavigationTargetPopupHover {
             int y
     ) {
         DefaultActionGroup group = new DefaultActionGroup("Familia", true);
-        group.add(new AnAction("Im Projektbaum anzeigen") {
+        group.add(new AnAction("Show in Project view") {
             @Override
             public void actionPerformed(@NotNull AnActionEvent event) {
                 SubtabProjectViewReveal.revealSubtab(project, file);

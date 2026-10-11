@@ -17,9 +17,15 @@ class ComponentFileNamingTest {
     private static final String ENV_GROUP = "rule:2:env";
     private static final String STATE_GROUP = "rule:3:cart";
     private static final String MODEL_GROUP = "rule:5:user";
-    private static final String HTML_GROUP = "rule:6:catalog-page";
-    private static final String COMPONENT_GROUP = "rule:7:user-card#user-card.component";
-    private static final String FOLDER_GROUP = "rule:9:@folder";
+    private static final int HTML_RULE_INDEX =
+            SubtabRulesDefaults.indexOfRule(SubtabRulesDefaults.createDefaults(), "HTML");
+    private static final int COMPONENT_RULE_INDEX =
+            SubtabRulesDefaults.indexOfRule(SubtabRulesDefaults.createDefaults(), "Komponente");
+    private static final int FOLDER_RULE_INDEX =
+            SubtabRulesDefaults.indexOfRule(SubtabRulesDefaults.createDefaults(), "Folder");
+    private static final String HTML_GROUP = "rule:" + HTML_RULE_INDEX + ":catalog-page";
+    private static final String COMPONENT_GROUP = "rule:" + COMPONENT_RULE_INDEX + ":user-card#user-card.component";
+    private static final String FOLDER_GROUP = "rule:" + FOLDER_RULE_INDEX + ":@folder";
 
     @Test
     void findsTheSameBaseForEveryComponentPart() {
@@ -48,7 +54,7 @@ class ComponentFileNamingTest {
         CustomSubtabRule folderRule = SubtabRulesDefaults.folderRule();
         folderRule.enabled = false;
         List<CustomSubtabRule> rules = SubtabRulesDefaults.createDefaults();
-        rules.set(9, folderRule);
+        rules.set(FOLDER_RULE_INDEX, folderRule);
 
         assertNull(CustomSubtabRuleMatcher.match("README.md", rules));
     }
@@ -173,26 +179,31 @@ class ComponentFileNamingTest {
     @Test
     void plainHtmlDoesNotInheritComponentNaming() {
         assertEquals("catalog-page", ComponentFileNaming.displayName(HTML_GROUP));
-        assertEquals("landing-page", ComponentFileNaming.displayName("rule:6:landing-page"));
+        assertEquals("landing-page", ComponentFileNaming.displayName("rule:" + HTML_RULE_INDEX + ":landing-page"));
         assertEquals(
                 "landing-page",
                 CustomSubtabRuleMatcher.displayNameWithSuffix(
                         "landing-page",
-                        SubtabRulesDefaults.createDefaults().get(6)
+                        SubtabRulesDefaults.htmlRule()
                 )
         );
         assertEquals(
                 "landing-page-component",
                 CustomSubtabRuleMatcher.displayNameWithSuffix(
                         "landing-page",
-                        SubtabRulesDefaults.createDefaults().get(7)
+                        SubtabRulesDefaults.createDefaults().stream()
+                                .filter(rule -> "Komponente".equals(rule.name))
+                                .findFirst()
+                                .orElseThrow()
                 )
         );
     }
 
     @Test
     void createsCandidatesInVisibleTabOrder() {
-        List<SubtabCandidate> candidates = ComponentFileNaming.candidates("rule:7:app#app.component");
+        List<SubtabCandidate> candidates = ComponentFileNaming.candidates(
+                "rule:" + COMPONENT_RULE_INDEX + ":app#app.component"
+        );
 
         assertEquals(".spec.ts", candidates.get(0).slotId());
         assertEquals("app.component.spec.ts", candidates.get(0).fileName());
@@ -214,8 +225,11 @@ class ComponentFileNamingTest {
     @Test
     void usesShortComponentNameForTabTitle() {
         assertEquals("user-card-component", ComponentFileNaming.displayName(COMPONENT_GROUP));
-        assertEquals("app-component", ComponentFileNaming.displayName("rule:7:app#app.component"));
-        assertEquals("landing-page", ComponentFileNaming.displayName("rule:6:landing-page"));
+        assertEquals(
+                "app-component",
+                ComponentFileNaming.displayName("rule:" + COMPONENT_RULE_INDEX + ":app#app.component")
+        );
+        assertEquals("landing-page", ComponentFileNaming.displayName("rule:" + HTML_RULE_INDEX + ":landing-page"));
     }
 
     @Test

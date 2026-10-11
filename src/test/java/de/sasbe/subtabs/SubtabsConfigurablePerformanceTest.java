@@ -35,12 +35,13 @@ public class SubtabsConfigurablePerformanceTest extends LightPlatformTestCase {
         JComponent root = configurable.createComponent();
         JTabbedPane mainTabs = findTabbedPane(root);
         assertNotNull(mainTabs);
-        assertEquals(5, mainTabs.getTabCount());
-        assertEquals("Ansicht", mainTabs.getTitleAt(0));
-        assertEquals("H-Tabs", mainTabs.getTitleAt(1));
-        assertEquals("V-Tabs", mainTabs.getTitleAt(2));
-        assertEquals("SplitTabs", mainTabs.getTitleAt(3));
-        assertEquals("AI", mainTabs.getTitleAt(4));
+        assertEquals(6, mainTabs.getTabCount());
+        assertEquals("Appearance", mainTabs.getTitleAt(0));
+        assertEquals("Hover Sync", mainTabs.getTitleAt(1));
+        assertEquals("Horizontal tabs", mainTabs.getTitleAt(2));
+        assertEquals("Vertical tabs", mainTabs.getTitleAt(3));
+        assertEquals("Split Pairs", mainTabs.getTitleAt(4));
+        assertEquals("AI", mainTabs.getTitleAt(5));
         assertEquals(0, mountedRulesPanelCount(mainTabs));
 
         long elapsedMs = measureRulesTabOpenMs(mainTabs);
@@ -89,7 +90,7 @@ public class SubtabsConfigurablePerformanceTest extends LightPlatformTestCase {
 
     private static long measureRulesTabOpenMs(JTabbedPane mainTabs) {
         long startNs = System.nanoTime();
-        mainTabs.setSelectedIndex(1);
+        mainTabs.setSelectedIndex(2);
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
         return (System.nanoTime() - startNs) / 1_000_000L;
     }
@@ -119,12 +120,12 @@ public class SubtabsConfigurablePerformanceTest extends LightPlatformTestCase {
 
     private static int mountedRulesPanelCount(JTabbedPane mainTabs) {
         int count = 0;
-        if (mainTabs.getTabCount() > 1 && mainTabs.getComponentAt(1) instanceof JPanel hTabs) {
+        if (mainTabs.getTabCount() > 2 && mainTabs.getComponentAt(2) instanceof JPanel hTabs) {
             if (hTabs.getComponentCount() > 1) {
                 count++;
             }
         }
-        if (mainTabs.getTabCount() > 2 && mainTabs.getComponentAt(2) instanceof JPanel vTabs) {
+        if (mainTabs.getTabCount() > 3 && mainTabs.getComponentAt(3) instanceof JPanel vTabs) {
             if (vTabs.getComponentCount() > 1) {
                 count++;
             }

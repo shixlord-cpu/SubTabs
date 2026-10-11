@@ -1,0 +1,69 @@
+﻿Starting a Gradle Daemon, 2 stopped Daemons could not be reused, use --status for details
+Reusing configuration cache.
+> Task :initializeIntellijPlatformPlugin
+> Task :generateManifest
+
+> Task :patchPluginXml
+[org.jetbrains.intellij.platform] Patching plugin.xml: value of 'name[SubTabs]' tag will be set to 'Familia'
+
+> Task :processTestResources
+> Task :processResources
+
+> Task :compileJava
+.\gradlew.bat : C:\Users\SasBe\Desktop\SubTabs\src\main\java\de\sasbe\subtabs\SubtabGroupColorPicker.java:20: Warnung: 
+[removal] ColorChooser in com.intellij.ui ist veraltet und wurde zum Entfernen markiert
+In C:\Users\SasBe\AppData\Local\Temp\ps-script-18f38b2b-6d74-4d83-b8fa-b9251158a86f.ps1:107 Zeichen:38
++ ... p\SubTabs"; .\gradlew.bat test --tests "de.sasbe.subtabs.FamiliaPerfo ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\SasBe\...fernen markiert:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+        return ColorChooser.chooseColor(
+               ^
+Hinweis: Einige Eingabedateien verwenden oder ├╝berschreiben eine veraltete API.
+Hinweis: Wiederholen Sie die Kompilierung mit -Xlint:deprecation, um Details zu erhalten.
+1 Warnung
+
+> Task :classes
+> Task :jar
+> Task :instrumentCode
+
+> Task :compileTestJava
+C:\Users\SasBe\Desktop\SubTabs\src\test\java\de\sasbe\subtabs\SubtabFamiliaEditorTabTest.java:121: Warnung: [removal] 
+getData(String) in DataContext ist veraltet und wurde zum Entfernen markiert
+            public @Nullable Object getData(@NotNull String dataId) {
+                                    ^
+C:\Users\SasBe\Desktop\SubTabs\src\test\java\de\sasbe\subtabs\SubtabFamiliaEditorTabTest.java:125: Warnung: [removal] 
+createFromDataContext(String,Presentation,DataContext) in AnActionEvent ist veraltet und wurde zum Entfernen markiert
+        return AnActionEvent.createFromDataContext(ActionPlaces.EDITOR_TAB_POPUP, null, context);
+                            ^
+C:\Users\SasBe\Desktop\SubTabs\src\test\java\de\sasbe\subtabs\SubtabFamiliaEditorTabTest.java:131: Warnung: [removal] 
+getData(String) in DataContext ist veraltet und wurde zum Entfernen markiert
+            public @Nullable Object getData(@NotNull String dataId) {
+                                    ^
+C:\Users\SasBe\Desktop\SubTabs\src\test\java\de\sasbe\subtabs\SubtabFamiliaEditorTabTest.java:135: Warnung: [removal] 
+createFromDataContext(String,Presentation,DataContext) in AnActionEvent ist veraltet und wurde zum Entfernen markiert
+        return AnActionEvent.createFromDataContext(ActionPlaces.PROJECT_VIEW_POPUP, null, context);
+                            ^
+
+> Task :instrumentedJar
+> Task :composedJar
+> Task :prepareTestSandbox
+> Task :prepareTest
+
+> Task :compileTestJava
+Hinweis: Einige Eingabedateien verwenden oder ├╝berschreiben eine veraltete API.
+Hinweis: Wiederholen Sie die Kompilierung mit -Xlint:deprecation, um Details zu erhalten.
+4 Warnungen
+
+> Task :testClasses
+> Task :instrumentTestCode
+
+> Task :test
+[0.016s][warning][cds] Archived non-system classes are disabled because the java.system.class.loader property is specified (value = "com.intellij.util.lang.PathClassLoader"). To use archived non-system classes, this property must not be set
+
+[Incubating] Problems report is available at: file:///C:/Users/SasBe/Desktop/SubTabs/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 43s
+14 actionable tasks: 14 executed
+Configuration cache entry reused.

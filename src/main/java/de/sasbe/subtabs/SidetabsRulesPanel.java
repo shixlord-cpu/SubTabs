@@ -338,8 +338,8 @@ final class SidetabsRulesPanel {
             label.setIcon(AllIcons.Actions.Edit);
             label.setHorizontalTextPosition(SwingConstants.LEFT);
             label.setToolTipText(row < rules.size() && rules.get(row).isTopRule()
-                    ? "Klicken zum Umschalten: Überschreiben / Kombinieren"
-                    : "Abschnitte und Startlogik bearbeiten");
+                    ? "Click to toggle: Override / Combine"
+                    : "Edit sections and start logic");
             return label;
         }
     }
@@ -409,10 +409,10 @@ final class SidetabsRulesPanel {
         @Override
         public String getColumnName(int column) {
             return switch (column) {
-                case 0 -> "Aktiv";
+                case 0 -> "Enabled";
                 case 1 -> "Name";
-                case 2 -> "Dateien";
-                case 3 -> "Abschnitte";
+                case 2 -> "Files";
+                case 3 -> "Sections";
                 default -> "";
             };
         }

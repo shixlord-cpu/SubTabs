@@ -158,7 +158,7 @@ final class SubtabGroupFilePopupPanel extends JPanel {
         label.setOpaque(true);
         label.setAlignmentX(LEFT_ALIGNMENT);
         label.setToolTipText(file.getPath());
-        label.getAccessibleContext().setAccessibleName(plainLabel + " öffnen: " + file.getName());
+        label.getAccessibleContext().setAccessibleName(plainLabel + " open: " + file.getName());
         applyPresentationState(project, label, file, context());
         applyItemWidth(label, fixedWidth);
 

@@ -509,8 +509,8 @@ final class SubtabsProjectViewGroupingOverlay {
                 button.setIcon(collapsed ? SubtabsIcons.GROUPING_COLLAPSED : SubtabsIcons.GROUPING_EXPANDED);
             }
             String tooltip = collapsed
-                    ? "Gruppierung im Projektbaum ausklappen"
-                    : "Gruppierung im Projektbaum einklappen";
+                    ? "Expand grouping in Project view"
+                    : "Collapse grouping in Project view";
             button.setToolTipText(tooltip);
             button.getAccessibleContext().setAccessibleName(tooltip);
         }

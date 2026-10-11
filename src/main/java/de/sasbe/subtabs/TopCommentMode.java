@@ -11,13 +11,13 @@ enum TopCommentMode {
     }
 
     @NotNull String label() {
-        return this == COMBINE ? "Kombinieren" : "Überschreiben";
+        return this == COMBINE ? "Combine" : "Override";
     }
 
     @NotNull String summary() {
         return this == COMBINE
-                ? "Mit Datei-Regeln kombinieren"
-                : "Datei-Regeln überschreiben";
+                ? "Combine with file rules"
+                : "Override file rules";
     }
 
     @Override

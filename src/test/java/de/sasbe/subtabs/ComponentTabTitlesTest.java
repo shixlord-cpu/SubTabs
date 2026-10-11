@@ -21,7 +21,7 @@ class ComponentTabTitlesTest {
 
     @Test
     void usesFolderRuleTitleForUnmatchedFiles() {
-        assertEquals("Ordner", ComponentTabTitles.displayGroupedTitle("misc.xml"));
+        assertEquals("Folder", ComponentTabTitles.displayGroupedTitle("misc.xml"));
     }
 
     @Test
