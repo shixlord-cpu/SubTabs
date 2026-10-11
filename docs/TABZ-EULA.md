@@ -2,10 +2,10 @@
 
 **JetBrains Marketplace:** **Custom license** → **License URL:**
 
-`https://raw.githubusercontent.com/zayax-software/SubTabs/main/docs/TABZ-EULA.md`
+`https://raw.githubusercontent.com/zayax-software/TabZ/main/docs/TABZ-EULA.md`
 
 **Plugin:** TabZ  
-**Plugin ID:** `com.zayax.component-subtabs`  
+**Plugin ID:** `com.zayax.tabz`  
 **Licensor / Developer:** ZaYaX (“Developer”, “we”, “us”)  
 **Effective:** upon installation or first use
 

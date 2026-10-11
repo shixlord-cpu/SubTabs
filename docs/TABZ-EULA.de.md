@@ -1,6 +1,6 @@
 # TabZ — Endnutzer-Lizenzvereinbarung (Proprietär)
 
-**Plugin:** TabZ · **ID:** `com.zayax.component-subtabs`  
+**Plugin:** TabZ · **ID:** `com.zayax.tabz`  
 **Anbieter:** ZaYaX („Entwickler“)
 
 JetBrains betreibt den Marketplace und kann das Plugin ausliefern. **JetBrains ist nicht Partei** dieser Vereinbarung und nicht für Inhalt, Support oder Haftung des Plugins verantwortlich (außer in JetBrains’ eigenen Marketplace-Bedingungen).

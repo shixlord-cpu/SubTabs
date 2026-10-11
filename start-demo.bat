@@ -6,7 +6,7 @@ set GRADLE_ARGS=--console=plain --no-configuration-cache
 
 echo.
 echo ============================================================
-echo  SubTabs - Test-IDE starten
+echo  TabZ - Test-IDE starten
 echo ============================================================
 echo.
 echo WICHTIG - warum es "haengen" kann:
@@ -22,7 +22,7 @@ echo   Schliesse zuerst eine bereits laufende Test-IDE, falls vorhanden.
 echo.
 echo   Session-Recording: Zustaende landen in demo-replay\ (siehe demo-replay\README.md).
 echo   Navigation-Popup-Hover-Demo: sidetabs-examples\java\NavigationHoverDemoStandalone.java
-echo   Anleitung: demo-project\FAMILIA-NAVIGATION-HOVER-DEMO.md
+echo   Anleitung: demo-project\TABZ-NAVIGATION-HOVER-DEMO.md
 echo.
 echo ------------------------------------------------------------
 echo [1/2] Sandbox vorbereiten (prepareSandbox)...

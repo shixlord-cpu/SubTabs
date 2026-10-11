@@ -10,16 +10,16 @@ ZaYaX
 
 ## Tagline (kurz)
 
-Related files as compact subtabs above the editor.
+Related files as compact tabz above the editor.
 
 ## Beschreibung (HTML/Markdown auf Marketplace)
 
-TabZ groups related project files (components, configs, stack-specific rules) and shows them as **compact subtabs** directly above the editor in JetBrains IDEs.
+TabZ groups related project files (components, configs, stack-specific rules) and shows them as **compact tabz** directly above the editor in JetBrains IDEs.
 
 **Features (Closed Test):**
 
-- Subtabs for related files in the same folder (Angular, React, Vue, Spring, ASP.NET, Nest, Playwright, Cypress, npm/tsconfig/env, and more)
-- Optional scroll-to-file in the Project view on subtab hover
+- Tabz for related files in the same folder (Angular, React, Vue, Spring, ASP.NET, Nest, Playwright, Cypress, npm/tsconfig/env, and more)
+- Optional scroll-to-file in the Project view on tabz hover
 - Custom rules in **Settings → Tools → TabZ**
 - Splittab workflow for side-by-side related files
 
@@ -31,7 +31,7 @@ TabZ groups related project files (components, configs, stack-specific rules) an
 
 ## Change notes (Version 0.1.0)
 
-Initial closed beta: subtab bar, default stack rules, settings UI, demo project support.
+Initial closed beta: tabz bar, default stack rules, settings UI, demo project support.
 
 ---
 

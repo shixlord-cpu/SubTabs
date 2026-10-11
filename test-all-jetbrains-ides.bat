@@ -11,7 +11,7 @@ echo  [1/2] IntelliJ IDEA: Unit-Schnelltest
 echo  [2/2] Weitere IDEs: Plugin Verifier ^(verifyTabz*^)
 echo.
 
-call gradlew.bat %GRADLE_ARGS% test --tests de.sasbe.subtabs.SubtabStackRulesTest --tests de.sasbe.subtabs.CustomSubtabRuleMatcherTest --tests de.sasbe.subtabs.SubtabsSettingsTest
+call gradlew.bat %GRADLE_ARGS% test --tests com.zayax.tabz.SubtabStackRulesTest --tests com.zayax.tabz.CustomSubtabRuleMatcherTest --tests com.zayax.tabz.TabzSettingsTest
 if errorlevel 1 goto failed
 
 set "FAILED=0"

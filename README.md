@@ -1,4 +1,4 @@
-# SubTabs
+# TabZ
 
 Ein MVP für IntelliJ-basierte IDEs, der zusammengehörige Dateien einer
 Komponente als schmale Subtabs direkt oberhalb des Editors anzeigt.
@@ -126,7 +126,7 @@ Das oeffnet automatisch das Demo-Projekt unter `demo-project/`.
 `start-demo.bat` wird in `demo-project` automatisch `npm ci` ausgeführt; die Sandbox-IDE
 (Ultimate) bekommt vorkonfiguriert ESLint, Stylelint (CSS/SCSS) und TypeScript-Service
 (`tsconfig.app.json`). Das Demo-Projekt ist als **WEB-Modul** angelegt (nicht nur Java), damit
-`.ts`/`.scss` analysiert werden. SubTabs/SideTabs übernehmen Editor-Highlights als rote Wellen.
+`.ts`/`.scss` analysiert werden. TabZ/SideTabs übernehmen Editor-Highlights als rote Wellen.
 
 Nach dem Wechsel auf Ultimate einmal `gradlew cleanSandbox` ausführen, falls die Test-IDE noch
 keine TypeScript-Kringel zeigt.
@@ -136,21 +136,21 @@ keine TypeScript-Kringel zeigt.
 3. Die Gradle-Aufgabe `runIde` starten (siehe oben).
 4. In der gestarteten Test-IDE sollte das Demo-Projekt bereits geoeffnet sein.
 5. Oeffne `demo-project/src/app/user-card.component.ts`.
-6. Direkt unter dem normalen Editor-Tab erscheinen die Subtabs `TS`, `Test`, `HTML` und `SCSS`.
-7. Jeden Subtab anklicken und pruefen, ob die passende Datei geoeffnet wird.
-8. Oeffne `demo-project/package.json`. Es erscheinen Subtabs wie `Package`, `Lock`, `npmrc` und `nvm`.
+6. Direkt unter dem normalen Editor-Tab erscheinen die Tabz `TS`, `Test`, `HTML` und `SCSS`.
+7. Jeden Tabz anklicken und pruefen, ob die passende Datei geoeffnet wird.
+8. Oeffne `demo-project/package.json`. Es erscheinen Tabz wie `Package`, `Lock`, `npmrc` und `nvm`.
 9. Oeffne `tsconfig.json` und `.env` im Projektroot.
 10. Oeffne `src/app/state-management/central/cart.actions.ts` (zentraler Store, alle Dateien in einem Ordner).
-    Probiere auch `user.actions.ts` und `catalog.actions.ts` — jeweils eigene Subtab-Gruppe `cart`, `user`, `catalog`.
+    Probiere auch `user.actions.ts` und `catalog.actions.ts` — jeweils eigene Tabz-Gruppe `cart`, `user`, `catalog`.
 11. Oeffne `src/app/state-management/feature-based/products/products.actions.ts`
     (Feature-Store über `products/` und `products-state/`).
     Gleiches Muster fuer `checkout/` + `checkout-state/` sowie `orders/` + `orders-state/`.
 12. Oeffne `src/app/models/central/user.model.ts` und
     `src/app/models/feature-based/user/user.model.ts`.
 13. **Navigation-Popup + Hover Sync:** Siehe
-    [`demo-project/FAMILIA-NAVIGATION-HOVER-DEMO.md`](demo-project/FAMILIA-NAVIGATION-HOVER-DEMO.md).
+    [`demo-project/TABZ-NAVIGATION-HOVER-DEMO.md`](demo-project/TABZ-NAVIGATION-HOVER-DEMO.md).
     **Zuverlaessig:** `demo-project/sidetabs-examples/java/NavigationHoverDemoStandalone.java`
-    oeffnen, **`familiaNavigationDemoTarget`** in `runNavigationHoverDemo()` markieren, **Ctrl+B**,
+    oeffnen, **`tabzNavigationDemoTarget`** in `runNavigationHoverDemo()` markieren, **Ctrl+B**,
     Eintraege hovern. (Alternativ TS: `navigation-hover-demo.standalone.ts` — nur mit laufender TS-Analyse.)
 
 ## Automatisierte Tests und Build
@@ -210,22 +210,22 @@ Zur Installation in der normalen IDE:
 
 ## Einstellungen
 
-Unter `Settings | Tools | SubTabs`:
+Unter `Settings | Tools | TabZ`:
 
-- **SubTabs anzeigen** (standardmäßig an). Entspricht dem ausgeklappten Zustand; deaktivieren blendet die Leiste aus und entspricht dem Einklappen über das Symbol.
-- **Einklappen-Symbol anzeigen** (standardmäßig an). Blendet das Minimize-/Expand-Icon aus. SubTabs lassen sich dann nur noch über die Einstellung ein- und ausschalten.
-- **Subtab-Regeln**: Tabelle mit allen mitgelieferten Regeln (npm, tsconfig, env, State, Model, Komponente) plus eigene Ergänzungen.
-- **Beim Hover über einen Subtab zur Datei im Projektbaum scrollen** (standardmäßig aus).
+- **TabZ anzeigen** (standardmäßig an). Entspricht dem ausgeklappten Zustand; deaktivieren blendet die Leiste aus und entspricht dem Einklappen über das Symbol.
+- **Einklappen-Symbol anzeigen** (standardmäßig an). Blendet das Minimize-/Expand-Icon aus. TabZ lassen sich dann nur noch über die Einstellung ein- und ausschalten.
+- **Tabz-Regeln**: Tabelle mit allen mitgelieferten Regeln (npm, tsconfig, env, State, Model, Komponente) plus eigene Ergänzungen.
+- **Beim Hover über einen Tabz zur Datei im Projektbaum scrollen** (standardmäßig aus).
   Ist die Option aus, wird die Datei nur gehovert, wenn sie im Projektbaum bereits sichtbar ist.
 
 ## Tastenkürzel
 
-Wenn SubTabs sichtbar sind:
+Wenn TabZ sichtbar sind:
 
-- **Alt+←** — vorheriger Subtab
-- **Alt+→** — nächster Subtab
+- **Alt+←** — vorheriger Tabz
+- **Alt+→** — nächster Tabz
 
-Anpassbar unter `Settings | Keymap` („Vorheriger Subtab“ / „Nächster Subtab“).
+Anpassbar unter `Settings | Keymap` („Vorheriger Tabz“ / „Nächster Tabz“).
 
 ## Projektstruktur
 

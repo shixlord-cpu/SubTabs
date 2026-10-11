@@ -2,7 +2,7 @@
 
 Arbeite die Schritte **der Reihe nach** ab. Hake ab, wenn erledigt.
 
-**Stand Projekt:** Version `0.1.0`, Plugin-ID `com.zayax.component-subtabs`, ZIP-Name `component-subtabs-0.1.0.zip` (Gradle-Projektname)
+**Stand Projekt:** Version `0.1.0`, Plugin-ID `com.zayax.tabz`, ZIP-Name `tabz-0.1.0.zip` (Gradle-Projektname)
 
 ---
 
@@ -130,7 +130,7 @@ Signiertes ZIP liegt unter `build\distributions\` (Name kann `-signed` o. Ä. 
 
 1. Optional: `setup-signing.bat` → `build-closed-test.bat` (signiertes ZIP in `build\distributions\`).
 2. [Neues Plugin hochladen](https://plugins.jetbrains.com/plugin/add) (eingeloggt als Vendor **ZaYaX**).
-2. ZIP wählen: `build\distributions\component-subtabs-0.1.0-signed.zip` (nach `setup-signing.bat` + `build-closed-test.bat`).
+2. ZIP wählen: `build\distributions\tabz-0.1.0-signed.zip` (nach `setup-signing.bat` + `build-closed-test.bat`).
 3. **Hidden** aktivieren (wichtig — nur beim ersten Upload so möglich).
 4. **Release channel:** `closed-beta` (nicht Default/Stable).
 5. Texte: [MARKETPLACE-TEXT.md](MARKETPLACE-TEXT.md) · **Lizenz:** **Custom license** → Feld **License URL** (siehe unten)

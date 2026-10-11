@@ -2,7 +2,7 @@
 
 Ziel: **Beta-Tester** können TabZ installieren und Updates bekommen, ohne dass das Plugin in der Marketplace-Suche oder in der IDE-Suche erscheint.
 
-Plugin-ID: `com.zayax.component-subtabs`
+Plugin-ID: `com.zayax.tabz`
 
 ---
 

@@ -1,4 +1,4 @@
-# Demo replay (Familia / SubTabs)
+# Demo replay (Tabz / TabZ)
 
 When the sandbox demo starts via `start-demo.bat` or `record-demo.bat`, the plugin records
 editor layout snapshots while you work in `demo-project`.
@@ -17,14 +17,14 @@ editor layout snapshots while you work in `demo-project`.
 2. Close the IDE.
 3. Open `latest.json` or the path from `last-session.txt`.
 4. Inspect `lastState.editorWindows`, `splittabRegistry`, and per-tab `chrome`
-   (subtab bar, Splittab header title/close visibility, sidetabs).
+   (tabz bar, Splittab header title/close visibility, sidetabs).
 
 Recording uses a 400 ms debounce and is enabled only for the demo project
-(`-Dsubtabs.demo.replay=record` from Gradle `runIde`).
+(`-Dtabz.demo.replay=record` from Gradle `runIde`).
 
 To disable recording for one run:
 
 ```bat
-set GRADLE_OPTS=-Dsubtabs.demo.replay=off
+set GRADLE_OPTS=-Dtabz.demo.replay=off
 start-demo.bat
 ```

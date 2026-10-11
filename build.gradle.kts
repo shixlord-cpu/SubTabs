@@ -11,8 +11,8 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.18.1"
 }
 
-group = "de.sasbe.subtabs"
-version = "0.1.0"
+group = "com.zayax.tabz"
+version = "0.1.1"
 
 val tabzIdeVersion = providers.gradleProperty("tabzIdeVersion").orElse("2025.3")
 /** Wenn gesetzt (WebStorm | Rider): Plugin Verifier nur gegen diese IDE. Ohne Property: beide. */
@@ -180,8 +180,8 @@ tasks {
             listOf(
                 "-Dgit4idea.fetch.automatically=false",
                 "-Didea.git.automatic.branchupdate=false",
-                "-Dsubtabs.demo.replay=record",
-                "-Dsubtabs.demo.replay.dir=$demoReplayDir",
+                "-Dtabz.demo.replay=record",
+                "-Dtabz.demo.replay.dir=$demoReplayDir",
             )
         }
     }
@@ -224,26 +224,26 @@ intellijPlatformTesting {
             task {
                 dependsOn("npmInstallDemo")
                 val demoProjectPath = layout.projectDirectory.dir("demo-project").asFile.absolutePath
-                val perfOutput = providers.gradleProperty("subtabsPerf")
+                val perfOutput = providers.gradleProperty("tabzPerf")
                     .orElse(layout.buildDirectory.dir("perf").map { it.asFile.absolutePath })
-                val perfConfigs = providers.gradleProperty("subtabsPerfConfigs").orElse("on,off")
-                val perfSplits = providers.gradleProperty("subtabsPerfSplits").orElse("1,2,3,4")
-                val perfRepaintTrace = providers.gradleProperty("subtabsPerfRepaintTrace").orElse("false")
-                val perfSplittab = providers.gradleProperty("subtabsPerfSplittab").orElse("")
-                val perfOtherPair = providers.gradleProperty("subtabsPerfOtherPair").orElse("")
+                val perfConfigs = providers.gradleProperty("tabzPerfConfigs").orElse("on,off")
+                val perfSplits = providers.gradleProperty("tabzPerfSplits").orElse("1,2,3,4")
+                val perfRepaintTrace = providers.gradleProperty("tabzPerfRepaintTrace").orElse("false")
+                val perfSplittab = providers.gradleProperty("tabzPerfSplittab").orElse("")
+                val perfOtherPair = providers.gradleProperty("tabzPerfOtherPair").orElse("")
                 argumentProviders += CommandLineArgumentProvider { listOf(demoProjectPath) }
                 jvmArgumentProviders += CommandLineArgumentProvider {
                     listOf(
                         "-Dgit4idea.fetch.automatically=false",
                         "-Didea.git.automatic.branchupdate=false",
-                        "-Dsubtabs.perf.harness=${perfOutput.get()}",
-                        "-Dsubtabs.perf.configs=${perfConfigs.get()}",
-                        "-Dsubtabs.perf.splits=${perfSplits.get()}",
-                        "-Dsubtabs.perf.repaintTrace=${perfRepaintTrace.get()}",
-                        "-Dsubtabs.perf.splittab=${perfSplittab.get()}",
-                        "-Dsubtabs.perf.otherPair=${perfOtherPair.get()}",
-                        "-Dsubtabs.perf.skipSplittabOpen=${providers.gradleProperty("subtabsPerfSkipSplittabOpen").orElse("false").get()}",
-                        "-Dsubtabs.perf.exit=true",
+                        "-Dtabz.perf.harness=${perfOutput.get()}",
+                        "-Dtabz.perf.configs=${perfConfigs.get()}",
+                        "-Dtabz.perf.splits=${perfSplits.get()}",
+                        "-Dtabz.perf.repaintTrace=${perfRepaintTrace.get()}",
+                        "-Dtabz.perf.splittab=${perfSplittab.get()}",
+                        "-Dtabz.perf.otherPair=${perfOtherPair.get()}",
+                        "-Dtabz.perf.skipSplittabOpen=${providers.gradleProperty("tabzPerfSkipSplittabOpen").orElse("false").get()}",
+                        "-Dtabz.perf.exit=true",
                     )
                 }
             }
@@ -374,7 +374,7 @@ private fun installDemoSandboxIdeConfig(projectDirectory: java.io.File) {
     if (!template.isDirectory) {
         return
     }
-    val sandboxRoot = projectDirectory.resolve(".intellijPlatform/sandbox/component-subtabs")
+    val sandboxRoot = projectDirectory.resolve(".intellijPlatform/sandbox/tabz")
     if (!sandboxRoot.isDirectory) {
         return
     }

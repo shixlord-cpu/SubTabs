@@ -14,8 +14,8 @@ if "%PUBLISH_TOKEN%"=="" (
     exit /b 1
 )
 
-if not exist "build\distributions\component-subtabs-0.1.0-signed.zip" (
-    if not exist "build\distributions\component-subtabs-0.1.0.zip" (
+if not exist "build\distributions\tabz-0.1.1-signed.zip" (
+    if not exist "build\distributions\tabz-0.1.1.zip" (
         echo Zuerst bauen: build-closed-test.bat
         pause
         exit /b 1

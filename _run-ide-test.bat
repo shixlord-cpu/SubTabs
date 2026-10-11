@@ -39,7 +39,7 @@ set "EXIT_CODE=0"
 if /i "!IDE_SLUG!"=="Idea" (
     set "GRADLE_TASK=test"
     if "!EXTRA!"=="" (
-        set "EXTRA= --tests de.sasbe.subtabs.SubtabStackRulesTest --tests de.sasbe.subtabs.CustomSubtabRuleMatcherTest --tests de.sasbe.subtabs.SubtabsSettingsTest"
+        set "EXTRA= --tests com.zayax.tabz.SubtabStackRulesTest --tests com.zayax.tabz.CustomSubtabRuleMatcherTest --tests com.zayax.tabz.TabzSettingsTest"
     )
 ) else if /i "!IDE_SLUG!"=="WebStorm" (
     set "GRADLE_CHECK=checkTabzWebStorm"

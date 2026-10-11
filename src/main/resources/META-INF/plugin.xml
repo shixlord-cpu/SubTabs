@@ -1,6 +1,6 @@
 <idea-plugin>
 
-    <id>com.zayax.component-subtabs</id>
+    <id>com.zayax.tabz</id>
 
     <name>TabZ</name>
 
@@ -19,60 +19,60 @@
 
 
     <depends>com.intellij.modules.platform</depends>
-    <depends optional="true" config-file="com.zayax.component-subtabs-withVcs.xml">com.intellij.modules.vcs</depends>
+    <depends optional="true" config-file="com.zayax.tabz-withVcs.xml">com.intellij.modules.vcs</depends>
 
 
 
     <extensions defaultExtensionNs="com.intellij">
-        <editorTabTitleProvider implementation="de.sasbe.subtabs.ComponentEditorTabTitleProvider"/>
-        <editorTabColorProvider implementation="de.sasbe.subtabs.SubtabGroupEditorTabColorProvider"/>
-        <fileIconProvider implementation="de.sasbe.subtabs.SubtabGroupFileIconProvider" order="first"/>
-        <iconProvider implementation="de.sasbe.subtabs.SubtabGroupPsiIconProvider" order="first"/>
-        <projectActivity implementation="de.sasbe.subtabs.ComponentSubtabsStartupActivity"/>
-        <projectActivity implementation="de.sasbe.subtabs.DemoLintWarmupActivity"/>
-        <projectActivity implementation="de.sasbe.subtabs.DemoReplayStartupActivity"/>
+        <editorTabTitleProvider implementation="com.zayax.tabz.ComponentEditorTabTitleProvider"/>
+        <editorTabColorProvider implementation="com.zayax.tabz.SubtabGroupEditorTabColorProvider"/>
+        <fileIconProvider implementation="com.zayax.tabz.SubtabGroupFileIconProvider" order="first"/>
+        <iconProvider implementation="com.zayax.tabz.SubtabGroupPsiIconProvider" order="first"/>
+        <projectActivity implementation="com.zayax.tabz.ComponentSubtabStartupActivity"/>
+        <projectActivity implementation="com.zayax.tabz.DemoLintWarmupActivity"/>
+        <projectActivity implementation="com.zayax.tabz.DemoReplayStartupActivity"/>
         <applicationConfigurable
                 parentId="tools"
-                instance="de.sasbe.subtabs.SubtabsConfigurable"
-                id="de.sasbe.subtabs.settings"
+                instance="com.zayax.tabz.TabzConfigurable"
+                id="com.zayax.tabz.settings"
                 displayName="TabZ"
-                icon="de.sasbe.subtabs.SubtabsIcons.ACTIVE"/>
-        <treeStructureProvider implementation="de.sasbe.subtabs.SubtabGroupTreeStructureProvider"/>
+                icon="com.zayax.tabz.SubtabsIcons.ACTIVE"/>
+        <treeStructureProvider implementation="com.zayax.tabz.SubtabGroupTreeStructureProvider"/>
     </extensions>
 
 
 
     <actions>
-        <action id="SubTabs.SelectPreviousSubtab"
-                class="de.sasbe.subtabs.SubtabSelectPreviousAction"
+        <action id="TabZ.SelectPreviousSubtab"
+                class="com.zayax.tabz.SubtabSelectPreviousAction"
                 text="Previous subtab"
                 description="Switch to the subtab on the left">
             <keyboard-shortcut keymap="$default" first-keystroke="alt LEFT"/>
         </action>
-        <action id="SubTabs.SelectNextSubtab"
-                class="de.sasbe.subtabs.SubtabSelectNextAction"
+        <action id="TabZ.SelectNextSubtab"
+                class="com.zayax.tabz.SubtabSelectNextAction"
                 text="Next subtab"
                 description="Switch to the subtab on the right">
             <keyboard-shortcut keymap="$default" first-keystroke="alt RIGHT"/>
         </action>
-        <group id="SubTabs.Familia"
-                class="de.sasbe.subtabs.SubtabFamiliaActionGroup"
+        <group id="TabZ.Tabz"
+                class="com.zayax.tabz.TabzActionGroup"
                 popup="true"
                 text="TabZ">
-            <action id="SubTabs.RevealInProjectView"
-                    class="de.sasbe.subtabs.SubtabRevealInProjectViewAction"
+            <action id="TabZ.RevealInProjectView"
+                    class="com.zayax.tabz.SubtabRevealInProjectViewAction"
                     text="Show in Project view"/>
             <separator/>
-            <action id="SubTabs.ChangeGroupColor"
-                    class="de.sasbe.subtabs.SubtabGroupChangeColorAction"
+            <action id="TabZ.ChangeGroupColor"
+                    class="com.zayax.tabz.SubtabGroupChangeColorAction"
                     text="Change group color…"/>
             <separator/>
-            <action id="SubTabs.ResetGroupColor"
-                    class="de.sasbe.subtabs.SubtabGroupResetColorAction"
+            <action id="TabZ.ResetGroupColor"
+                    class="com.zayax.tabz.SubtabGroupResetColorAction"
                     text="Reassign group color"/>
             <separator/>
-            <group id="SubTabs.SavedSplittabs"
-                    class="de.sasbe.subtabs.SubtabSavedSplittabsActionGroup"
+            <group id="TabZ.SavedSplittabs"
+                    class="com.zayax.tabz.SubtabSavedSplittabsActionGroup"
                     popup="true"/>
             <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
@@ -82,20 +82,20 @@
 
 
     <projectListeners>
-        <listener class="de.sasbe.subtabs.ComponentSubtabsFileEditorListener"
+        <listener class="com.zayax.tabz.ComponentSubtabFileEditorListener"
                   topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
-        <listener class="de.sasbe.subtabs.ComponentSubtabsFileEditorListener"
+        <listener class="com.zayax.tabz.ComponentSubtabFileEditorListener"
                   topic="com.intellij.openapi.fileEditor.FileEditorManagerListener$Before"/>
-        <listener class="de.sasbe.subtabs.SubtabGroupTreeControlListener"
+        <listener class="com.zayax.tabz.SubtabGroupTreeControlListener"
                   topic="com.intellij.openapi.wm.ex.ToolWindowManagerListener"/>
-        <listener class="de.sasbe.subtabs.DemoReplayFileEditorListener"
+        <listener class="com.zayax.tabz.DemoReplayFileEditorListener"
                   topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
     </projectListeners>
 
     <applicationListeners>
-        <listener class="de.sasbe.subtabs.PerfFileOpenHarness"
+        <listener class="com.zayax.tabz.PerfFileOpenHarness"
                   topic="com.intellij.ide.AppLifecycleListener"/>
-        <listener class="de.sasbe.subtabs.ComponentSubtabNavigationTargetPopupInstaller"
+        <listener class="com.zayax.tabz.ComponentSubtabNavigationTargetPopupInstaller"
                   topic="com.intellij.ide.AppLifecycleListener"/>
     </applicationListeners>
 

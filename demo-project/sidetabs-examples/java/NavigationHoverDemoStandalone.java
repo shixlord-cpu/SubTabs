@@ -1,9 +1,9 @@
 package shop;
 
 /**
- * Familia demo: Navigate to Declaration on {@code familiaNavigationDemoTarget} below.
+ * Tabz demo: Navigate to Declaration on {@code tabzNavigationDemoTarget} below.
  * <p>
- * Open <strong>this file only</strong>, place the caret on {@code familiaNavigationDemoTarget}
+ * Open <strong>this file only</strong>, place the caret on {@code tabzNavigationDemoTarget}
  * in {@link #runNavigationHoverDemo()}, press Ctrl+B, then hover the chooser entries.
  * (All targets live in this file so Java resolution does not depend on module wiring.)
  */
@@ -12,24 +12,24 @@ public final class NavigationHoverDemoStandalone {
     }
 
     public static void runNavigationHoverDemo() {
-        String caption = familiaNavigationDemoTarget();
+        String caption = tabzNavigationDemoTarget();
         if (caption.isEmpty()) {
-            familiaNavigationDemoTarget("central-id");
-            familiaNavigationDemoTarget("feature-id", true);
+            tabzNavigationDemoTarget("central-id");
+            tabzNavigationDemoTarget("feature-id", true);
         }
     }
 
-    public static String familiaNavigationDemoTarget() {
+    public static String tabzNavigationDemoTarget() {
         return "sandbox";
     }
 
-    public static String familiaNavigationDemoTarget(String centralUserId) {
+    public static String tabzNavigationDemoTarget(String centralUserId) {
         return centralUserId == null ? "central" : centralUserId;
     }
 
-    public static String familiaNavigationDemoTarget(String featureUserId, boolean feature) {
+    public static String tabzNavigationDemoTarget(String featureUserId, boolean feature) {
         if (!feature) {
-            return familiaNavigationDemoTarget(featureUserId);
+            return tabzNavigationDemoTarget(featureUserId);
         }
         return featureUserId == null ? "feature" : featureUserId;
     }

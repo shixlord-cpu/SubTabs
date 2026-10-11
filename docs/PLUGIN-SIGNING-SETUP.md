@@ -59,7 +59,7 @@ Nach JetBrains-Doku ggf. öffentlichen Teil im Marketplace-Profil registrieren, 
 
 ```powershell
 # marketplace-zip-signer-cli.jar von GitHub Releases (JetBrains Marketplace ZIP Signer)
-java -jar marketplace-zip-signer-cli.jar sign -in build\distributions\component-subtabs-0.1.0.zip -out build\distributions\component-subtabs-0.1.0-signed.zip -cert-file certificate\chain.crt -key-file certificate\private.pem -key-pass "DEIN_PASSWORT"
+java -jar marketplace-zip-signer-cli.jar sign -in build\distributions\tabz-0.1.0.zip -out build\distributions\tabz-0.1.0-signed.zip -cert-file certificate\chain.crt -key-file certificate\private.pem -key-pass "DEIN_PASSWORT"
 ```
 
 3. **Signed ZIP** auf [plugin/add](https://plugins.jetbrains.com/plugin/add) hochladen (Hidden + `closed-beta`).

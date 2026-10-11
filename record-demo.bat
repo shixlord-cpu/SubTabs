@@ -4,7 +4,7 @@ cd /d "%~dp0"
 
 echo.
 echo ============================================================
-echo  SubTabs - Demo mit Session-Recording
+echo  TabZ - Demo mit Session-Recording
 echo ============================================================
 echo.
 echo Waehrend der Demo werden Editor-Zustaende nach demo-replay\ geschrieben.

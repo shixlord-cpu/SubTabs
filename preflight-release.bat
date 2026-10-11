@@ -9,8 +9,8 @@ echo.
 
 set "OK=1"
 
-if exist "build\distributions\component-subtabs-0.1.0.zip" (
-    echo [OK] ZIP: build\distributions\component-subtabs-0.1.0.zip
+if exist "build\distributions\tabz-0.1.1.zip" (
+    echo [OK] ZIP: build\distributions\tabz-0.1.1.zip
 ) else (
     echo [??] ZIP fehlt - build-closed-test.bat ausfuehren
     set "OK=0"
