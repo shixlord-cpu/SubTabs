@@ -43,29 +43,32 @@ final class SidetabsSideSwitchButton extends JToggleButton {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int width = getWidth();
             int height = getHeight();
-            float pad = JBUI.scale(3f);
-            float stroke = Math.max(1.2f, JBUI.scale(1.4f));
+            float pad = TabzUiScale.units(3f);
+            float stroke = Math.max(1.2f, TabzUiScale.units(1.4f));
             g2.setStroke(new BasicStroke(stroke, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
             Color frame = ACCENT;
+            float corner = TabzUiScale.units(4f);
             g2.setColor(new Color(frame.getRed(), frame.getGreen(), frame.getBlue(), 40));
-            g2.fill(new RoundRectangle2D.Float(pad, pad, width - pad * 2, height - pad * 2, JBUI.scale(4f), JBUI.scale(4f)));
+            g2.fill(new RoundRectangle2D.Float(pad, pad, width - pad * 2, height - pad * 2, corner, corner));
             g2.setColor(frame);
-            g2.draw(new RoundRectangle2D.Float(pad, pad, width - pad * 2, height - pad * 2, JBUI.scale(4f), JBUI.scale(4f)));
+            g2.draw(new RoundRectangle2D.Float(pad, pad, width - pad * 2, height - pad * 2, corner, corner));
 
-            float innerPad = pad + JBUI.scale(2.2f);
+            float innerPad = pad + TabzUiScale.units(2.2f);
             float innerWidth = width - innerPad * 2;
             float innerHeight = height - innerPad * 2;
-            float bar = Math.max(innerWidth * 0.28f, JBUI.scale(3.5f));
-            float editorWidth = innerWidth - bar - JBUI.scale(1.5f);
+            float bar = Math.max(innerWidth * 0.28f, TabzUiScale.units(3.5f));
+            float gap = TabzUiScale.units(1.5f);
+            float editorWidth = innerWidth - bar - gap;
             boolean onRight = isSelected();
-            float editorX = onRight ? innerPad : innerPad + bar + JBUI.scale(1.5f);
-            float barX = onRight ? innerPad + editorWidth + JBUI.scale(1.5f) : innerPad;
+            float editorX = onRight ? innerPad : innerPad + bar + gap;
+            float barX = onRight ? innerPad + editorWidth + gap : innerPad;
+            float innerCorner = TabzUiScale.units(2f);
 
             g2.setColor(new Color(frame.getRed(), frame.getGreen(), frame.getBlue(), 70));
-            g2.fill(new RoundRectangle2D.Float(editorX, innerPad, editorWidth, innerHeight, JBUI.scale(2f), JBUI.scale(2f)));
+            g2.fill(new RoundRectangle2D.Float(editorX, innerPad, editorWidth, innerHeight, innerCorner, innerCorner));
             g2.setColor(frame);
-            g2.fill(new RoundRectangle2D.Float(barX, innerPad, bar, innerHeight, JBUI.scale(2f), JBUI.scale(2f)));
+            g2.fill(new RoundRectangle2D.Float(barX, innerPad, bar, innerHeight, innerCorner, innerCorner));
         } finally {
             g2.dispose();
         }

@@ -1,6 +1,5 @@
 package com.zayax.tabz;
 
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
@@ -45,7 +44,7 @@ record SidetabSectionPresentation(boolean modified, boolean hasErrors) {
                 && rangeDiffersFromSaved(document, file, section)) {
             return true;
         }
-        return ReadAction.compute(() -> hasVcsChangesInRange(
+        return TabzReadActions.compute(() -> hasVcsChangesInRange(
                 project,
                 document,
                 section.startOffset(),

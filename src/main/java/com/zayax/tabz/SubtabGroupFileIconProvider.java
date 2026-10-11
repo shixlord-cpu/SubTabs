@@ -1,10 +1,10 @@
 package com.zayax.tabz;
 
 import com.intellij.ide.FileIconProvider;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Iconable;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.IconUtil;
@@ -52,18 +52,33 @@ final class SubtabGroupFileIconProvider implements FileIconProvider, DumbAware {
     ) {
         RESOLVING_BASE.set(true);
         try {
-            for (FileIconProvider provider : FileIconProvider.EP_NAME.getExtensionList()) {
-                if (provider instanceof SubtabGroupFileIconProvider) {
-                    continue;
-                }
-                Icon icon = provider.getIcon(file, flags, project);
-                if (icon != null) {
-                    return icon;
-                }
-            }
-            return ReadAction.compute(() -> FileTypeManager.getInstance().getFileTypeByFile(file).getIcon());
+            return withPlatformReadAccess(() -> resolveUncoloredPlatformIcon(file, flags, project));
         } finally {
             RESOLVING_BASE.remove();
         }
+    }
+
+    private static @Nullable Icon resolveUncoloredPlatformIcon(
+            @NotNull VirtualFile file,
+            @Iconable.IconFlags int flags,
+            @Nullable Project project
+    ) {
+        for (FileIconProvider provider : FileIconProvider.EP_NAME.getExtensionList()) {
+            if (provider instanceof SubtabGroupFileIconProvider) {
+                continue;
+            }
+            Icon icon = provider.getIcon(file, flags, project);
+            if (icon != null) {
+                return icon;
+            }
+        }
+        return FileTypeManager.getInstance().getFileTypeByFile(file).getIcon();
+    }
+
+    /**
+     * File icon providers (incl. PSI-based) require read access; the project tree calls renderers on the EDT.
+     */
+    private static @Nullable Icon withPlatformReadAccess(@NotNull Computable<@Nullable Icon> computable) {
+        return TabzReadActions.computeOnUiThreadWithWriteIntent(computable);
     }
 }

@@ -145,6 +145,8 @@ final class SidetabBarPanel extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
+        scrollPane.setOverlappingScrollBar(false);
+        TabzOverflowScrollBars.configureVertical(scrollPane.getVerticalScrollBar());
 
         overflowStrip = new SidetabOverflowStrip(scrollPane, () -> tabsHost.getPreferredSize().height);
         overflowStrip.attachWheel(tabsHost);

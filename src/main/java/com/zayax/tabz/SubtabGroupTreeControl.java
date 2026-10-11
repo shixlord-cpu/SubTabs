@@ -266,7 +266,7 @@ final class SubtabGroupTreeControl {
             graphics.setColor(BORDER);
             graphics.draw(shape);
         } else {
-            float arc = JBUI.scale(2.5f);
+            float arc = TabzUiScale.units(2.5f);
             RoundRectangle2D.Float shape = new RoundRectangle2D.Float(left, top, size, size, arc, arc);
             if (filled) {
                 graphics.setColor(FILL);

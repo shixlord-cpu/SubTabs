@@ -111,7 +111,7 @@ final class ComponentSubtabIconButton extends JButton {
                 if (dropTargetHighlight) {
                     g2.setColor(LOADING_ARC_COLOR);
                     g2.setStroke(new BasicStroke(
-                            Math.max(1.5f, com.intellij.util.ui.JBUI.scale(2f)),
+                            Math.max(1.5f, TabzUiScale.units(2f)),
                             BasicStroke.CAP_ROUND,
                             BasicStroke.JOIN_ROUND
                     ));
@@ -130,7 +130,7 @@ final class ComponentSubtabIconButton extends JButton {
         try {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(LOADING_ARC_COLOR);
-            float strokeWidth = Math.max(1.5f, com.intellij.util.ui.JBUI.scale(2f));
+            float strokeWidth = Math.max(1.5f, TabzUiScale.units(2f));
             g2.setStroke(new BasicStroke(strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             int inset = com.intellij.util.ui.JBUI.scale(4);
             int diameter = Math.min(getWidth(), getHeight()) - inset * 2;

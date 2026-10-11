@@ -1,6 +1,5 @@
 package com.zayax.tabz;
 
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
@@ -30,7 +29,7 @@ final class ComponentSubtabModifiedUi {
         if (project.isDisposed() || file.isDirectory()) {
             return false;
         }
-        return ReadAction.compute(() -> isModifiedInReadAction(project, file));
+        return TabzReadActions.compute(() -> isModifiedInReadAction(project, file));
     }
 
     static boolean isModifiedForDocument(@NotNull Project project, @NotNull Document document) {

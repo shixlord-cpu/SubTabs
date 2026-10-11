@@ -113,9 +113,9 @@ final class ComponentSubtabBarPanel extends JPanel implements ComponentSubtabReo
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setBackground(UIUtil.getPanelBackground());
         scrollPane.getViewport().setBackground(UIUtil.getPanelBackground());
-        scrollPane.setOverlappingScrollBar(true);
+        scrollPane.setOverlappingScrollBar(false);
         JScrollBar horizontalBar = scrollPane.getHorizontalScrollBar();
-        horizontalBar.setOpaque(true);
+        TabzOverflowScrollBars.configureHorizontal(horizontalBar);
         horizontalBar.putClientProperty(JBScrollPane.IGNORE_SCROLLBAR_IN_INSETS, Boolean.FALSE);
 
         overflowStrip = new SubtabOverflowStrip(scrollPane, () -> tabsHost.getPreferredSize().width);
@@ -1018,6 +1018,7 @@ final class ComponentSubtabBarPanel extends JPanel implements ComponentSubtabReo
         ));
         SubtabOverflowMode mode = TabzSettings.getInstance().getOverflowMode();
         overflowStrip.setMode(mode);
+        scrollPane.setOverlappingScrollBar(mode == SubtabOverflowMode.ARROWS);
     }
 
     @Override
@@ -1032,7 +1033,9 @@ final class ComponentSubtabBarPanel extends JPanel implements ComponentSubtabReo
 
     private int stablePanelHeight() {
         Insets insets = getInsets();
-        return insets.top + ComponentSubtabUi.barRowHeight() + insets.bottom;
+        int rowHeight = ComponentSubtabUi.barRowHeight();
+        rowHeight += TabzOverflowScrollBars.horizontalReserve(TabzSettings.getInstance().getOverflowMode());
+        return insets.top + rowHeight + insets.bottom;
     }
 
     private void rebuildButtonsIfNeeded() {

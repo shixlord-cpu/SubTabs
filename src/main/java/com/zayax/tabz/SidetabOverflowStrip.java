@@ -106,9 +106,14 @@ final class SidetabOverflowStrip extends JPanel {
     private void applyScrollPolicy() {
         JScrollBar bar = scrollPane.getVerticalScrollBar();
         boolean arrows = enabled && mode == SubtabOverflowMode.ARROWS;
-        bar.setPreferredSize(arrows ? new Dimension(0, 0) : null);
-        bar.setMinimumSize(arrows ? new Dimension(0, 0) : null);
-        bar.setMaximumSize(arrows ? new Dimension(0, 0) : null);
+        if (arrows) {
+            bar.setPreferredSize(new Dimension(0, 0));
+            bar.setMinimumSize(new Dimension(0, 0));
+            bar.setMaximumSize(new Dimension(0, 0));
+        } else if (enabled) {
+            TabzOverflowScrollBars.configureVertical(bar);
+        }
+        scrollPane.setOverlappingScrollBar(arrows);
         scrollPane.setVerticalScrollBarPolicy(
                 enabled
                         ? (arrows

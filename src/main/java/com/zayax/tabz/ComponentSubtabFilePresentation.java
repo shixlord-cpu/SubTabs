@@ -1,7 +1,6 @@
 package com.zayax.tabz;
 
 import com.intellij.codeInsight.daemon.impl.HighlightInfo;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.markup.RangeHighlighter;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
@@ -22,7 +21,7 @@ record ComponentSubtabFilePresentation(boolean modified, boolean hasErrors) {
         if (document != null) {
             return computeForDocument(project, document, file);
         }
-        return ReadAction.compute(() -> computeInReadAction(project, file));
+        return TabzReadActions.compute(() -> computeInReadAction(project, file));
     }
 
     static @NotNull ComponentSubtabFilePresentation computeForDocument(
@@ -49,7 +48,7 @@ record ComponentSubtabFilePresentation(boolean modified, boolean hasErrors) {
         if (unsaved) {
             return new ComponentSubtabFilePresentation(true, errors);
         }
-        return ReadAction.compute(() -> new ComponentSubtabFilePresentation(
+        return TabzReadActions.compute(() -> new ComponentSubtabFilePresentation(
                 ComponentSubtabModifiedUi.hasUncommittedVcsChanges(project, file),
                 errors || hasWolfErrors(project, file)
         ));

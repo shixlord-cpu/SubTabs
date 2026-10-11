@@ -6,7 +6,6 @@ import com.intellij.openapi.util.Iconable;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.SimpleColoredComponent;
 import com.intellij.ui.SimpleTextAttributes;
-import com.intellij.util.IconUtil;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import com.intellij.util.ui.tree.TreeUtil;
@@ -89,7 +88,7 @@ final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
             SubtabGroupProjectViewNode enclosingGroup = enclosingGroupNode(path);
             Color groupColor = SubtabGroupColors.colorForProjectViewFile(file, enclosingGroup);
             if (groupColor != null) {
-                applyGroupColoredFileIcon(component, colored, project, file, groupColor);
+                applyGroupColoredFileIcon(component, colored, project, file, groupColor, tree);
             }
             if (ComponentFileNaming.componentBaseName(file.getName()) != null
                     && ComponentSubtabModifiedUi.isModified(project, file)) {
@@ -135,17 +134,15 @@ final class SubtabGroupTreeCellRenderer implements TreeCellRenderer {
             @Nullable SimpleColoredComponent colored,
             @NotNull Project project,
             @NotNull VirtualFile file,
-            @NotNull Color groupColor
+            @NotNull Color groupColor,
+            @NotNull JTree tree
     ) {
-        Icon base = SubtabGroupFileIconProvider.uncoloredPlatformIcon(
-                file,
-                Iconable.ICON_FLAG_READ_STATUS,
-                project
-        );
-        if (base == null) {
+        int flags = Iconable.ICON_FLAG_READ_STATUS;
+        Icon tinted = SubtabGroupIconTintCache.peekTintedFileIcon(project, file, groupColor, flags);
+        if (tinted == null) {
+            SubtabGroupIconTintCache.scheduleTintedFileIcon(project, file, groupColor, flags, tree);
             return;
         }
-        Icon tinted = IconUtil.colorize(base, groupColor);
         if (colored != null) {
             colored.setIcon(tinted);
             return;

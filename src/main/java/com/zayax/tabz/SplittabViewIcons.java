@@ -117,7 +117,7 @@ final class SplittabViewIcons {
                 float ringDiameter = 5f * unit;
                 float ringRadius = ringDiameter / 2f;
                 float centerY = size / 2f;
-                float gap = JBUI.scale(3f);
+                float gap = TabzUiScale.units(3f);
                 float pairWidth = ringDiameter * 2f + gap;
                 float leftX = (size - pairWidth) / 2f;
                 float rightX = leftX + ringDiameter + gap;

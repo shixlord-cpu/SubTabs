@@ -1,5 +1,6 @@
 package com.zayax.tabz;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
 import com.intellij.openapi.util.Key;
@@ -10,8 +11,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.Icon;
+import javax.swing.JTree;
+import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -20,8 +24,52 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 final class SubtabGroupIconTintCache {
     private static final Key<Cache> CACHE_KEY = Key.create("componentTabz.groupIconTintCache");
+    private static final Set<String> PENDING_TINT = ConcurrentHashMap.newKeySet();
 
     private SubtabGroupIconTintCache() {
+    }
+
+    /** Safe on the EDT during tree paint: never touches PSI or file index. */
+    static @Nullable Icon peekTintedFileIcon(
+            @NotNull Project project,
+            @NotNull VirtualFile file,
+            @NotNull Color groupColor,
+            @Iconable.IconFlags int flags
+    ) {
+        if (project.isDisposed()) {
+            return null;
+        }
+        Cache cache = project.getUserData(CACHE_KEY);
+        if (cache == null) {
+            return null;
+        }
+        return cache.tinted.get(cacheKey(file, groupColor, flags));
+    }
+
+    static void scheduleTintedFileIcon(
+            @NotNull Project project,
+            @NotNull VirtualFile file,
+            @NotNull Color groupColor,
+            @Iconable.IconFlags int flags,
+            @NotNull JTree tree
+    ) {
+        if (project.isDisposed() || !file.isValid()) {
+            return;
+        }
+        String pendingKey = project.getLocationHash() + "|" + cacheKey(file, groupColor, flags);
+        if (!PENDING_TINT.add(pendingKey)) {
+            return;
+        }
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                TabzReadActions.compute(() -> tintedFileIcon(project, file, groupColor, flags));
+            } finally {
+                PENDING_TINT.remove(pendingKey);
+            }
+            if (!project.isDisposed() && tree.isShowing()) {
+                SwingUtilities.invokeLater(tree::repaint);
+            }
+        });
     }
 
     static @Nullable Icon tintedFileIcon(

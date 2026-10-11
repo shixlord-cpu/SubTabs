@@ -71,8 +71,9 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
         JScrollBar horizontalBar = scrollPane.getHorizontalScrollBar();
-        horizontalBar.setOpaque(true);
+        TabzOverflowScrollBars.configureHorizontal(horizontalBar);
         horizontalBar.putClientProperty(JBScrollPane.IGNORE_SCROLLBAR_IN_INSETS, Boolean.FALSE);
+        scrollPane.setOverlappingScrollBar(false);
 
         overflowStrip = new SubtabOverflowStrip(scrollPane, () -> tabsHost.getPreferredSize().width);
         overflowStrip.attachWheel(tabsHost);
@@ -303,7 +304,7 @@ final class SplittabSwitchBarPanel extends JPanel implements ComponentSubtabReor
         Insets insets = getInsets();
         int rowHeight = ComponentSubtabUi.barRowHeight();
         if (TabzSettings.getInstance().getOverflowMode() == SubtabOverflowMode.SCROLLBAR) {
-            rowHeight += scrollPane.getHorizontalScrollBar().getPreferredSize().height;
+            rowHeight += TabzOverflowScrollBars.horizontalReserve(SubtabOverflowMode.SCROLLBAR);
         }
         return insets.top + rowHeight + insets.bottom;
     }

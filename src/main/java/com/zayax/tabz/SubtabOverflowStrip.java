@@ -105,9 +105,14 @@ final class SubtabOverflowStrip extends JPanel {
         this.mode = mode;
         JScrollBar bar = scrollPane.getHorizontalScrollBar();
         boolean arrows = mode == SubtabOverflowMode.ARROWS;
-        bar.setPreferredSize(arrows ? new Dimension(0, 0) : null);
-        bar.setMinimumSize(arrows ? new Dimension(0, 0) : null);
-        bar.setMaximumSize(arrows ? new Dimension(0, 0) : null);
+        if (arrows) {
+            bar.setPreferredSize(new Dimension(0, 0));
+            bar.setMinimumSize(new Dimension(0, 0));
+            bar.setMaximumSize(new Dimension(0, 0));
+        } else {
+            TabzOverflowScrollBars.configureHorizontal(bar);
+        }
+        scrollPane.setOverlappingScrollBar(arrows);
         scrollPane.setHorizontalScrollBarPolicy(
                 arrows
                         ? ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS
@@ -152,8 +157,8 @@ final class SubtabOverflowStrip extends JPanel {
         return new Dimension(0, stableRowHeight());
     }
 
-    private static int stableRowHeight() {
-        return ComponentSubtabUi.barRowHeight();
+    private int stableRowHeight() {
+        return ComponentSubtabUi.barRowHeight() + TabzOverflowScrollBars.horizontalReserve(mode);
     }
 
     @Override
