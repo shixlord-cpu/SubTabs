@@ -1,0 +1,19 @@
+package com.zayax.tabz;
+
+import com.intellij.openapi.util.IconLoader;
+import org.jetbrains.annotations.NotNull;
+
+import javax.swing.Icon;
+
+public final class SubtabsIcons {
+    public static final @NotNull Icon ACTIVE = IconLoader.getIcon("/icons/tabz.png", SubtabsIcons.class);
+    public static final @NotNull Icon INACTIVE = IconLoader.getIcon("/icons/tabzInactive.png", SubtabsIcons.class);
+    public static final @NotNull Icon SIDE_ACTIVE = new SidetabIcon(true);
+    public static final @NotNull Icon SIDE_INACTIVE = new SidetabIcon(false);
+    public static final @NotNull Icon GROUPING_EXPANDED = new GroupingIcon(true);
+    public static final @NotNull Icon GROUPING_COLLAPSED = new GroupingIcon(false);
+    public static final @NotNull Icon GROUPING_NODE = GROUPING_EXPANDED;
+
+    private SubtabsIcons() {
+    }
+}

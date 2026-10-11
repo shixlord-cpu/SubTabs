@@ -19,10 +19,10 @@ final class RenderSubtabsIcons {
         Files.createDirectories(icons);
         Files.createDirectories(meta);
 
-        write(icons.resolve("subtabs.png"), 16, true);
-        write(icons.resolve("subtabs@2x.png"), 32, true);
-        write(icons.resolve("subtabsInactive.png"), 16, false);
-        write(icons.resolve("subtabsInactive@2x.png"), 32, false);
+        write(icons.resolve("tabz.png"), 16, true);
+        write(icons.resolve("tabz@2x.png"), 32, true);
+        write(icons.resolve("tabzInactive.png"), 16, false);
+        write(icons.resolve("tabzInactive@2x.png"), 32, false);
         write(meta.resolve("pluginIcon.png"), 40, true);
         write(meta.resolve("pluginIcon@2x.png"), 80, true);
         write(meta.resolve("pluginIcon_dark.png"), 40, true);
