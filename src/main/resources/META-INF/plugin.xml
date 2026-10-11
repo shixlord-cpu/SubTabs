@@ -19,8 +19,7 @@
 
 
     <depends>com.intellij.modules.platform</depends>
-    <depends optional="true">com.intellij.modules.vcs</depends>
-    <depends optional="true">JavaScript</depends>
+    <depends optional="true" config-file="com.zayax.component-subtabs-withVcs.xml">com.intellij.modules.vcs</depends>
 
 
 
