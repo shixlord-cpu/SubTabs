@@ -1,6 +1,8 @@
 # TabZ — End User License Agreement (Proprietary)
 
-**JetBrains Marketplace:** Lizenz-Dropdown → **Custom license** → diesen Text (oder [MARKETPLACE-EULA-PASTE.txt](MARKETPLACE-EULA-PASTE.txt)) ins Feld kopieren.
+**JetBrains Marketplace:** **Custom license** → **License URL:**
+
+`https://raw.githubusercontent.com/shixlord-cpu/SubTabs/main/docs/TABZ-EULA.md`
 
 **Plugin:** TabZ  
 **Plugin ID:** `com.zayax.component-subtabs`  
@@ -72,8 +74,6 @@ Unless mandatory consumer law requires otherwise, this EULA is governed by the l
 ## 12. Contact
 
 **Developer:** ZaYaX  
-**E-mail:** *(beim Marketplace-Upload eintragen — z. B. deine Kontaktadresse)*
+**E-mail:** Not available yet
 
 ---
-
-*This document is a template for Marketplace listing and installation context. It is not legal advice.*
