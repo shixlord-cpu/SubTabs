@@ -38,7 +38,7 @@ final class ComponentSubtabNewTabNavigation {
         if (currentWindow == null) {
             manager.openFile(targetFile, true);
         } else {
-            manager.openFileWithProviders(targetFile, true, currentWindow);
+            InternalPlatformBridge.openFileWithProviders(manager, targetFile, true, currentWindow);
         }
         ComponentSubtabsManager.attachIfNeeded(project, targetFile);
         ComponentSubtabsManager.syncSelectionForFile(project, targetFile);

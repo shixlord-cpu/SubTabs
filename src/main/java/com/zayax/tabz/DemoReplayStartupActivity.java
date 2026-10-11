@@ -2,7 +2,8 @@ package com.zayax.tabz;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
-import com.intellij.openapi.startup.StartupManager;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
@@ -20,12 +21,12 @@ final class DemoReplayStartupActivity implements ProjectActivity {
         if (!DemoProjectDetection.isDemoProject(project) && !DemoReplayConfig.allowNonDemoProjectForTests) {
             return Unit.INSTANCE;
         }
-        StartupManager.getInstance(project).runAfterOpened(() -> {
+        ApplicationManager.getApplication().invokeLater(() -> {
             DemoReplayRecorder recorder = DemoReplayRecorder.getInstance(project);
             if (recorder != null) {
                 recorder.captureNow("startup");
             }
-        });
+        }, ModalityState.nonModal());
         return Unit.INSTANCE;
     }
 }

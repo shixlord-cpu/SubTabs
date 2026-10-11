@@ -2,22 +2,15 @@ package com.zayax.tabz;
 
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.fileEditor.FileEditor;
-import com.intellij.openapi.fileEditor.FileEditorManagerKeys;
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
-import com.intellij.openapi.fileEditor.impl.DockableEditor;
 import com.intellij.openapi.fileEditor.impl.EditorComposite;
 import com.intellij.openapi.fileEditor.impl.EditorWindow;
-import com.intellij.openapi.fileEditor.impl.FileEditorManagerImpl;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.MouseDragHelper;
 import com.intellij.ui.awt.RelativePoint;
-import com.intellij.ui.docking.DockContainer;
-import com.intellij.ui.docking.DockManager;
-import com.intellij.ui.docking.DragSession;
 import com.intellij.ui.tabs.JBTabs;
 import com.intellij.ui.tabs.TabInfo;
-import com.intellij.ui.tabs.impl.JBTabsImpl;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -68,7 +61,7 @@ final class ComponentSubtabEditorDragSupport {
             private VirtualFile dragFile;
             private JComponent dragSourceComponent;
             private Component dragUiAnchor;
-            private DragSession dragSession;
+            private Object dragSession;
             private TabInfo draggedTab;
             private EditorWindow dragWindow;
             private boolean sourceWasOpen;
@@ -243,18 +236,21 @@ final class ComponentSubtabEditorDragSupport {
                         : List.of();
                 MouseEvent dockEvent = dockEvent(event);
                 try {
-                    dragSession = DockManager.getInstance(project).createDragSession(
+                    dragSession = InternalPlatformBridge.startEditorDragSession(
+                            project,
                             dockEvent,
-                            new DockableEditor(
-                                    preview,
-                                    file,
-                                    presentation,
-                                    dragWindow.getSize(),
-                                    sourceWasOpen && dragWindow.isFilePinned(file),
-                                    isSingletonEditorInWindow(editors),
-                                    true
-                            )
+                            preview,
+                            file,
+                            presentation,
+                            dragWindow.getSize(),
+                            sourceWasOpen && dragWindow.isFilePinned(file),
+                            isSingletonEditorInWindow(editors)
                     );
+                    if (dragSession == null) {
+                        restoreHiddenTab();
+                        resetSession();
+                        return false;
+                    }
                     return true;
                 } catch (RuntimeException | Error exception) {
                     restoreHiddenTab();
@@ -265,7 +261,7 @@ final class ComponentSubtabEditorDragSupport {
             }
 
             private void finishDockSession(@Nullable MouseEvent event, boolean cancelled) {
-                DragSession session = dragSession;
+                Object session = dragSession;
                 boolean closedSourceTab = false;
                 try {
                     if (session == null || cancelled || event == null) {
@@ -274,18 +270,18 @@ final class ComponentSubtabEditorDragSupport {
 
                     MouseEvent dockEvent = dockEvent(event);
                     boolean copy = UIUtil.isControlKeyDown(dockEvent)
-                            || session.getResponse(dockEvent) == DockContainer.ContentResponse.ACCEPT_COPY;
+                            || InternalPlatformBridge.dragSessionAcceptsCopy(session, dockEvent);
                     if (copy || !sourceWasOpen) {
                         restoreHiddenTab();
                     } else if (dragFile != null && dragWindow != null && dragWindow.isFileOpen(dragFile)) {
-                        dragFile.putUserData(FileEditorManagerImpl.CLOSING_TO_REOPEN, true);
+                        InternalPlatformBridge.markClosingToReopen(dragFile, true);
                         dragWindow.closeFile(dragFile);
                         closedSourceTab = true;
                     }
 
-                    session.process(dockEvent);
+                    InternalPlatformBridge.processEditorDragSession(session, dockEvent);
                     if (dragFile != null) {
-                        dragFile.putUserData(FileEditorManagerImpl.CLOSING_TO_REOPEN, null);
+                        InternalPlatformBridge.markClosingToReopen(dragFile, false);
                     }
                 } catch (RuntimeException | Error ignored) {
                     // DevicePoint throws Error when the original tabz was detached.
@@ -310,7 +306,7 @@ final class ComponentSubtabEditorDragSupport {
                     return;
                 }
                 try {
-                    dragSession.process(dockEvent(event));
+                    InternalPlatformBridge.processEditorDragSession(dragSession, dockEvent(event));
                 } catch (RuntimeException | Error ignored) {
                     // Keep the session until mouse release so the preview can still be disposed.
                 }
@@ -330,15 +326,8 @@ final class ComponentSubtabEditorDragSupport {
                 }
             }
 
-            private void disposeDragSession(@Nullable DragSession session) {
-                if (session == null) {
-                    return;
-                }
-                try {
-                    session.cancel();
-                } catch (RuntimeException | Error ignored) {
-                    // Hiding the drag image is best-effort; never leave the session dangling.
-                }
+            private void disposeDragSession(@Nullable Object session) {
+                InternalPlatformBridge.cancelEditorDragSession(session);
             }
 
             private void cancelDockSessionForReorderReturn() {
@@ -435,7 +424,7 @@ final class ComponentSubtabEditorDragSupport {
 
     private static @Nullable TabInfo findTabInfo(@NotNull EditorWindow window, @NotNull VirtualFile file) {
         JBTabs tabs = window.getTabbedPane().getTabs();
-        for (TabInfo info : tabs.getTabs()) {
+        for (TabInfo info : JbTabsUi.tabInfos(tabs)) {
             if (file.equals(info.getObject())) {
                 return info;
             }
@@ -452,7 +441,7 @@ final class ComponentSubtabEditorDragSupport {
             return;
         }
 
-        for (TabInfo info : window.getTabbedPane().getTabs().getTabs()) {
+        for (TabInfo info : JbTabsUi.tabInfos(window.getTabbedPane().getTabs())) {
             VirtualFile openFile = (VirtualFile) info.getObject();
             if (openFile != null && !fileBeingHidden.equals(openFile) && !info.isHidden()) {
                 window.setSelectedComposite(openFile, false);
@@ -467,7 +456,10 @@ final class ComponentSubtabEditorDragSupport {
     ) {
         if (draggedTab != null) {
             try {
-                return JBTabsImpl.getComponentImage(draggedTab);
+                Image image = InternalPlatformBridge.jbTabsComponentImage(draggedTab);
+                if (image != null) {
+                    return image;
+                }
             } catch (RuntimeException ignored) {
                 // Fall through and snapshot the tabz button instead.
             }
@@ -494,11 +486,6 @@ final class ComponentSubtabEditorDragSupport {
     }
 
     private static boolean isSingletonEditorInWindow(@NotNull List<FileEditor> editors) {
-        for (FileEditor editor : editors) {
-            if (FileEditorManagerKeys.SINGLETON_EDITOR_IN_WINDOW.get(editor, false)) {
-                return true;
-            }
-        }
-        return false;
+        return InternalPlatformBridge.isSingletonEditorInWindow(editors);
     }
 }

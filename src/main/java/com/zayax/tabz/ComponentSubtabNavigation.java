@@ -5,7 +5,6 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.fileEditor.impl.EditorWindow;
 import com.intellij.openapi.fileEditor.impl.EditorComposite;
-import com.intellij.openapi.fileEditor.impl.FileEditorOpenOptions;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -265,10 +264,10 @@ final class ComponentSubtabNavigation {
         boolean active = selectedComposite != null && oldFile.equals(selectedComposite.getFile());
         manager.setCurrentWindow(window);
         if (!window.isFileOpen(newFile)) {
-            FileEditorOpenOptions options = waitForCompositeOpen
-                    ? blockingOpenOptions(window, oldFile, requestFocus && active)
-                    : nonBlockingOpenOptions(window, oldFile, requestFocus && active);
-            manager.openFile(newFile, window, options);
+            Object options = waitForCompositeOpen
+                    ? InternalPlatformBridge.blockingOpenOptions(window, oldFile, requestFocus && active)
+                    : InternalPlatformBridge.nonBlockingOpenOptions(window, oldFile, requestFocus && active);
+            InternalPlatformBridge.openFile(manager, newFile, window, options);
         }
         if (window.isFileOpen(newFile)) {
             window.setSelectedComposite(newFile, requestFocus && active);
@@ -279,60 +278,24 @@ final class ComponentSubtabNavigation {
         }
     }
 
-    static @NotNull FileEditorOpenOptions nonBlockingOpenOptions(
+    static @NotNull Object nonBlockingOpenOptions(
             @NotNull EditorWindow window,
             @NotNull VirtualFile oldFile,
             boolean requestFocus
     ) {
-        return openOptions(window, oldFile, requestFocus, false);
+        return InternalPlatformBridge.nonBlockingOpenOptions(window, oldFile, requestFocus);
     }
 
-    static @NotNull FileEditorOpenOptions blockingOpenOptions(
+    static @NotNull Object blockingOpenOptions(
             @NotNull EditorWindow window,
             @NotNull VirtualFile oldFile,
             boolean requestFocus
     ) {
-        return openOptions(window, oldFile, requestFocus, true);
+        return InternalPlatformBridge.blockingOpenOptions(window, oldFile, requestFocus);
     }
 
-    private static @NotNull FileEditorOpenOptions openOptions(
-            @NotNull EditorWindow window,
-            @NotNull VirtualFile oldFile,
-            boolean requestFocus,
-            boolean waitForCompositeOpen
-    ) {
-        List<VirtualFile> files = List.of(window.getFiles());
-        return new FileEditorOpenOptions(
-                true,
-                false,
-                false,
-                requestFocus,
-                window.isFilePinned(oldFile),
-                files.indexOf(oldFile),
-                false,
-                null,
-                false,
-                false,
-                waitForCompositeOpen,
-                null
-        );
-    }
-
-    static @NotNull FileEditorOpenOptions nonBlockingOpenOptions(boolean requestFocus, boolean selectAsCurrent) {
-        return new FileEditorOpenOptions(
-                selectAsCurrent,
-                false,
-                false,
-                requestFocus,
-                false,
-                -1,
-                false,
-                null,
-                false,
-                false,
-                false,
-                null
-        );
+    static @NotNull Object nonBlockingOpenOptions(boolean requestFocus, boolean selectAsCurrent) {
+        return InternalPlatformBridge.nonBlockingOpenOptions(requestFocus, selectAsCurrent);
     }
 
     private static void focusExistingFileImpl(
@@ -426,7 +389,7 @@ final class ComponentSubtabNavigation {
         if (window == null) {
             return;
         }
-        for (VirtualFile candidate : window.getFiles()) {
+        for (VirtualFile candidate : EditorWindowFiles.files(window)) {
             if (candidate.equals(keepFile)) {
                 continue;
             }

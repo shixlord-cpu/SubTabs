@@ -3,7 +3,6 @@ package com.zayax.tabz;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.fileEditor.impl.EditorWindow;
-import com.intellij.openapi.fileEditor.impl.FileEditorManagerImpl;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -38,10 +37,9 @@ final class SplittabEditorLayoutSnapshot {
     static @NotNull State capture(@NotNull Project project) {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         State state = new State();
-        if (manager instanceof FileEditorManagerImpl impl) {
-            // A write action would wait for background editor builds that hold a read lock.
+        if (InternalPlatformBridge.isFileEditorManagerImpl(manager)) {
             ApplicationManager.getApplication().runReadAction(() -> {
-                state.layoutElement = SplittabEditorLayoutPlatformBridge.captureLayoutRoot(impl);
+                state.layoutElement = InternalPlatformBridge.captureLayoutRoot(manager);
             });
         }
         state.editorWindowCount = manager.getWindows().length;
@@ -78,20 +76,20 @@ final class SplittabEditorLayoutSnapshot {
 
     private static void restoreBlocking(@NotNull Project project, @NotNull State state, @Nullable VirtualFile focusFile) {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
-        if (!(manager instanceof FileEditorManagerImpl impl)) {
+        if (!InternalPlatformBridge.isFileEditorManagerImpl(manager)) {
             return;
         }
         int expectedWindows = state.editorWindowCount;
         if (state.layoutElement != null && SplittabEditorLayoutPlatformBridge.isAvailable()) {
-            SplittabEditorLayoutPlatformBridge.restoreLayoutRoot(impl, state.layoutElement, expectedWindows);
+            SplittabEditorLayoutPlatformBridge.restoreLayoutRoot(manager, state.layoutElement, expectedWindows);
         } else if (state.layoutElement != null) {
             ApplicationManager.getApplication().invokeAndWait(() ->
                     ApplicationManager.getApplication().runWriteAction(() ->
-                            impl.loadState((Element) state.layoutElement.clone())
+                            InternalPlatformBridge.loadManagerState(manager, (Element) state.layoutElement.clone())
                     )
             );
         } else {
-            ApplicationManager.getApplication().invokeAndWait(impl::closeAllFiles);
+            ApplicationManager.getApplication().invokeAndWait(manager::closeAllFiles);
         }
 
         ApplicationManager.getApplication().invokeAndWait(() -> {
@@ -122,7 +120,12 @@ final class SplittabEditorLayoutSnapshot {
         if (target != null) {
             manager.setCurrentWindow(target);
         }
-        manager.openFile(focusFile, target, ComponentSubtabNavigation.nonBlockingOpenOptions(true, true));
+        InternalPlatformBridge.openFile(
+                manager,
+                focusFile,
+                target,
+                ComponentSubtabNavigation.nonBlockingOpenOptions(true, true)
+        );
     }
 
     private static void applySelection(@NotNull FileEditorManagerEx manager, @NotNull State state) {

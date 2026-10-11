@@ -10,11 +10,10 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.tabs.JBTabs;
 import com.intellij.ui.tabs.JBTabsPresentation;
 import com.intellij.ui.tabs.TabInfo;
-import com.intellij.ui.tabs.impl.JBTabsImpl;
-import com.intellij.ui.tabs.impl.TabLabel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.swing.JComponent;
 import javax.swing.SwingConstants;
 import java.awt.Dimension;
 import java.util.ArrayList;
@@ -108,7 +107,7 @@ final class ComponentSubtabGroupSplitNavigation {
             return;
         }
         if (!anchorWindow.isFileOpen(anchorFile)) {
-            manager.openFileWithProviders(anchorFile, false, anchorWindow);
+            InternalPlatformBridge.openFileWithProviders(manager, anchorFile, false, anchorWindow);
         }
 
         EditorWindow secondaryWindow =
@@ -118,7 +117,7 @@ final class ComponentSubtabGroupSplitNavigation {
         }
 
         if (!anchorWindow.isFileOpen(plan.anchorPaneFile())) {
-            manager.openFileWithProviders(plan.anchorPaneFile(), false, anchorWindow);
+            InternalPlatformBridge.openFileWithProviders(manager, plan.anchorPaneFile(), false, anchorWindow);
         }
 
         // Each of the two files must live in exactly one pane, otherwise the group would show
@@ -205,18 +204,13 @@ final class ComponentSubtabGroupSplitNavigation {
 
     static int tabStripHeight(@NotNull EditorWindow window) {
         JBTabs tabs = window.getTabbedPane().getTabs();
-        if (!(tabs instanceof JBTabsImpl impl)) {
-            return 0;
-        }
-        Dimension header = impl.getHeaderFitSize();
+        Dimension header = JbTabsUi.headerFitSize(tabs);
         if (header != null && header.height > 0) {
             return header.height;
         }
-        // The header size is only known once the tabs have been laid out, so before that the tab
-        // label itself is the best estimate. Editor lifecycle events re-apply the exact value later.
         int fallback = 0;
-        for (TabInfo info : impl.getTabs()) {
-            TabLabel label = impl.getTabLabel(info);
+        for (TabInfo info : JbTabsUi.tabInfos(tabs)) {
+            JComponent label = JbTabsUi.tabComponent(info);
             if (label != null) {
                 fallback = Math.max(fallback, label.getPreferredSize().height);
             }

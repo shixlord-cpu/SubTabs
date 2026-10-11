@@ -8,11 +8,11 @@ import com.intellij.ui.SimpleColoredComponent;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.tabs.JBTabs;
 import com.intellij.ui.tabs.TabInfo;
-import com.intellij.ui.tabs.impl.JBTabsImpl;
-import com.intellij.ui.tabs.impl.TabLabel;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import javax.swing.JComponent;
 
 final class ComponentSubtabMainTabErrorWaves {
     private ComponentSubtabMainTabErrorWaves() {
@@ -25,14 +25,11 @@ final class ComponentSubtabMainTabErrorWaves {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
                 if (!(tabInfo.getObject() instanceof VirtualFile file)) {
                     continue;
                 }
-                apply(tabInfo, tabsImpl.getTabLabel(tabInfo),
+                apply(tabInfo, JbTabsUi.tabComponent(tabInfo),
                         ComponentSubtabFilePresentation.compute(project, file).hasErrors());
             }
         }
@@ -45,12 +42,9 @@ final class ComponentSubtabMainTabErrorWaves {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
                 if (file.equals(tabInfo.getObject())) {
-                    apply(tabInfo, tabsImpl.getTabLabel(tabInfo), hasErrors);
+                    apply(tabInfo, JbTabsUi.tabComponent(tabInfo), hasErrors);
                 }
             }
         }
@@ -60,7 +54,7 @@ final class ComponentSubtabMainTabErrorWaves {
         apply(tabInfo, null, hasErrors);
     }
 
-    static void apply(@NotNull TabInfo tabInfo, @Nullable TabLabel label, boolean hasErrors) {
+    static void apply(@NotNull TabInfo tabInfo, @Nullable JComponent label, boolean hasErrors) {
         tabInfo.setDefaultStyle(hasErrors ? SimpleTextAttributes.STYLE_WAVED : -1);
         if (label == null) {
             return;

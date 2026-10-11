@@ -92,11 +92,4 @@
                   topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
     </projectListeners>
 
-    <applicationListeners>
-        <listener class="com.zayax.tabz.PerfFileOpenHarness"
-                  topic="com.intellij.ide.AppLifecycleListener"/>
-        <listener class="com.zayax.tabz.ComponentSubtabNavigationTargetPopupInstaller"
-                  topic="com.intellij.ide.AppLifecycleListener"/>
-    </applicationListeners>
-
 </idea-plugin>

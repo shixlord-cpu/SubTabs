@@ -127,11 +127,13 @@ public class SplittabUserCardSwitchTimingTest extends RealEditorWindowTestCase {
     }
 
     public void testBackgroundOpenOptionsNeitherAwaitNorSelect() {
-        var options = ComponentSubtabNavigation.nonBlockingOpenOptions(false, false);
-        assertFalse(options.waitForCompositeOpen);
-        assertFalse(options.selectAsCurrent);
-        assertFalse(options.requestFocus);
-        assertTrue(ComponentSubtabNavigation.nonBlockingOpenOptions(true, true).selectAsCurrent);
+        Object options = ComponentSubtabNavigation.nonBlockingOpenOptions(false, false);
+        assertFalse(InternalPlatformBridge.waitForCompositeOpen(options));
+        assertFalse(InternalPlatformBridge.selectAsCurrent(options));
+        assertFalse(InternalPlatformBridge.requestFocus(options));
+        assertTrue(InternalPlatformBridge.selectAsCurrent(
+                ComponentSubtabNavigation.nonBlockingOpenOptions(true, true)
+        ));
     }
 
     public void testCreateSplitWithSlowEditorBuildDoesNotBlock() throws Exception {

@@ -9,7 +9,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowId;
 import com.intellij.openapi.wm.ToolWindowManager;
-import com.intellij.ui.hover.TreeHoverListener;
 import com.intellij.util.ui.UIUtil;
 import com.intellij.util.ui.tree.TreeUtil;
 import org.jetbrains.annotations.NotNull;
@@ -65,7 +64,7 @@ final class ComponentSubtabProjectViewEditorHover {
 
                 int row = tree.getRowForLocation(event.getX(), event.getY());
                 if (row < 0) {
-                    row = TreeHoverListener.getHoveredRow(tree);
+                    row = InternalPlatformBridge.treeNativeHoveredRow(tree);
                 }
                 handleRow(project, tree, row);
             }

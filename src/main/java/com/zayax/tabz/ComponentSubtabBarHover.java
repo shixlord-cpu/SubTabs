@@ -8,8 +8,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.tabs.JBTabs;
 import com.intellij.ui.tabs.TabInfo;
-import com.intellij.ui.tabs.impl.JBTabsImpl;
-import com.intellij.ui.tabs.impl.TabLabel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -77,14 +75,11 @@ final class ComponentSubtabBarHover {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
                 if (!(tabInfo.getObject() instanceof VirtualFile file)) {
                     continue;
                 }
-                TabLabel label = tabsImpl.getTabLabel(tabInfo);
+                JComponent label = JbTabsUi.tabComponent(tabInfo);
                 if (label == null || label.getClientProperty(ACTIVE_MAIN_TAB_SYNC_KEY) == null) {
                     continue;
                 }
@@ -106,16 +101,14 @@ final class ComponentSubtabBarHover {
             @NotNull VirtualFile oldFile,
             @NotNull VirtualFile newFile
     ) {
-        if (!(window.getTabbedPane().getTabs() instanceof JBTabsImpl tabsImpl)) {
-            return;
-        }
-        TabLabel oldLabel = null;
-        TabLabel newLabel = null;
-        for (TabInfo tabInfo : tabsImpl.getTabs()) {
+        JBTabs tabs = window.getTabbedPane().getTabs();
+        JComponent oldLabel = null;
+        JComponent newLabel = null;
+        for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
             if (oldFile.equals(tabInfo.getObject())) {
-                oldLabel = tabsImpl.getTabLabel(tabInfo);
+                oldLabel = JbTabsUi.tabComponent(tabInfo);
             } else if (newFile.equals(tabInfo.getObject())) {
-                newLabel = tabsImpl.getTabLabel(tabInfo);
+                newLabel = JbTabsUi.tabComponent(tabInfo);
             }
         }
         if (oldLabel == null || newLabel == null) {

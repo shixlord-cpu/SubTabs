@@ -38,8 +38,8 @@ public class TabzConfigurablePerformanceTest extends LightPlatformTestCase {
         assertEquals(6, mainTabs.getTabCount());
         assertEquals("Appearance", mainTabs.getTitleAt(0));
         assertEquals("Hover Sync", mainTabs.getTitleAt(1));
-        assertEquals("Horizontal tabs", mainTabs.getTitleAt(2));
-        assertEquals("Vertical tabs", mainTabs.getTitleAt(3));
+        assertEquals("Horizontal Tabs", mainTabs.getTitleAt(2));
+        assertEquals("Vertical Tabs", mainTabs.getTitleAt(3));
         assertEquals("Split Pairs", mainTabs.getTitleAt(4));
         assertEquals("AI", mainTabs.getTitleAt(5));
         assertEquals(0, mountedRulesPanelCount(mainTabs));

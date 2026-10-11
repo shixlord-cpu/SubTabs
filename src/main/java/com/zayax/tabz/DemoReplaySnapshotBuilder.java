@@ -90,7 +90,7 @@ final class DemoReplaySnapshotBuilder {
                         window
                 ));
         json.arrayStart("tabs");
-        for (VirtualFile file : window.getFiles()) {
+        for (VirtualFile file : EditorWindowFiles.files(window)) {
             json.element(openTabSnapshot(project, manager, window, file));
         }
         json.arrayEnd();

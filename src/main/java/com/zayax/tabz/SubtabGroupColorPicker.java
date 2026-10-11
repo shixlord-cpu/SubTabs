@@ -3,10 +3,10 @@ package com.zayax.tabz;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.openapi.wm.WindowManager;
-import com.intellij.ui.ColorChooser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.swing.JColorChooser;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.KeyboardFocusManager;
@@ -17,13 +17,8 @@ final class SubtabGroupColorPicker {
     }
 
     static @Nullable Color choose(@NotNull Project project, @Nullable Color current) {
-        return ColorChooser.chooseColor(
-                project,
-                parentComponent(project),
-                "Choose group color",
-                current != null ? current : Color.GRAY,
-                false
-        );
+        Color initial = current != null ? current : Color.GRAY;
+        return JColorChooser.showDialog(parentComponent(project), "Choose group color", initial);
     }
 
     private static @Nullable Component parentComponent(@NotNull Project project) {

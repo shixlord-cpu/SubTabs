@@ -9,7 +9,6 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.tabs.JBTabs;
 import com.intellij.ui.tabs.TabInfo;
-import com.intellij.ui.tabs.impl.JBTabsImpl;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -70,7 +69,11 @@ final class SubtabColorDiagnostic {
             @NotNull Project project,
             @NotNull String name
     ) {
-        VirtualFile base = project.getBaseDir();
+        String basePath = project.getBasePath();
+        if (basePath == null) {
+            return null;
+        }
+        VirtualFile base = LocalFileSystem.getInstance().findFileByPath(basePath);
         if (base == null) {
             return null;
         }
@@ -89,12 +92,9 @@ final class SubtabColorDiagnostic {
 
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            TabInfo selected = tabsImpl.getSelectedInfo();
+            TabInfo selected = JbTabsUi.selectedTab(tabs);
             boolean windowFocused = window == currentWindow;
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
                 if (!(tabInfo.getObject() instanceof VirtualFile file)) {
                     continue;
                 }

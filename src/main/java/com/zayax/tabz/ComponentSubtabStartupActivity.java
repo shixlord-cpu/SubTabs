@@ -2,7 +2,8 @@ package com.zayax.tabz;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
-import com.intellij.openapi.startup.StartupManager;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
@@ -14,6 +15,7 @@ final class ComponentSubtabStartupActivity implements ProjectActivity {
             @NotNull Project project,
             @NotNull Continuation<? super Unit> continuation
     ) {
+        TabzApplicationStartup.ensureStarted();
         if (!TabzSettings.getInstance().isTabzEnabled()) {
             return Unit.INSTANCE;
         }
@@ -21,14 +23,14 @@ final class ComponentSubtabStartupActivity implements ProjectActivity {
         ComponentSubtabMainTabSelectPopup.installOn(project);
         ComponentSubtabMainTabColors.refresh(project);
         ComponentSubtabMainTabIcons.scheduleStartupRefresh(project);
-        StartupManager.getInstance(project).runAfterOpened(() -> {
+        ApplicationManager.getApplication().invokeLater(() -> {
             if (project.isDisposed()) {
                 return;
             }
             ComponentSubtabMainTabColors.refresh(project);
             ComponentSubtabMainTabIcons.scheduleStartupRefresh(project);
             ComponentSubtabEditorSplitNavigation.restorePersistedActiveSplittab(project);
-        });
+        }, ModalityState.nonModal());
         SubtabGroupTreeControl.installOn(project);
         ComponentSubtabProjectViewEditorHover.installOn(project);
         SubtabsProjectViewGroupingOverlay.installOn(project);

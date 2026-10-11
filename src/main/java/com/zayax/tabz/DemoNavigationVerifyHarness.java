@@ -1,7 +1,6 @@
 package com.zayax.tabz;
 
 import com.intellij.codeInsight.TargetElementUtil;
-import com.intellij.ide.AppLifecycleListener;
 import com.intellij.lang.Language;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
@@ -34,12 +33,11 @@ import java.util.List;
  * the same way the editor does ({@link TargetElementUtil}). Enabled with
  * {@code -Dtabz.demo.verifyNavigation=<report dir>}.
  */
-final class DemoNavigationVerifyHarness implements AppLifecycleListener {
+final class DemoNavigationVerifyHarness {
     private static final Logger LOG = Logger.getInstance(DemoNavigationVerifyHarness.class);
     private static final String PROPERTY = "tabz.demo.verifyNavigation";
 
-    @Override
-    public void appStarted() {
+    static void runIfEnabled() {
         String output = System.getProperty(PROPERTY, "").trim();
         if (output.isEmpty()) {
             return;

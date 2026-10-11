@@ -1,10 +1,7 @@
 package com.zayax.tabz;
 
 import com.intellij.openapi.util.Key;
-import com.intellij.ui.hover.TreeHoverListener;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.ui.render.RenderingHelper;
-import com.intellij.ui.render.RenderingUtil;
 import com.intellij.ui.tree.ui.DefaultTreeUI;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -20,7 +17,7 @@ import java.util.Set;
 
 /**
  * Paints external main-tab hover rows with the same native tree hover color as tabz hover
- * ({@link TreeHoverListener}), before the default tree UI draws row content on top.
+ * before the default tree UI draws row content on top.
  */
 final class ComponentSubtabProjectViewTreeUI extends DefaultTreeUI {
     private static final Key<Boolean> INSTALLED = Key.create("componentTabz.projectViewTreeUiInstalled");
@@ -53,21 +50,20 @@ final class ComponentSubtabProjectViewTreeUI extends DefaultTreeUI {
 
     private static void paintExternalHoverRowBackgrounds(@NotNull Graphics g, @NotNull JTree tree) {
         Set<Integer> rows = ComponentSubtabProjectViewHover.paintedHoverRows(tree);
-        if (rows.isEmpty() || RenderingUtil.isHoverPaintingDisabled(tree)) {
+        if (rows.isEmpty() || InternalPlatformBridge.isTreeHoverPaintingDisabled(tree)) {
             return;
         }
 
-        Color hover = RenderingUtil.getHoverBackground(tree);
+        Color hover = InternalPlatformBridge.treeHoverBackground(tree);
         VirtualFile primaryHighlightFile = ComponentSubtabProjectViewHover.primaryHoverFile(tree);
 
-        RenderingHelper helper = new RenderingHelper(tree);
-        int x = helper.getX();
-        int width = helper.getWidth();
+        int x = InternalPlatformBridge.treeRenderingX(tree);
+        int width = InternalPlatformBridge.treeRenderingWidth(tree);
         if (width <= 0) {
             return;
         }
 
-        int nativeHoverRow = TreeHoverListener.getHoveredRow(tree);
+        int nativeHoverRow = InternalPlatformBridge.treeNativeHoveredRow(tree);
         for (int row : rows) {
             if (row == nativeHoverRow || tree.isRowSelected(row)) {
                 continue;
@@ -89,13 +85,15 @@ final class ComponentSubtabProjectViewTreeUI extends DefaultTreeUI {
             @NotNull JTree tree,
             int row,
             @Nullable VirtualFile primaryHighlightFile,
-            @Nullable Color defaultHover
+            @NotNull Color hover
     ) {
-        TreePath path = tree.getPathForRow(row);
-        VirtualFile file = path == null ? null : ComponentSubtabProjectViewHover.virtualFileOf(path);
-        if (primaryHighlightFile != null && primaryHighlightFile.equals(file)) {
-            return ComponentSubtabUi.highlightBackground(file);
+        if (primaryHighlightFile != null) {
+            TreePath path = tree.getPathForRow(row);
+            VirtualFile rowFile = path == null ? null : ComponentSubtabProjectViewHover.virtualFileOf(path);
+            if (rowFile != null && !primaryHighlightFile.equals(rowFile)) {
+                return null;
+            }
         }
-        return defaultHover;
+        return hover;
     }
 }

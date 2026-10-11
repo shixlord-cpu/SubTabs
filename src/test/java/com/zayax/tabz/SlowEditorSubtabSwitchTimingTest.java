@@ -3,7 +3,6 @@ package com.zayax.tabz;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.fileEditor.FileEditorProvider;
 import com.intellij.openapi.fileEditor.impl.EditorWindow;
-import com.intellij.openapi.fileEditor.impl.FileEditorOpenOptions;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.testFramework.PlatformTestUtil;
 
@@ -45,10 +44,9 @@ public class SlowEditorSubtabSwitchTimingTest extends RealEditorWindowTestCase {
         openAndSettle(productHtml);
         EditorWindow window = windowOf(productHtml);
         assertNotNull(window);
-        FileEditorOpenOptions options =
-                ComponentSubtabNavigation.nonBlockingOpenOptions(window, productHtml, true);
-        assertFalse(options.waitForCompositeOpen);
-        assertEquals(0, options.index);
+        Object options = ComponentSubtabNavigation.nonBlockingOpenOptions(window, productHtml, true);
+        assertFalse(InternalPlatformBridge.waitForCompositeOpen(options));
+        assertEquals(0, InternalPlatformBridge.openOptionsIndex(options));
     }
 
     public void testHtmlToTsClickInNativeSplitReturnsUnderOneSecond() {

@@ -7,7 +7,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.ColorUtil;
 import com.intellij.ui.tabs.JBTabs;
 import com.intellij.ui.tabs.TabInfo;
-import com.intellij.ui.tabs.impl.JBTabsImpl;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
@@ -23,21 +22,13 @@ import java.util.function.Predicate;
 
 /**
  * Marks the main tabs that belong to a hovered tabz or tabz group.
- *
- * <p>The platform keeps a single hovered tab per tab strip, so {@code JBTabsImpl.setHovered} can only
- * ever mark one tab and the remaining tabs of a group would stay untouched. The marking therefore
- * goes through {@link TabInfo#setTabColor}, the same channel the group colors use, and the previous
- * color is restored on exit.
- *
- * <p>Only tabs that are not the visible tab of their editor pane are marked: highlighting a tab whose
- * content is already on screen would just look like a glitch.
  */
 final class ComponentSubtabMainTabHover {
     private static final String ACTIVE_HOVERS_KEY = "componentTabz.mainTabHovers";
     private static final double MIN_HOVER_WEIGHT = 0.45;
 
     private record Handle(
-            @NotNull JBTabsImpl tabs,
+            @NotNull JBTabs tabs,
             @NotNull TabInfo info,
             @Nullable Color previousColor
     ) {
@@ -100,20 +91,17 @@ final class ComponentSubtabMainTabHover {
     private static @NotNull Color hoverTint(@Nullable Color previousColor) {
         Color base = previousColor != null ? previousColor : UIUtil.getPanelBackground();
         Color hover = JBUI.CurrentTheme.EditorTabs.hoverBackground();
-        // A tab color has to be opaque, so a translucent theme hover color is composited onto the color
-        // the tab would show without the hover. The lower bound keeps the marking visible even with a
-        // very transparent theme color, and it leaves a group-colored tab recognizable as such.
         double weight = Math.max(hover.getAlpha() / 255.0, MIN_HOVER_WEIGHT);
         return ColorUtil.mix(base, ColorUtil.withAlpha(hover, 1.0), weight);
     }
 
     private static void repaint(@NotNull List<Handle> handles) {
-        Set<JBTabsImpl> touched = new LinkedHashSet<>();
+        Set<JBTabs> touched = new LinkedHashSet<>();
         for (Handle handle : handles) {
             touched.add(handle.tabs());
         }
-        for (JBTabsImpl tabs : touched) {
-            tabs.revalidateAndRepaint(false);
+        for (JBTabs tabs : touched) {
+            JbTabsUi.revalidateAndRepaint(tabs);
         }
     }
 
@@ -127,12 +115,8 @@ final class ComponentSubtabMainTabHover {
 
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-
-            TabInfo selected = tabsImpl.getSelectedInfo();
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+            TabInfo selected = JbTabsUi.selectedTab(tabs);
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
                 if (tabInfo.isHidden() || tabInfo == selected) {
                     continue;
                 }
@@ -142,7 +126,7 @@ final class ComponentSubtabMainTabHover {
                 if (!seen.add(tabInfo)) {
                     continue;
                 }
-                handles.add(new Handle(tabsImpl, tabInfo, tabInfo.getTabColor()));
+                handles.add(new Handle(tabs, tabInfo, tabInfo.getTabColor()));
             }
         }
         return handles;

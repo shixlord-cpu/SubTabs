@@ -5,7 +5,8 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
-import com.intellij.openapi.startup.StartupManager;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.util.Alarm;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
@@ -21,7 +22,10 @@ final class DemoLintWarmupActivity implements ProjectActivity {
         if (!DemoProjectDetection.isDemoProject(project)) {
             return Unit.INSTANCE;
         }
-        StartupManager.getInstance(project).runAfterOpened(() -> scheduleLintWarmup(project));
+        ApplicationManager.getApplication().invokeLater(
+                () -> scheduleLintWarmup(project),
+                ModalityState.nonModal()
+        );
         return Unit.INSTANCE;
     }
 

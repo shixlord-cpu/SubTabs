@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "com.zayax.tabz"
-version = "0.1.1"
+version = "0.1.2"
 
 val tabzIdeVersion = providers.gradleProperty("tabzIdeVersion").orElse("2025.3")
 /** Wenn gesetzt (WebStorm | Rider): Plugin Verifier nur gegen diese IDE. Ohne Property: beide. */

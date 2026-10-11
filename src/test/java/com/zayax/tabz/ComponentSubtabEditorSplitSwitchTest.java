@@ -138,12 +138,14 @@ public class ComponentSubtabEditorSplitSwitchTest extends RealEditorWindowTestCa
         if (rightPane.isFileOpen(scssFile)) {
             rightPane.closeFile(scssFile);
         }
-        manager.openFile(
+        InternalPlatformBridge.openFile(
+                manager,
                 htmlFile,
                 rightPane,
                 ComponentSubtabNavigation.nonBlockingOpenOptions(false, false)
         );
-        manager.openFile(
+        InternalPlatformBridge.openFile(
+                manager,
                 scssFile,
                 leftPane,
                 ComponentSubtabNavigation.nonBlockingOpenOptions(false, false)

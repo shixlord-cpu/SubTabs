@@ -81,20 +81,6 @@ final class ComponentSubtabDocumentListener implements DocumentListener, FileDoc
             }, listener);
             project.getMessageBus()
                     .connect(listener)
-                    .subscribe(FileStatusListener.TOPIC, new FileStatusListener() {
-                        @Override
-                        public void fileStatusesChanged() {
-                            listener.scheduleDeferredRefresh();
-                        }
-
-                        @Override
-                        public void fileStatusChanged(@NotNull VirtualFile virtualFile) {
-                            listener.refreshModifiedStateForFile(virtualFile);
-                            listener.scheduleDeferredRefresh();
-                        }
-                    });
-            project.getMessageBus()
-                    .connect(listener)
                     .subscribe(com.intellij.problems.ProblemListener.TOPIC, new com.intellij.problems.ProblemListener() {
                         @Override
                         public void problemsAppeared(@NotNull VirtualFile file) {

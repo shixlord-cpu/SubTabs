@@ -7,7 +7,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowId;
 import com.intellij.openapi.wm.ToolWindowManager;
-import com.intellij.ui.hover.TreeHoverListener;
 import com.intellij.util.ui.UIUtil;
 import com.intellij.util.ui.tree.TreeUtil;
 import org.jetbrains.annotations.NotNull;
@@ -192,7 +191,7 @@ final class ComponentSubtabProjectViewHover {
                 source.putClientProperty(ACTIVE_HOVER_KEY, handle);
                 return;
             }
-            if (TreeHoverListener.getHoveredRow(handle.tree()) == handle.row()) {
+            if (InternalPlatformBridge.treeNativeHoveredRow(handle.tree()) == handle.row()) {
                 setHoveredRow(handle.tree(), -1);
             }
             clearHoverOwner(handle.tree(), source);
@@ -227,7 +226,7 @@ final class ComponentSubtabProjectViewHover {
             @Nullable VirtualFile primaryHighlightFile
     ) {
         Set<Integer> copied = Set.copyOf(rows);
-        if (TreeHoverListener.getHoveredRow(tree) >= 0) {
+        if (InternalPlatformBridge.treeNativeHoveredRow(tree) >= 0) {
             setHoveredRow(tree, -1);
         }
         clearExternalRows(tree);
@@ -315,9 +314,7 @@ final class ComponentSubtabProjectViewHover {
     }
 
     private static void setHoveredRow(@NotNull JTree tree, int row) {
-        if (TreeHoverListener.DEFAULT instanceof TreeHoverListener listener) {
-            listener.onHover(tree, row);
-        }
+        InternalPlatformBridge.treeSetNativeHoveredRow(tree, row);
     }
 
     @TestOnly

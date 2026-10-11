@@ -1,6 +1,5 @@
 package com.zayax.tabz;
 
-import com.intellij.ide.AppLifecycleListener;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.diagnostic.Logger;
@@ -41,7 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Measures file opens in the real IDE window. Only runs with {@code -Dtabz.perf.harness=<output dir>}.
  */
-final class PerfFileOpenHarness implements AppLifecycleListener {
+final class PerfFileOpenHarness {
     private static final Logger LOG = Logger.getInstance(PerfFileOpenHarness.class);
     private static final String PROPERTY = "tabz.perf.harness";
     private static final int OPENS_PER_SCENARIO = 12;
@@ -49,8 +48,7 @@ final class PerfFileOpenHarness implements AppLifecycleListener {
     private static final long PROBE_LATENCY_MS = 12;
     private static final long TIMEOUT_MS = 15_000;
 
-    @Override
-    public void appStarted() {
+    static void runIfEnabled() {
         String output = System.getProperty(PROPERTY, "").trim();
         if (output.isEmpty()) {
             return;
@@ -326,7 +324,7 @@ final class PerfFileOpenHarness implements AppLifecycleListener {
                             manager.openFile(first, true);
                             window = manager.getCurrentWindow();
                         } else {
-                            manager.openFileWithProviders(first, true, window);
+                            InternalPlatformBridge.openFileWithProviders(manager, first, true, window);
                         }
                     } else {
                         EditorWindow[] windows = manager.getWindows();
@@ -335,7 +333,7 @@ final class PerfFileOpenHarness implements AppLifecycleListener {
                     }
                     if (window != null) {
                         manager.setCurrentWindow(window);
-                        manager.openFileWithProviders(second, true, window);
+                        InternalPlatformBridge.openFileWithProviders(manager, second, true, window);
                     }
                 });
                 waitQuiet(3_000);
@@ -593,7 +591,7 @@ final class PerfFileOpenHarness implements AppLifecycleListener {
                     StringBuilder windows = new StringBuilder();
                     for (EditorWindow window : manager.getWindows()) {
                         windows.append(' ').append(java.util.Arrays.toString(
-                                java.util.Arrays.stream(window.getFiles()).map(VirtualFile::getName).toArray()))
+                                EditorWindowFiles.files(window).stream().map(VirtualFile::getName).toArray()))
                                 .append("->").append(window.getSelectedFile() == null ? null : window.getSelectedFile().getName());
                     }
                     line("  NOT SHOWN " + file.getName() + ": isOpen=" + manager.isFileOpen(file)

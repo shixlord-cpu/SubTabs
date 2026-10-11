@@ -12,11 +12,10 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.tabs.JBTabs;
 import com.intellij.ui.tabs.TabInfo;
-import com.intellij.ui.tabs.impl.JBTabsImpl;
-import com.intellij.ui.tabs.impl.TabLabel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import java.awt.Component;
@@ -59,13 +58,10 @@ final class ComponentSubtabMainTabSelectPopup {
             return;
         }
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
-        Set<TabLabel> seen = new LinkedHashSet<>();
+        Set<JComponent> seen = new LinkedHashSet<>();
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
                 if (tabInfo.isHidden()) {
                     continue;
                 }
@@ -73,7 +69,7 @@ final class ComponentSubtabMainTabSelectPopup {
                 if (!(tabObject instanceof VirtualFile file)) {
                     continue;
                 }
-                TabLabel label = tabsImpl.getTabLabel(tabInfo);
+                JComponent label = JbTabsUi.tabComponent(tabInfo);
                 if (label == null || !seen.add(label)) {
                     continue;
                 }
@@ -84,7 +80,7 @@ final class ComponentSubtabMainTabSelectPopup {
 
     private static void attach(
             @NotNull Project project,
-            @NotNull TabLabel label,
+            @NotNull JComponent label,
             @NotNull VirtualFile tabFile
     ) {
         if (Boolean.TRUE.equals(label.getClientProperty(INSTALLED))) {
@@ -150,7 +146,7 @@ final class ComponentSubtabMainTabSelectPopup {
         return match != null && match.relatedFiles().size() >= 2;
     }
 
-    private static void schedulePopup(@NotNull Project project, @NotNull TabLabel label) {
+    private static void schedulePopup(@NotNull Project project, @NotNull JComponent label) {
         if (isForegroundMainTab(project, label)) {
             cancelShowTimer(label);
             hidePopup(label);
@@ -179,7 +175,7 @@ final class ComponentSubtabMainTabSelectPopup {
         showTimer.start();
     }
 
-    private static void showPopup(@NotNull Project project, @NotNull TabLabel label) {
+    private static void showPopup(@NotNull Project project, @NotNull JComponent label) {
         if (isForegroundMainTab(project, label)) {
             return;
         }
@@ -271,7 +267,7 @@ final class ComponentSubtabMainTabSelectPopup {
         ComponentSubtabBarHover.refreshAllActiveMainTabSync(project);
     }
 
-    private static @NotNull Point popupShowPoint(@NotNull TabLabel label, @NotNull SubtabGroupFilePopupPanel panel) {
+    private static @NotNull Point popupShowPoint(@NotNull JComponent label, @NotNull SubtabGroupFilePopupPanel panel) {
         int width = Math.max(label.getWidth(), panel.getPreferredSize().width);
         Point showPoint = new Point(0, label.getHeight());
         Dimension preferred = panel.getPreferredSize();
@@ -287,11 +283,8 @@ final class ComponentSubtabMainTabSelectPopup {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
-                TabLabel label = tabsImpl.getTabLabel(tabInfo);
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
+                JComponent label = JbTabsUi.tabComponent(tabInfo);
                 if (label == null) {
                     continue;
                 }
@@ -316,11 +309,8 @@ final class ComponentSubtabMainTabSelectPopup {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
-                TabLabel label = tabsImpl.getTabLabel(tabInfo);
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
+                JComponent label = JbTabsUi.tabComponent(tabInfo);
                 if (label == null) {
                     continue;
                 }
@@ -341,30 +331,24 @@ final class ComponentSubtabMainTabSelectPopup {
      * The hover select box is only for background main tabs. A tab whose pane is already showing its
      * content is in the foreground and must not open the popup on hover.
      */
-    private static boolean isForegroundMainTab(@NotNull Project project, @NotNull TabLabel label) {
+    private static boolean isForegroundMainTab(@NotNull Project project, @NotNull JComponent label) {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            TabInfo selected = tabsImpl.getSelectedInfo();
-            if (selected != null && tabsImpl.getTabLabel(selected) == label) {
+            TabInfo selected = JbTabsUi.selectedTab(tabs);
+            if (selected != null && JbTabsUi.tabComponent(selected) == label) {
                 return true;
             }
         }
         return false;
     }
 
-    private static @Nullable VirtualFile resolveTabFile(@NotNull Project project, @NotNull TabLabel label) {
+    private static @Nullable VirtualFile resolveTabFile(@NotNull Project project, @NotNull JComponent label) {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
-                if (tabsImpl.getTabLabel(tabInfo) != label) {
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
+                if (JbTabsUi.tabComponent(tabInfo) != label) {
                     continue;
                 }
                 if (tabInfo.getObject() instanceof VirtualFile file) {
@@ -375,7 +359,7 @@ final class ComponentSubtabMainTabSelectPopup {
         return getTabFile(label);
     }
 
-    private static @Nullable VirtualFile getTabFile(@NotNull TabLabel label) {
+    private static @Nullable VirtualFile getTabFile(@NotNull JComponent label) {
         Object value = label.getClientProperty(TAB_FILE_KEY);
         return value instanceof VirtualFile file ? file : null;
     }
@@ -384,11 +368,8 @@ final class ComponentSubtabMainTabSelectPopup {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
-                TabLabel label = tabsImpl.getTabLabel(tabInfo);
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
+                JComponent label = JbTabsUi.tabComponent(tabInfo);
                 if (label != null) {
                     hidePopup(label);
                     cancelShowTimer(label);
@@ -398,7 +379,7 @@ final class ComponentSubtabMainTabSelectPopup {
         }
     }
 
-    private static void scheduleHoverAreaExit(@NotNull TabLabel label) {
+    private static void scheduleHoverAreaExit(@NotNull JComponent label) {
         cancelExitTimer(label);
         Timer timer = new Timer(100, event -> {
             if (isInHoverArea(label)) {
@@ -413,7 +394,7 @@ final class ComponentSubtabMainTabSelectPopup {
         timer.start();
     }
 
-    private static void clearHoverAreaEffects(@NotNull TabLabel label) {
+    private static void clearHoverAreaEffects(@NotNull JComponent label) {
         ComponentSubtabProjectViewHover.onExit(label);
         ComponentSubtabBarHover.onExitMainTab(label);
         ComponentSubtabFileEditorHover.onExit(label);
@@ -433,7 +414,7 @@ final class ComponentSubtabMainTabSelectPopup {
         }
     }
 
-    private static void cancelExitTimer(@NotNull TabLabel label) {
+    private static void cancelExitTimer(@NotNull JComponent label) {
         Timer timer = getExitTimer(label);
         if (timer != null) {
             timer.stop();
@@ -441,17 +422,17 @@ final class ComponentSubtabMainTabSelectPopup {
         }
     }
 
-    private static boolean isInHoverArea(@NotNull TabLabel label) {
+    private static boolean isInHoverArea(@NotNull JComponent label) {
         Point pointer = MouseInfo.getPointerInfo().getLocation();
         return isPointerOver(label) || isMouseOverPopup(label, pointer);
     }
 
-    private static @Nullable Timer getExitTimer(@NotNull TabLabel label) {
+    private static @Nullable Timer getExitTimer(@NotNull JComponent label) {
         Object value = label.getClientProperty(EXIT_TIMER_KEY);
         return value instanceof Timer timer ? timer : null;
     }
 
-    private static void hidePopup(@NotNull TabLabel label) {
+    private static void hidePopup(@NotNull JComponent label) {
         cancelExitTimer(label);
         JBPopup popup = getPopup(label);
         if (popup != null && popup.isVisible()) {
@@ -461,7 +442,7 @@ final class ComponentSubtabMainTabSelectPopup {
         label.putClientProperty(POPUP_PANEL_KEY, null);
     }
 
-    private static void cancelShowTimer(@NotNull TabLabel label) {
+    private static void cancelShowTimer(@NotNull JComponent label) {
         Timer timer = getShowTimer(label);
         if (timer != null) {
             timer.stop();
@@ -469,12 +450,12 @@ final class ComponentSubtabMainTabSelectPopup {
         }
     }
 
-    private static boolean isPopupVisible(@NotNull TabLabel label) {
+    private static boolean isPopupVisible(@NotNull JComponent label) {
         JBPopup popup = getPopup(label);
         return popup != null && popup.isVisible();
     }
 
-    private static boolean isMouseOverPopup(@NotNull TabLabel label, @NotNull Point screenPoint) {
+    private static boolean isMouseOverPopup(@NotNull JComponent label, @NotNull Point screenPoint) {
         SubtabGroupFilePopupPanel panel = getPopupPanel(label);
         if (panel == null || !panel.isShowing()) {
             return false;
@@ -500,17 +481,17 @@ final class ComponentSubtabMainTabSelectPopup {
         }
     }
 
-    private static @Nullable JBPopup getPopup(@NotNull TabLabel label) {
+    private static @Nullable JBPopup getPopup(@NotNull JComponent label) {
         Object value = label.getClientProperty(POPUP_KEY);
         return value instanceof JBPopup popup ? popup : null;
     }
 
-    private static @Nullable SubtabGroupFilePopupPanel getPopupPanel(@NotNull TabLabel label) {
+    private static @Nullable SubtabGroupFilePopupPanel getPopupPanel(@NotNull JComponent label) {
         Object value = label.getClientProperty(POPUP_PANEL_KEY);
         return value instanceof SubtabGroupFilePopupPanel panel ? panel : null;
     }
 
-    private static @Nullable Timer getShowTimer(@NotNull TabLabel label) {
+    private static @Nullable Timer getShowTimer(@NotNull JComponent label) {
         Object value = label.getClientProperty(SHOW_TIMER_KEY);
         return value instanceof Timer timer ? timer : null;
     }

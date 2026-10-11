@@ -1422,7 +1422,8 @@ final class ComponentSubtabEditorSplitNavigation {
                 manager.setCurrentWindow(rightWindow);
                 // Awaiting the composite here starves the background editor build (EDT has priority)
                 // and freezes the IDE for seconds; the chrome is attached in fileOpened instead.
-                manager.openFile(
+                InternalPlatformBridge.openFile(
+                        manager,
                         pair.rightFile(),
                         rightWindow,
                         ComponentSubtabNavigation.nonBlockingOpenOptions(rightWindow, previousPartner, true)
@@ -1626,7 +1627,12 @@ final class ComponentSubtabEditorSplitNavigation {
             manager.openFile(file, requestFocus);
             return;
         }
-        manager.openFile(file, window, ComponentSubtabNavigation.nonBlockingOpenOptions(requestFocus, true));
+        InternalPlatformBridge.openFile(
+                manager,
+                file,
+                window,
+                ComponentSubtabNavigation.nonBlockingOpenOptions(requestFocus, true)
+        );
     }
 
     /** {@link EditorWindow#split} awaits the editor of the file it opens, so split on the open left file. */
@@ -1672,7 +1678,7 @@ final class ComponentSubtabEditorSplitNavigation {
             return;
         }
         if (!partnerWindow.isFileOpen(partner)) {
-            manager.openFileWithProviders(partner, false, partnerWindow);
+            InternalPlatformBridge.openFileWithProviders(manager, partner, false, partnerWindow);
         }
         partnerWindow.setSelectedComposite(partner, focusPartner);
     }
@@ -1827,7 +1833,12 @@ final class ComponentSubtabEditorSplitNavigation {
             @NotNull EditorWindow tabHostWindow
     ) {
         if (!tabHostWindow.isFileOpen(file)) {
-            manager.openFile(file, tabHostWindow, ComponentSubtabNavigation.nonBlockingOpenOptions(false, false));
+            InternalPlatformBridge.openFile(
+                    manager,
+                    file,
+                    tabHostWindow,
+                    ComponentSubtabNavigation.nonBlockingOpenOptions(false, false)
+            );
         }
         for (EditorWindow window : manager.getWindows()) {
             if (window == tabHostWindow || !window.isFileOpen(file)) {
@@ -1921,7 +1932,7 @@ final class ComponentSubtabEditorSplitNavigation {
     }
 
     private static @NotNull List<VirtualFile> filesInWindow(@NotNull EditorWindow window) {
-        return List.of(window.getFiles());
+        return EditorWindowFiles.files(window);
     }
 
     private static void closeOtherTabsInWindow(

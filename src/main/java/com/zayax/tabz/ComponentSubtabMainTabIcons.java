@@ -11,13 +11,12 @@ import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.tabs.JBTabs;
 import com.intellij.ui.tabs.TabInfo;
-import com.intellij.ui.tabs.impl.JBTabsImpl;
-import com.intellij.ui.tabs.impl.TabLabel;
 import com.intellij.util.IconUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.Icon;
+import javax.swing.JComponent;
 import java.awt.Color;
 import java.util.Objects;
 
@@ -101,23 +100,19 @@ final class ComponentSubtabMainTabIcons {
     private static void applyAll(@NotNull FileEditorManagerEx manager, @NotNull Project project) {
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
                 if (!(tabInfo.getObject() instanceof VirtualFile file)) {
                     continue;
                 }
                 Color groupColor = SubtabGroupColors.colorForFile(file);
                 if (groupColor == null) {
-                    restoreStandardIcon(project, tabsImpl, tabInfo, file);
+                    restoreStandardIcon(project, tabInfo, file);
                     continue;
                 }
-                applyGroupColor(project, tabsImpl, tabInfo, file, groupColor);
+                applyGroupColor(project, tabInfo, file, groupColor);
             }
 
-            tabsImpl.revalidateAndRepaint(false);
+            JbTabsUi.revalidateAndRepaint(tabs);
         }
     }
 
@@ -128,47 +123,39 @@ final class ComponentSubtabMainTabIcons {
         FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
                 if (!file.equals(tabInfo.getObject())) {
                     continue;
                 }
                 Color groupColor = SubtabGroupColors.colorForFile(file);
                 if (groupColor == null) {
-                    restoreStandardIcon(project, tabsImpl, tabInfo, file);
+                    restoreStandardIcon(project, tabInfo, file);
                 } else {
-                    applyGroupColor(project, tabsImpl, tabInfo, file, groupColor);
+                    applyGroupColor(project, tabInfo, file, groupColor);
                 }
             }
-            tabsImpl.revalidateAndRepaint(false);
+            JbTabsUi.revalidateAndRepaint(tabs);
         }
     }
 
     private static void clearAll(@NotNull FileEditorManagerEx manager, @NotNull Project project) {
         for (EditorWindow window : manager.getWindows()) {
             JBTabs tabs = window.getTabbedPane().getTabs();
-            if (!(tabs instanceof JBTabsImpl tabsImpl)) {
-                continue;
-            }
-
-            for (TabInfo tabInfo : tabsImpl.getTabs()) {
+            for (TabInfo tabInfo : JbTabsUi.tabInfos(tabs)) {
                 if (!(tabInfo.getObject() instanceof VirtualFile file)) {
                     continue;
                 }
                 if (SubtabGroupColors.colorKey(file) != null) {
-                    restoreStandardIcon(project, tabsImpl, tabInfo, file);
+                    restoreStandardIcon(project, tabInfo, file);
                 }
             }
 
-            tabsImpl.revalidateAndRepaint(false);
+            JbTabsUi.revalidateAndRepaint(tabs);
         }
     }
 
     private static void applyGroupColor(
             @NotNull Project project,
-            @NotNull JBTabsImpl tabsImpl,
             @NotNull TabInfo tabInfo,
             @NotNull VirtualFile file,
             @NotNull Color groupColor
@@ -177,12 +164,11 @@ final class ComponentSubtabMainTabIcons {
         if (tinted == null) {
             return;
         }
-        setTabIcon(tabsImpl, tabInfo, tinted);
+        setTabIcon(tabInfo, tinted);
     }
 
     private static void restoreStandardIcon(
             @NotNull Project project,
-            @NotNull JBTabsImpl tabsImpl,
             @NotNull TabInfo tabInfo,
             @NotNull VirtualFile file
     ) {
@@ -190,20 +176,16 @@ final class ComponentSubtabMainTabIcons {
         if (base == null) {
             return;
         }
-        setTabIcon(tabsImpl, tabInfo, base);
+        setTabIcon(tabInfo, base);
     }
 
-    private static void setTabIcon(
-            @NotNull JBTabsImpl tabsImpl,
-            @NotNull TabInfo tabInfo,
-            @NotNull Icon icon
-    ) {
+    private static void setTabIcon(@NotNull TabInfo tabInfo, @NotNull Icon icon) {
         if (!Objects.equals(tabInfo.getIcon(), icon)) {
             tabInfo.setIcon(icon);
         }
-        TabLabel label = tabsImpl.getTabLabel(tabInfo);
-        if (label != null) {
-            label.setIcon(icon);
+        JComponent label = JbTabsUi.tabComponent(tabInfo);
+        if (label instanceof javax.swing.JLabel jl) {
+            jl.setIcon(icon);
         }
     }
 

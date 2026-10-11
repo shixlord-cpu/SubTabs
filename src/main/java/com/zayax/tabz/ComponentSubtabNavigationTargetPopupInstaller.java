@@ -1,6 +1,5 @@
 package com.zayax.tabz;
 
-import com.intellij.ide.AppLifecycleListener;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
@@ -13,11 +12,10 @@ import java.awt.Component;
 import java.awt.Toolkit;
 import java.awt.event.MouseEvent;
 
-final class ComponentSubtabNavigationTargetPopupInstaller implements AppLifecycleListener {
+final class ComponentSubtabNavigationTargetPopupInstaller {
     private static boolean listenerInstalled;
 
-    @Override
-    public void appStarted() {
+    static void installOnce() {
         if (listenerInstalled) {
             return;
         }

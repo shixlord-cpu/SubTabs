@@ -148,7 +148,7 @@ final class ComponentSubtabProjectViewNavigation {
         if (window == null) {
             return null;
         }
-        for (VirtualFile candidate : window.getFiles()) {
+        for (VirtualFile candidate : EditorWindowFiles.files(window)) {
             if (candidate.equals(targetFile)) {
                 continue;
             }
@@ -174,7 +174,7 @@ final class ComponentSubtabProjectViewNavigation {
             return;
         }
         if (!window.isFileOpen(targetFile)) {
-            manager.openFileWithProviders(targetFile, requestFocus, window);
+            InternalPlatformBridge.openFileWithProviders(manager, targetFile, requestFocus, window);
         } else {
             window.setSelectedComposite(targetFile, requestFocus);
         }
@@ -200,7 +200,7 @@ final class ComponentSubtabProjectViewNavigation {
         if (window == null) {
             return null;
         }
-        for (VirtualFile candidate : window.getFiles()) {
+        for (VirtualFile candidate : EditorWindowFiles.files(window)) {
             if (candidate.equals(targetFile) || active.covers(candidate)) {
                 continue;
             }
